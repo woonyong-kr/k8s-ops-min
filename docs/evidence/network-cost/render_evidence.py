@@ -73,7 +73,7 @@ def render_daily_transfer() -> None:
     )
     cards = [
         ("청구 방향 합계", f"{total / 1000:.2f} TB", ORANGE),
-        ("편도 상당량", f"{total / 2 / 1000:.2f} TB", CYAN),
+        ("편도 상당량", f"{total / 2:,.0f} billed GB", CYAN),
         ("크레딧 전 비용", f"${gross_cost:.2f}", RED),
         ("07-20—26 비중", f"{recent / total * 100:.1f}%", GREEN),
     ]

@@ -1,6 +1,5 @@
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 DOCS_ROOT = Path(__file__).resolve().parents[1] / "docs"
 README = DOCS_ROOT / "README.md"

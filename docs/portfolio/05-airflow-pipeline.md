@@ -2,13 +2,13 @@
 
 # 05. Airflow를 어디에 쓰고, 어디에 쓰지 않을 것인가
 
-> **⑤ 매일 재검사** · 지원 준비용 후속 확장 · 민정 직접 검증 전
+> **⑤ 매일 재검사** · 프로젝트 종료 후 검증 · 개인 성과와 분리
 
 ## 결론
 
 Airflow는 기존 실시간 장애 수집기를 대체하지 않습니다. 이미 수집된 snapshot을 논리 날짜별로 재처리하고, 등록 스키마와 실제 관측 스키마를 대조하고, 품질 결과를 발행하는 배치에 사용합니다.
 
-처음에는 mapped extract와 downstream이 source를 각각 읽었고, Airflow 2.10의 SQLAlchemy 1.4와 카탈로그의 SQLAlchemy 2.x가 충돌해 DAG import도 실패했습니다. 현재는 extract가 보관한 snapshot을 downstream이 다시 읽도록 고쳤고, 카탈로그 task를 별도 Python 환경으로 격리해 정상 `dags test`를 통과했습니다. 다만 민정이 직접 실행·수정·설명하기 전에는 개인 이력서 성과로 쓰지 않습니다.
+처음에는 mapped extract와 downstream이 source를 각각 읽었고, Airflow 2.10의 SQLAlchemy 1.4와 카탈로그의 SQLAlchemy 2.x가 충돌해 DAG import도 실패했다. extract가 보관한 snapshot을 downstream이 다시 읽도록 고쳤고, 카탈로그 task를 별도 Python 환경으로 격리해 `dags test`를 통과했다. 종료 후 검증은 원본 팀 프로젝트의 개인 구현 성과와 분리한다.
 
 ## 실시간 수집기를 바꾸지 않는 이유
 
@@ -161,7 +161,7 @@ source별 상태와 DAG 전체 상태를 분리합니다.
 1. 한 source 실패·전 source 실패·downstream 실패를 실제 Airflow DAG run으로 재현합니다.
 2. task 재시도 후 `attempt`, run status, 적재 행 수를 SQL로 확인합니다.
 3. 로컬 파일 보관을 그대로 명시하거나 실제 MinIO client를 연결합니다.
-4. 민정이 수정 이유와 실패 시나리오를 설명하고 본인 변경 이력을 남깁니다.
+4. 개인 성과로 사용하려면 수정 이유와 실패 시나리오를 재현하고 변경 이력을 남긴다.
 
 완료 후 사용할 수 있는 문장은 다음입니다.
 

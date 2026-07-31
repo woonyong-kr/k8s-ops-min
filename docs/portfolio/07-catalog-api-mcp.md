@@ -2,7 +2,7 @@
 
 # 07. 카탈로그 조회 API와 MCP의 현재 상태
 
-> **⑥ 자료 목록 관리** · 지원 준비용 후속 확장 · 민정 직접 검증 전
+> **⑥ 자료 목록 관리** · 프로젝트 종료 후 검증 · 개인 성과와 분리
 
 ## 결론
 
@@ -121,7 +121,7 @@ def get_connection() -> Connection:
 
 ## 팀 프로젝트 MCP와 구분
 
-원본 팀 프로젝트의 `src/services/mcp/internal_control/`에는 실제 server, API client, gateway·AI runtime 연결 이력이 있습니다. 민정의 직접 구현 근거도 있습니다. 다만 최종 Golden Path와 사용자 검증에서는 제외됐습니다.
+원본 팀 프로젝트의 `src/services/mcp/internal_control/`에는 server, API client, gateway·AI runtime 연결 이력과 직접 구현 근거가 있다. 다만 최종 Golden Path와 사용자 검증에서는 제외됐다.
 
 후속 catalog MCP는 그 경험을 더 작은 읽기 전용 범위로 다시 설계한 초안입니다. 둘을 합쳐 “카탈로그 MCP를 완성했다”고 만들지 않습니다.
 
@@ -133,7 +133,7 @@ def get_connection() -> Connection:
 4. 호출자의 인증 정보를 API까지 전달하고 401·403을 검증합니다.
 5. 큰 응답, pagination, 부분 실행 evidence를 end-to-end로 검증합니다.
 6. tool routing 평가 질문을 만들고 예상 tool·arguments와 대조합니다.
-7. 민정이 직접 수정·실행하고 본인 변경 이력을 남깁니다.
+7. 개인 성과로 사용하려면 직접 수정·실행한 변경 이력을 남긴다.
 
 완료 후에 사용할 수 있는 문장은 다음입니다.
 

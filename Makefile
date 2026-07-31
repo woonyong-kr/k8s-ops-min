@@ -10,7 +10,7 @@ PY ?= .venv/bin/python
         catalog-up catalog-down catalog-schema catalog-seed catalog-run \
         catalog-verify catalog-sql catalog-mcp catalog-test \
         controller-check benchmark-event-bus benchmark-event-bus-compare \
-        evidence-screenshots clean
+        evidence-screenshots portfolio-verify clean
 
 help: ## 사용 가능한 명령어 출력
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make <target>\n\nTargets:\n"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -19,10 +19,10 @@ sync: ## Python 의존성 설치/동기화
 	uv sync --all-groups
 
 lint: ## Ruff 린트 검사
-	uv run ruff check .
+	$(PY) -m ruff check .
 
 format: ## Ruff 포맷 적용
-	uv run ruff format .
+	$(PY) -m ruff format .
 
 test: ## 담당 범위 테스트 실행
 	PYTHONPATH=src $(PY) -m pytest tests -q
@@ -71,6 +71,9 @@ benchmark-event-bus-compare: ## 내부 전달과 NATS 비교 (NATS_URL 필요)
 
 evidence-screenshots: ## AWS·Git·벤치마크 증거판 SVG 생성
 	$(PY) docs/evidence/network-cost/render_evidence.py
+
+portfolio-verify: ## 공개 문서 링크·수치·식별자·기여 경계 검사
+	$(PY) scripts/portfolio_verify.py
 
 clean: ## 캐시 삭제
 	find src tests scripts dags benchmarks -type d -name __pycache__ -prune -exec rm -rf -- {} +

@@ -38,8 +38,8 @@ flowchart TD
 | Metadata Repository 정합성 | source·namespace·time·coverage metadata는 직접, 정식 카탈로그는 후속 확장 | 인접 경험 |
 | API/MCP | FastAPI는 직접 완성, 내부 MCP 75개와 권한 경계 구현은 있으나 최종 사용자 경로 검증 없음 | API 충족, MCP 구현 경험 |
 | AWS·컨테이너 | Docker·Helm·AWS EKS 팀 배포와 담당 수집 경로 설정 | 경험 있음 |
-| Airflow | 후속 코드만 있고 민정의 실행·수정 이력 없음 | 현재 미충족 |
-| 데이터 카탈로그·lineage | 후속 코드만 있고 민정의 실행·수정 이력 없음 | 현재 미충족 |
+| Airflow | 종료 후 확장 코드이며 원본 프로젝트 이력 없음 | 현재 미충족 |
+| 데이터 카탈로그·lineage | 종료 후 확장 코드이며 원본 프로젝트 이력 없음 | 현재 미충족 |
 
 우대요건까지 모두 충족했다고 쓰는 것이 목표가 아니다. **필수요건을 직접 코드로 증명하고, 우대요건의 공백은 알고 있으며 실제 후속 작업으로 메우는 중이라는 상태**가 현재의 정확한 포지션이다.
 
@@ -84,7 +84,7 @@ freshness·lineage·부분 실패 검사
 
 이건 실시간 장애 수집을 대체하지 않는다. 이미 수집된 데이터를 일정에 따라 재검사하고, 실패 task만 재시도하고, 과거 구간을 backfill하는 역할이다. 그래서 적용 자체는 억지스럽지 않다.
 
-초기 DAG는 mapped extract task의 결과를 downstream에서 사용하지 않고 source를 다시 읽었습니다. 지금은 extract가 보관한 URI·hash·status를 `dag_run_id`로 다시 읽도록 고쳤고 정상 Airflow 실행을 통과했습니다. 실패 task 재시도·MinIO 저장과 민정 본인의 재현은 아직 남아 있으므로 개인 Airflow 성과로 승격하지 않습니다.
+초기 DAG는 mapped extract task의 결과를 downstream에서 사용하지 않고 source를 다시 읽었습니다. 지금은 extract가 보관한 URI·hash·status를 `dag_run_id`로 다시 읽도록 고쳤고 정상 Airflow 실행을 통과했습니다. 실패 task 재시도·MinIO 저장과 지원자의 직접 재현은 아직 남아 있으므로 개인 Airflow 성과로 승격하지 않습니다.
 
 ## 이력서에 바로 쓸 프로젝트 문장
 
@@ -100,7 +100,7 @@ freshness·lineage·부분 실패 검사
 4. 같은 논리 날짜를 세 번 실행해 상태 행이 늘지 않는 이유를 설명한다.
 5. schema drift SQL의 `FULL OUTER JOIN`과 `IS DISTINCT FROM` 선택을 설명한다.
 6. catalog FastAPI router를 실행 앱에 연결하고 HTTP 테스트를 남긴다.
-7. 민정 본인 커밋으로 수정과 검증 과정을 남긴다.
+7. 실행자 본인의 커밋으로 수정과 검증 과정을 남깁니다.
 
 이 조건을 통과한 뒤에야 “Airflow로 운영 데이터 카탈로그 정합성 재검사 파이프라인을 구현했다”는 문장을 추가한다.
 

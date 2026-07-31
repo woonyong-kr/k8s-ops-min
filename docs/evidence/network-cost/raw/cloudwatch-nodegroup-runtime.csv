@@ -1,0 +1,4 @@
+logical_nodegroup,daily_cpu_bucket_count,cpu_weighted_avg_percent,min_daily_cpu_avg_percent,max_daily_cpu_avg_percent,packets_out_points,packets_out_sum,packets_in_points,packets_in_sum,node_hours_from_group_sum,period_start_utc,period_end_utc,source_snapshot
+management-server,9,42.4921,27.2494557990,59.7828705293,9,3887980388,9,4006934413,398.700,2026-07-04T00:00:00Z,2026-07-28T00:00:00Z,2026-08-01
+battlegrounds-game,6,29.1212,13.8987762286,37.4647431951,6,1628612186,6,1664797335,117.050,2026-07-04T00:00:00Z,2026-07-28T00:00:00Z,2026-08-01
+battlegrounds-infra,6,12.7549,10.5232798208,16.4847879052,6,1859917185,6,1957809596,117.033,2026-07-04T00:00:00Z,2026-07-28T00:00:00Z,2026-08-01

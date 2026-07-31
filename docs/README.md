@@ -40,7 +40,9 @@
 - [Golden Path](./GOLDEN-PATH.md): image pull 장애에서 Safe PR과 후속 evidence 검증까지의 좁은 성공 경로.
 - [Cleanup Matrix](./CLEANUP-MATRIX.md): KEEP/LATER/EXPERIMENT/DELETE 분류와 삭제 전 gate.
 - [Advanced Course Plan](./advanced-course-plan/README.md): 심화과정 팀 프로젝트·학습 계획과 개인별 제출 문서.
-- [Portfolio Evidence Index](./portfolio/README.md): 이민정의 직접 기여, Data Foundation 후속 확장, 아키텍처 비용 회고.
+- [Portfolio Evidence Index](./portfolio/README.md): 직접 기여, 종료 후 확장, 아키텍처 비용 회고.
+- [Resume Draft](./resume.md): 확인된 프로젝트 근거만 반영한 지원 이력서 초안.
+- [Development Timeline](./portfolio/14-development-timeline.md): 실패·리뷰·수정 과정을 커밋으로 복원한 기록.
 - [AWS·Git Network Evidence](./evidence/network-cost/README.md): Regional Transfer 원본 CSV, 재현 명령, 16:9 증거판.
 
 ## 아직 없는 문서 표면

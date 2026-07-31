@@ -5,12 +5,16 @@
 반환하지 않으므로 quality_results 에 적재하지 않는다.
 """
 from __future__ import annotations
-import os, sys
+
+import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from sqlalchemy import create_engine, text  # noqa: E402
+
 from domains.datacatalog.checks import CHECK_FILES, LOOKUP_FILES, load_sql  # noqa: E402
 
 DSN = os.environ.get("CATALOG_DATABASE_URL", "postgresql+psycopg://postgres@127.0.0.1:5433/catalog")

@@ -2,7 +2,7 @@
 
 # 03. Secret 값 대신 참조 관계만 반환하기
 
-> **① 자료 모으기** · 5인 팀 프로젝트 · 담당: 이민정
+> **소비 경계** · 5인 팀 프로젝트 · 담당: ConfigMap·Secret 참조 API
 
 설정 장애를 조사하려면 어느 Deployment가 어떤 ConfigMap과 Secret을 사용하는지 알아야 합니다. 그러나 저장된 Kubernetes manifest 전체를 API로 반환하면 조사에 필요하지 않은 평문 환경변수와 Secret 원문까지 함께 노출될 수 있습니다.
 

@@ -1,0 +1,7 @@
+logical_nodegroup,direction,total_gib,packet_count,avg_bytes_per_packet,node_hours_from_group_sum,gib_per_node_hour,derived,formula,limitation
+management-server,out,5173.3507182542,3887980388,1428.7,398.700,12.9755,true,bytes_div_packets_and_gib_div_node_hours,EC2 interface diagnostic; not application payload or Cross-AZ attribution
+management-server,in,5334.2665603748,4006934413,1429.4,398.700,13.3791,true,bytes_div_packets_and_gib_div_node_hours,EC2 interface diagnostic; not application payload or Cross-AZ attribution
+battlegrounds-game,out,4895.2792343227,1628612186,3227.5,117.050,41.8221,true,bytes_div_packets_and_gib_div_node_hours,EC2 interface diagnostic; not application payload or Cross-AZ attribution
+battlegrounds-game,in,164.0792610655,1664797335,105.8,117.050,1.4018,true,bytes_div_packets_and_gib_div_node_hours,EC2 interface diagnostic; not application payload or Cross-AZ attribution
+battlegrounds-infra,out,331.8905922538,1859917185,191.6,117.033,2.8359,true,bytes_div_packets_and_gib_div_node_hours,EC2 interface diagnostic; not application payload or Cross-AZ attribution
+battlegrounds-infra,in,5227.5605747523,1957809596,2867.0,117.033,44.6674,true,bytes_div_packets_and_gib_div_node_hours,EC2 interface diagnostic; not application payload or Cross-AZ attribution

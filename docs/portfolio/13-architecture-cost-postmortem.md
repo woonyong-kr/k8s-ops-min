@@ -1,8 +1,8 @@
-# 47개 Deployment 문서 이후, 29.68TB 청구 사용량을 해부했습니다
+# management·target Deployment 47개 이후, 29.68TB 청구 사용량을 해부했습니다
 
 초기에는 장애 분석 단계를 작은 워커로 나누면 책임, 재시도, 장애 격리가 명확해진다고 판단했습니다. 논리적 경계로는 맞았지만, 그 경계를 거의 그대로 Kubernetes Deployment와 NATS 왕복으로 옮겼습니다. Git과 AWS 원장을 대조하자 코드 구조가 실행 비용으로 바뀌는 지점이 보였습니다.
 
-이 회고는 이민정 개인 기여를 주장하는 문서가 아닙니다. 원본은 5인 팀 아키텍처이고, 통합 controller 구현은 우용님의 후속 작업입니다. 민정의 직접 기여와 지원서 주장은 [원본·기여·주장 경계](00-source-and-ownership.md)를 따릅니다.
+이 회고는 개인 기여를 주장하는 문서가 아닙니다. 원본은 5인 팀 아키텍처이고 통합 controller는 프로젝트 종료 후 확장입니다. 직접 기여와 지원서 주장은 [기여와 근거](00-source-and-ownership.md)를 따릅니다.
 
 ## 1. 처음 무엇을 얻으려고 했나
 
@@ -44,7 +44,7 @@ workspace_id      tenant·권한 경계
 
 ## 2. 실제로 얼마나 나뉘었나
 
-Git 각 날짜의 마지막 revision에서 배포 문서와 entrypoint를 셌습니다.
+Git 각 날짜의 마지막 revision에서 `deploy/management/**`·`deploy/target/**`의 배포 문서와 `src/services/**/app.py` entrypoint를 셌습니다.
 
 | 날짜 | Deployment 문서 | `*-worker` entrypoint | 전체 서비스 entrypoint | 선언 replica 합계 |
 |---|---:|---:|---:|---:|
@@ -67,32 +67,32 @@ CloudTrail에서는 7월 4일 기존 management 1개와 target 2개를 만들고
 | Regional transfer 청구 사용량 | **29,683.72GB** | 송·수신 과금 방향 합계 |
 | Usage 비용 | **$296.83** | 크레딧 적용 전 사용 비용 |
 | Credit | **-$296.83** | 이번 계정의 프로모션 상계 |
-| 편도 상당량 | **14.84TB / 14.49TiB** | 사용량÷2, 패킷 실측 아님 |
+| 편도 상당량 | **14,841.86 billed GB** | 사용량÷2, byte·패킷 실측 아님 |
 | 최고일 | **07-22, 4,578.58GB / $45.79** | 전체의 15.4% |
 | 집중 구간 | **07-20~26, 22,295.89GB** | 전체의 75.1% |
 
-7월 31일 첫 조회 29,573.84GB보다 다음 날 109.87GB(0.37%) 늘었습니다. AWS가 아직 `Estimated=true`로 표시한 기간이므로 포트폴리오에는 **조회 날짜와 원본 CSV**를 함께 둡니다.
+서비스별 분해에서 EC2 - Other는 29,573.84GB(99.63%), Elastic Load Balancing은 109.87GB(0.37%)였습니다. 29,573.84GB와 전체 29,683.72GB의 차이는 재조회 보정이 아니라 같은 기간 ELB 사용량입니다. AWS가 `Estimated=true`로 표시한 기간이므로 조회 날짜와 원본 CSV를 함께 둡니다.
 
 CloudWatch의 노드그룹별 EC2 인터페이스 합계는 전송 방향을 좁혀 줍니다.
 
 | 노드그룹 | Out | In | 읽을 수 있는 신호 |
 |---|---:|---:|---|
-| management-server | 5.17TiB | 5.33TiB | 관리면 내부 양방향 통신 큼 |
-| battlegrounds-game | 4.90TiB | 0.16TiB | 대량 송신 역할 |
-| battlegrounds-infra | 0.33TiB | 5.23TiB | game 송신과 맞물린 대량 수신 |
-| cluster-2-spot | 1.38TiB | 1.43TiB | 교체 전 target 통신 |
-| kubernetes-ops-r6i | 1.20TiB | 1.26TiB | 교체 전 management 통신 |
+| management-server | 5,173.35GiB | 5,334.27GiB | management 노드그룹 인터페이스의 양방향 전송량이 큼 |
+| battlegrounds-game | 4,895.28GiB | 164.08GiB | 대량 송신 역할 |
+| battlegrounds-infra | 331.89GiB | 5,227.56GiB | game 송신과 맞물린 대량 수신 |
+| cluster-2-spot | 1,376.37GiB | 1,428.62GiB | 교체 전 target 통신 |
+| kubernetes-ops-r6i | 1,199.81GiB | 1,258.12GiB | 교체 전 management 통신 |
 
-`battlegrounds-game Out 4.90TiB`와 `battlegrounds-infra In 5.23TiB`가 가깝다는 것은 game→infra 데이터면 통신이 컸다는 강한 정황입니다. management의 대칭적인 In/Out은 관리면 서비스 간 왕복이 컸다는 정황입니다. 다만 EC2 NetworkIn/Out에는 같은 AZ, Cross-AZ, 인터넷, 제어면 통신이 함께 들어가므로 정확한 비용 귀속은 아닙니다.
+`battlegrounds-game Out 4,895.28GiB`와 `battlegrounds-infra In 5,227.56GiB`의 반대 방향 전송량과 시계열이 맞물렸습니다. management도 In/Out이 비슷했습니다. EC2 NetworkIn/Out에는 same-AZ·Cross-AZ·인터넷·제어면 통신이 함께 들어가므로 서비스 경로나 비용 원인을 특정할 수 없습니다.
 
 ## 4. “32개 워커가 원인”이라고 쓰지 않는 이유
 
 시간상 상관관계는 있습니다. 배포 문서가 46개로 늘어난 7월 15일 사용량이 1,933.50GB로 뛰었고, 신규 3개 클러스터와 battlegrounds 노드그룹이 운영된 7월 20~26일에 전체의 75.1%가 발생했습니다.
 
-그러나 현재 원장에는 Pod별 flow log, NATS subject별 payload/throughput, AZ별 Pod 배치 이력이 없습니다. 원인은 최소 둘입니다.
+그러나 현재 원장에는 Pod별 flow log, NATS subject별 payload/throughput, AZ별 Pod 배치 이력이 없습니다. 추가로 분리 검증해야 할 트래픽 가설은 최소 둘입니다.
 
-1. management 내부에서 논리 단계마다 serialize → NATS → consumer → DB를 반복한 통신
-2. game 노드에서 infra 노드로 전달한 게임 데이터면 트래픽
+1. management 내부에서 논리 단계마다 serialize → NATS → consumer → DB를 반복했을 가능성
+2. game 노드에서 infra 노드로 게임 데이터면 트래픽을 전달했을 가능성
 
 따라서 문제를 “서비스 숫자” 하나로 축약하면 game→infra 경로를 놓칩니다. 개선 기준도 두 갈래여야 합니다.
 
@@ -177,20 +177,20 @@ game→infra는 프로세스 통합으로 해결할 문제가 아닙니다. 다�
 
 현재 증거만으로 안전한 문장:
 
-> Git 배포 이력과 AWS Cost Explorer·CloudWatch를 대조해 47개 Deployment 문서의 분산 토폴로지와 29.68TB의 Regional Data Transfer 청구 사용량을 추적했습니다. 관리면 5.17TiB out/5.33TiB in과 게임→인프라 4.90TiB out/5.23TiB in을 분리해, 논리적 이벤트 경계는 유지하되 39개 관리 서비스를 단일 controller와 프로세스 내부 이벤트 전달로 통합했습니다. 동일 1,393B 이벤트 1,000건의 로컬 실험에서 전달 완료시간을 373.955ms에서 12.182ms로 줄였습니다.
+> Git 배포 이력과 AWS Cost Explorer·CloudWatch를 대조해 management·target manifest의 Deployment 문서 47개와 29.68TB Regional Data Transfer 청구 사용량을 추적했습니다. 관리면 5,173.35GiB out/5,334.27GiB in과 게임→인프라 4,895.28GiB out/5,227.56GiB in을 분리했습니다. 논리적 이벤트 경계는 유지하고 39개 관리 서비스를 단일 controller와 프로세스 내부 이벤트 전달로 조립했습니다. 동일 1,393B 이벤트 1,000건의 로컬 실험에서 전달 완료시간은 373.955ms에서 12.182ms로 줄었습니다. 이 값은 종료 후 전송 계층 실험이며 AWS 비용 절감 결과가 아닙니다.
 
 한 줄형:
 
-> 47개 Deployment 문서와 AWS 29.68TB Regional Transfer 원장을 대조해 관리면·데이터면 트래픽을 분리하고, 39개 관리 서비스를 in-process controller로 통합해 로컬 이벤트 전달 시간을 373.955ms→12.182ms로 검증했습니다.
+> management·target manifest의 Deployment 문서 47개와 AWS 29.68TB Regional Transfer 원장을 대조해 관리면·데이터면 트래픽을 분리했습니다. 종료 후 39개 관리 서비스를 in-process controller로 조립하고 로컬 이벤트 전달 시간을 373.955ms→12.182ms로 검증했습니다.
 
 아직 쓰면 안 되는 문장:
 
-- “32개 워커 때문에 14.84TB가 발생했다” — Pod별 귀속이 없음
+- “32개 워커 때문에 편도 14,841.86 billed GB가 발생했다” — Pod별 귀속이 없음
 - “AWS 비용을 96.74% 절감했다” — 재배포 후 비용 비교가 없음
 - “82K events/s를 처리하는 시스템” — 전송 microbenchmark일 뿐 end-to-end가 아님
-- “민정이 39개 서비스를 통합했다” — 후속 controller 작성자는 우용님
+- “프로젝트 기간에 39개 서비스를 통합했다” — controller는 종료 후 확장
 
-민정의 지원서에는 이 사건을 팀 시스템에서 학습한 아키텍처 회고로 설명하고, 본인의 직접 구현인 수집 계약·부분 실패·잘림 메타데이터와 분리해야 합니다.
+지원서에서는 이 사건을 팀 시스템의 아키텍처 회고로 설명하고, 프로젝트 기간의 직접 구현인 수집 계약·부분 실패·잘림 메타데이터와 분리합니다.
 
 ## 9. 다음 측정이 완료돼야 닫히는 주장
 

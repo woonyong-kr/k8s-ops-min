@@ -29,12 +29,11 @@ aws ce get-cost-and-usage \
 편도 상당량 계산:
 
 ```text
-29,683.7183586736 GB ÷ 2 = 14,841.8591793368 GB
-14,841.8591793368 GB ÷ 1,000 = 14.841859 TB
-14,841.8591793368 GB ÷ 1,024 = 14.494003 TiB
+29,683.7183586736 billed GB ÷ 2 = 14,841.8591793368 billed GB
+표시용 십진 환산: 약 14.84 TB-equivalent
 ```
 
-AWS가 Regional Transfer를 송신·수신 측에 각각 기록한다는 과금 모델에 따른 등가 환산입니다. VPC Flow Logs의 패킷 합계가 아닙니다.
+AWS가 Regional Transfer를 송신·수신 측에 각각 기록한다는 과금 모델에 따른 등가 환산입니다. Cost Explorer의 GB를 GiB로 간주하지 않으며 VPC Flow Logs의 byte·패킷 합계가 아닙니다.
 
 ## CloudWatch EC2
 
@@ -63,6 +62,16 @@ aws cloudwatch get-metric-statistics \
 
 `NetworkIn`도 같은 방식으로 조회하고 `Sum / 1,073,741,824`로 GiB로 바꿨습니다. CloudWatch retention과 inactive metric 검색 제약 때문에 2026-07-31 추출 원장을 보존했습니다.
 
+같은 구간에서 `NetworkPacketsOut`·`NetworkPacketsIn`은 `Sum`으로 조회했습니다. CPU는 CloudWatch 통계의 `Sum / SampleCount`로 가중 평균을 계산했습니다. `AWS/AutoScaling`의 `GroupInServiceInstances`는 `Sum / 60`으로 node-hour를 계산했습니다.
+
+```text
+avg bytes/packet = Network bytes Sum / NetworkPackets Sum
+node-hour        = GroupInServiceInstances Sum / 60
+GiB/node-hour    = Network GiB / node-hour
+```
+
+이 파생값은 EC2 인터페이스의 방향과 밀도를 비교하기 위한 값입니다. 애플리케이션 메시지 크기, 요청 처리량, Cross-AZ 귀속값으로 사용하지 않습니다.
+
 ## CloudTrail EKS 수명
 
 ```bash
@@ -79,9 +88,9 @@ aws cloudtrail lookup-events \
 
 각 날짜의 마지막 revision에서 다음 세 값을 별도로 셌습니다.
 
-1. YAML 문서 중 `kind: Deployment` 수
-2. 서비스 디렉터리의 `app.py` entrypoint 수
-3. 이름이 `*-worker`인 entrypoint 수
+1. `deploy/management/**`·`deploy/target/**` YAML 중 `kind: Deployment` 수
+2. `src/services/**/app.py` entrypoint 수
+3. `app.py` 직계 디렉터리명이 `*-worker`인 entrypoint 수
 
 대표 revision과 결과는 [`git-topology-timeline.csv`](raw/git-topology-timeline.csv)에 있습니다. `replicas:` 합계는 정적 manifest의 희망 값이며 실제 Pod metric이 아닙니다.
 
