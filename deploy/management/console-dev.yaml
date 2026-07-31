@@ -131,7 +131,7 @@ spec:
       containers:
         - name: console
           # 배포 파이프라인이 같은 dev SHA에서 빌드한 ECR digest로만 교체한다.
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-console@sha256:8c49f7bf8a10f5b9edb8de798cbe94d78ca29d03699bc2f3686c1636ec397978
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-console@sha256:8c49f7bf8a10f5b9edb8de798cbe94d78ca29d03699bc2f3686c1636ec397978
           imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false

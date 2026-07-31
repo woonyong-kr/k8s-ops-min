@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: upgrade
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "-m", "domains.target.policy_upgrade"]
           args: ["--apply"]

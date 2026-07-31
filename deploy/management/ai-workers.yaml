@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/chat-worker/app.py"]
           resources:
@@ -61,7 +61,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/evidence-worker/app.py"]
           resources:
@@ -105,7 +105,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/incident-worker/app.py"]
           resources:
@@ -149,7 +149,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/plan-worker/app.py"]
           resources:
@@ -193,7 +193,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/analyze-worker/app.py"]
           resources:
@@ -238,7 +238,7 @@ spec:
       priorityClassName: gitops-control-critical
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/recovery-worker/app.py"]
           resources:
@@ -282,7 +282,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/select-worker/app.py"]
           resources:
@@ -327,7 +327,7 @@ spec:
       priorityClassName: gitops-control-critical
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/dispatch-worker/app.py"]
           resources:
@@ -371,7 +371,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/backlog-worker/app.py"]
           resources:
@@ -415,7 +415,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/diff-worker/app.py"]
           resources:
@@ -459,7 +459,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/rollout-worker/app.py"]
           resources:
@@ -503,7 +503,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/approval-worker/app.py"]
           resources:
@@ -547,7 +547,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/ai-fallback-worker/app.py"]
           resources:
@@ -591,7 +591,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
           imagePullPolicy: IfNotPresent
           command: ["python", "src/services/ai/rca-feedback-worker/app.py"]
           resources:
