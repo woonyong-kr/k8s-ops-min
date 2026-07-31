@@ -125,7 +125,7 @@ tempo        5
 어댑터 단위 테스트 9종은 [`tests/catalog/test_sources.py`](../tests/catalog/test_sources.py) 에 있습니다. `kubernetes` 질의에 `evidence_windows` 가 섞이지 않는지, `uid` 가 없을 때 `namespace/name` 으로 떨어지는지, 하루치만 읽는지를 확인합니다.
 
 ```
-pytest tests/catalog -q   →   90 passed
+pytest tests/catalog -q   →   95 passed
 ```
 
 ### 아직 남은 것

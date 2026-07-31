@@ -101,12 +101,24 @@ def run_checks(
             )
             continue
 
+        # 위반 하나마다 first_seen 을 조회하면 N+1 이 된다. 위반이 1,000건이면
+        # 질의가 1,000번이다. 검사 단위로 한 번에 읽어 사전으로 들고 쓴다.
+        keys = [
+            (
+                str(row.get("asset_id") or row.get("source_id") or row.get("dag_run_id")),
+                _subject_key(row),
+                str(row.get("finding") or row.get("drift_type") or check_type),
+            )
+            for row in rows
+        ]
+        seen_before = _first_seen_map(conn, check_type, name, keys)
+
         for row in rows:
             asset_id = row.get("asset_id") or row.get("source_id") or row.get("dag_run_id")
             finding = row.get("finding") or row.get("drift_type") or check_type
             subject_key = _subject_key(row)
-            first_seen = _first_seen_dag_run(
-                conn, check_type, name, str(asset_id), subject_key, str(finding), dag_run_id
+            first_seen = seen_before.get(
+                (str(asset_id), subject_key, str(finding)), dag_run_id
             )
             _write_result(
                 conn,
@@ -154,34 +166,38 @@ def _stringify(row: Any, keys: tuple[str, ...]) -> str | None:
     return None
 
 
-def _first_seen_dag_run(
+def _first_seen_map(
     conn: Connection,
     check_type: str,
     check_name: str,
-    asset_id: str,
-    subject_key: str,
-    finding: str,
-    dag_run_id: str,
-) -> str:
-    """이 위반이 처음 발생한 실행을 찾는다.
+    keys: list[tuple[str, str, str]],
+) -> dict[tuple[str, str, str], str]:
+    """이 위반들이 처음 발생한 실행을 한 번에 찾는다.
 
     이 값이 없으면 한 번 발생한 영구 위반이 이후 모든 실행을 정합성 위반으로
     만든다. 일주일이면 전부 붉어지고 그 뒤로는 아무도 안 본다.
+
+    check_name 까지 거르는 이유: 03·04 는 둘 다 SCHEMA_DRIFT 라 check_type
+    만으로는 서로의 이력을 가져온다.
     """
-    previous = conn.execute(
+    if not keys:
+        return {}
+    rows = conn.execute(
         text(
             """
-            SELECT COALESCE(MIN(first_seen_dag_run_id), MIN(dag_run_id))
+            SELECT asset_id, subject_key, finding,
+                   COALESCE(MIN(first_seen_dag_run_id), MIN(dag_run_id)) AS first_seen
             FROM catalog_quality_results
             WHERE check_type = :c AND check_name = :cn AND status = 'failed'
-              AND asset_id = :a
-              AND subject_key = :sk
-              AND finding IS NOT DISTINCT FROM :f
+              AND asset_id = ANY(:assets)
+            GROUP BY asset_id, subject_key, finding
             """
         ),
-        {"c": check_type, "cn": check_name, "a": asset_id, "sk": subject_key, "f": finding},
-    ).scalar()
-    return previous or dag_run_id
+        {"c": check_type, "cn": check_name, "assets": sorted({k[0] for k in keys})},
+    ).mappings().all()
+    return {
+        (r["asset_id"], r["subject_key"], str(r["finding"])): r["first_seen"] for r in rows
+    }
 
 
 def _write_result(

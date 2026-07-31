@@ -65,10 +65,8 @@ def call_tool(
 
     try:
         session.charge()
-    except BudgetExceeded:
-        raise fail(
-            "session_budget_exhausted", retry_after=BudgetExceeded.retry_after_seconds
-        ) from None
+    except BudgetExceeded as exc:
+        raise fail("session_budget_exhausted", retry_after=exc.retry_after_seconds) from None
 
     try:
         body = client.call(tool_name, validated, session=session)

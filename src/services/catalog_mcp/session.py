@@ -25,7 +25,11 @@ BUDGET_WINDOW_SECONDS = 3600
 class BudgetExceeded(Exception):
     """세션 호출 예산 초과. HTTP 로 치면 429 다."""
 
-    retry_after_seconds = BUDGET_WINDOW_SECONDS
+    def __init__(self, message: str, retry_after_seconds: int = BUDGET_WINDOW_SECONDS) -> None:
+        super().__init__(message)
+        # 창이 열릴 때까지 남은 시간. 상수를 돌려주면 그 시간에 재시도해도
+        # 여전히 막혀서 안내가 거짓이 된다.
+        self.retry_after_seconds = retry_after_seconds
 
 
 @dataclass
@@ -51,7 +55,10 @@ class Session:
             self.window_started = now
             self.calls_made = 0
         if self.calls_made >= self.call_budget:
-            raise BudgetExceeded(f"session budget {self.call_budget}/{self.window_seconds}s exhausted")
+            remaining = max(1, int(self.window_started + self.window_seconds - now))
+            raise BudgetExceeded(
+                f"session budget {self.call_budget}/{self.window_seconds}s exhausted", remaining
+            )
         self.calls_made += 1
 
     @property
@@ -62,8 +69,12 @@ class Session:
 class AuditLog:
     """구조화 감사 로그. 기본은 stderr — stdout 은 MCP 프로토콜이 쓴다."""
 
+    MAX_RETAINED = 500
+
     def __init__(self, stream: TextIO | None = None) -> None:
         self._stream = stream if stream is not None else sys.stderr
+        # 스트림이 원본이고 이 목록은 조회용 사본이다. 상한이 없으면 긴 세션에서
+        # 메모리가 무한히 는다. 오래된 것부터 버린다 — 스트림에는 남아 있다.
         self.records: list[dict[str, Any]] = []
 
     def record(
@@ -87,6 +98,8 @@ class AuditLog:
         if detail:
             entry.update(detail)
         self.records.append(entry)
+        if len(self.records) > self.MAX_RETAINED:
+            del self.records[: len(self.records) - self.MAX_RETAINED]
         print(json.dumps(entry, ensure_ascii=False), file=self._stream, flush=True)
         return entry
 

@@ -108,3 +108,33 @@ def test_대상키_선정_순서(row, expected):
 
 def test_대상키는_길이를_자른다():
     assert len(_subject_key({"field_path": "a" * 1000})) == 256
+
+
+def test_first_seen_은_검사당_한_번만_조회한다(conn):
+    """위반 하나마다 조회하면 1,000건에서 질의가 1,000번이다."""
+    from domains.datacatalog.checks import _first_seen_map
+
+    dag = _seed_dag_run(conn, "dag-fs")
+    for field in ("f1", "f2", "f3"):
+        _write(conn, dag, subject_key=field, finding="TYPE_CHANGED")
+
+    keys = [("ops.evidence", f, "TYPE_CHANGED") for f in ("f1", "f2", "f3")]
+    found = _first_seen_map(conn, "SCHEMA_DRIFT", "03_schema_drift", keys)
+    assert set(found) == set(keys)
+    assert all(v == dag for v in found.values())
+
+
+def test_first_seen_은_같은_check_type_의_다른_검사를_섞지_않는다(conn):
+    """03·04 는 둘 다 SCHEMA_DRIFT 다. check_name 이 없으면 서로의 이력을 가져온다."""
+    from domains.datacatalog.checks import _first_seen_map, _write_result
+
+    dag = _seed_dag_run(conn, "dag-mix")
+    _write_result(
+        conn, dag_run_id=dag, check_name="04_unversioned_change", check_type="SCHEMA_DRIFT",
+        asset_id="ops.evidence", subject_key="f1", status="failed", severity="error",
+        finding="TYPE_CHANGED", observed=None, expected=None, checked_at=NOW,
+    )
+    found = _first_seen_map(
+        conn, "SCHEMA_DRIFT", "03_schema_drift", [("ops.evidence", "f1", "TYPE_CHANGED")]
+    )
+    assert found == {}

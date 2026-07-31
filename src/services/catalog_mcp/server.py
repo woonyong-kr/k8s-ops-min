@@ -228,13 +228,22 @@ def bound_response(
         payload = {"items": marked, "original_count": original, "returned_count": len(marked)}
         encoded = json.dumps(payload, ensure_ascii=False)
 
-    payload["truncated"] = payload["returned_count"] < original or upstream_cursor is not None
-    if upstream_cursor:
-        payload["next_cursor"] = upstream_cursor
-    elif payload["returned_count"] < original:
-        # 상위가 커서를 주지 않았는데 여기서 잘랐다면 나머지에 도달할 방법이 없다.
-        # 그 사실을 숨기면 모델은 부분을 전체로 읽는다.
+    dropped = original - payload["returned_count"]
+    payload["truncated"] = dropped > 0 or upstream_cursor is not None
+
+    if dropped:
+        # 여기서 잘랐다면 상위 커서를 그대로 넘기면 안 된다. 그 커서는 이 페이지
+        # *뒤*를 가리키므로, 넘기는 순간 방금 버린 행들을 건너뛴다. 모델은 그
+        # 행들을 영원히 못 보면서 전체를 봤다고 생각한다.
+        #
+        # 커서를 새로 만들지도 않는다. 커서 형식은 상위의 것이고 여기서 지어내면
+        # 상위 디코더가 거부한다. 대신 도달할 수 없다는 사실과 몇 건인지를 남기고,
+        # 더 작은 limit 으로 다시 요청하라고 알린다.
         payload["remainder_unreachable"] = True
+        payload["dropped_count"] = dropped
+        payload["hint"] = "limit 을 줄여 다시 요청하면 남은 항목을 받을 수 있습니다"
+    elif upstream_cursor:
+        payload["next_cursor"] = upstream_cursor
     return payload
 
 

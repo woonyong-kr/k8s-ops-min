@@ -193,8 +193,21 @@ def test_예산을_넘기면_거부하고_retry_after_를_준다():
     with pytest.raises(ToolCallFailed) as exc:
         call_tool("list_data_sources", {}, session=session, client=client, audit=audit)
     assert exc.value.code == "session_budget_exhausted"
-    assert exc.value.retry_after == 3600
+    # 상수가 아니라 창이 열릴 때까지 남은 시간이어야 한다.
+    # 상수를 주면 그 시간에 재시도해도 여전히 막혀 안내가 거짓이 된다.
+    assert 0 < exc.value.retry_after <= 3600
     assert len(transport.api_calls) == 3
+
+
+def test_창이_지나면_예산이_다시_열린다():
+    transport = FakeTransport()
+    client, session, audit = make(transport, principal="alice", token="t", budget=1)
+    call_tool("list_data_sources", {}, session=session, client=client, audit=audit)
+    with pytest.raises(ToolCallFailed):
+        call_tool("list_data_sources", {}, session=session, client=client, audit=audit)
+    session.window_started -= session.window_seconds + 1
+    call_tool("list_data_sources", {}, session=session, client=client, audit=audit)
+    assert session.calls_made == 1
 
 
 def test_인자_검증_실패는_예산을_깎지_않는다():
@@ -270,3 +283,32 @@ def test_경로_인자는_이스케이프된다():
     call_tool("get_asset_lineage", {"asset_id": "ops/normalized evidence"},
               session=session, client=client, audit=audit)
     assert transport.api_calls[0]["url"].endswith("/assets/ops%2Fnormalized%20evidence/lineage")
+
+
+# 8. 절단과 커서가 겹칠 때 ---------------------------------------------------
+
+
+def test_바이트_상한으로_자르면_상위_커서를_넘기지_않는다():
+    """상위 커서는 이 페이지 뒤를 가리킨다. 그대로 넘기면 방금 버린 행을 건너뛴다."""
+    from services.catalog_mcp.server import bound_response
+
+    fields = ("qualified_name", "transformation", "observed_value",
+              "expected_value", "finding", "name")
+    items = [{"asset_id": f"a{i}", **{f: "x" * 600 for f in fields}} for i in range(50)]
+    payload = bound_response(items, upstream_cursor="eyJvZmZzZXQiOiA1MH0=")
+
+    assert payload["returned_count"] < 50
+    assert "next_cursor" not in payload
+    assert payload["remainder_unreachable"] is True
+    assert payload["dropped_count"] == 50 - payload["returned_count"]
+    assert "limit" in payload["hint"]
+
+
+def test_감사_로그는_무한히_쌓이지_않는다():
+    from services.catalog_mcp.session import AuditLog
+
+    audit = AuditLog(stream=io.StringIO())
+    session = Session(principal_sub="alice", subject_token="t")
+    for _ in range(AuditLog.MAX_RETAINED + 50):
+        audit.record(session=session, tool="t", outcome="ok", correlation_id="c")
+    assert len(audit.records) == AuditLog.MAX_RETAINED
