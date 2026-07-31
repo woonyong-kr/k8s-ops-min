@@ -31,6 +31,8 @@
 | test | [Project Map](./PROJECT-MAP.md) | 반복 점검에서 확인한 gate는 `make manifest-check`와 `make check`다. |
 | GitOps | [Golden Path](./GOLDEN-PATH.md) | Opsia는 GitOps reconciler를 대체하지 않고 검토 가능한 source 변경 제안을 만든다. |
 | realtime | [Project Map](./PROJECT-MAP.md) | `realtime-gateway`는 browser/agent WebSocket 연결 표면이다. |
+| portfolio | [Portfolio Evidence Index](./portfolio/README.md) | 개인 기여, 후속 확장, AWS 비용 회고를 주장 강도와 함께 확인한다. |
+| network cost | [AWS·Git Evidence](./evidence/network-cost/README.md) | Cost Explorer·CloudWatch·Git 원장과 이미지의 단위·한계를 함께 확인한다. |
 
 ## 문서 목록
 
@@ -38,6 +40,8 @@
 - [Golden Path](./GOLDEN-PATH.md): image pull 장애에서 Safe PR과 후속 evidence 검증까지의 좁은 성공 경로.
 - [Cleanup Matrix](./CLEANUP-MATRIX.md): KEEP/LATER/EXPERIMENT/DELETE 분류와 삭제 전 gate.
 - [Advanced Course Plan](./advanced-course-plan/README.md): 심화과정 팀 프로젝트·학습 계획과 개인별 제출 문서.
+- [Portfolio Evidence Index](./portfolio/README.md): 이민정의 직접 기여, Data Foundation 후속 확장, 아키텍처 비용 회고.
+- [AWS·Git Network Evidence](./evidence/network-cost/README.md): Regional Transfer 원본 CSV, 재현 명령, 16:9 증거판.
 
 ## 아직 없는 문서 표면
 

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect x="0" y="0" width="1600" height="900" rx="0" fill="#08111f"/>
+<text x="80" y="70" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#4fd1c5" font-weight="700" letter-spacing="1">ARCHITECTURE DECISION · IMPLEMENTED, NOT YET REDEPLOYED</text>
+<text x="80" y="125" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="42" fill="#e8eef7" font-weight="800">이벤트 경계는 유지하고, 배포 경계만 다시 정했습니다</text>
+<line x1="80" y1="155" x2="1520" y2="155" stroke="#26364d" stroke-width="2"/>
+<text x="80" y="858" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#9fb0c6" >Evidence: Git rev 2724af33d + python src/entrypoints/app.py --check · AWS cost reduction not measured yet</text>
+<text x="1520" y="858" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#9fb0c6" text-anchor="end" letter-spacing="1">KYRO · EVIDENCE</text>
+<text x="100" y="210" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#f6ad55" font-weight="800">BEFORE · 2026-07-25 Git</text>
+<text x="865" y="210" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#4fd1c5" font-weight="800">AFTER · controller check</text>
+<rect x="80" y="235" width="680" height="500" rx="22" fill="#111d2e"/>
+<rect x="840" y="235" width="680" height="500" rx="22" fill="#111d2e"/>
+<rect x="115" y="285" width="265" height="105" rx="16" fill="#1a293d"/>
+<text x="137" y="331" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="38" fill="#f6ad55" font-weight="800">47</text>
+<text x="137" y="365" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#9fb0c6" >Deployment 문서</text>
+<rect x="415" y="285" width="265" height="105" rx="16" fill="#1a293d"/>
+<text x="437" y="331" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="38" fill="#f6ad55" font-weight="800">42</text>
+<text x="437" y="365" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#9fb0c6" >서비스 entrypoint</text>
+<rect x="115" y="415" width="265" height="105" rx="16" fill="#1a293d"/>
+<text x="137" y="461" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="38" fill="#f6ad55" font-weight="800">32</text>
+<text x="137" y="495" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#9fb0c6" >*-worker entrypoint</text>
+<rect x="415" y="415" width="265" height="105" rx="16" fill="#1a293d"/>
+<text x="437" y="461" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="38" fill="#f6ad55" font-weight="800">56</text>
+<text x="437" y="495" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#9fb0c6" >선언 replica 합계</text>
+<text x="115" y="575" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#e8eef7" >worker A Pod</text>
+<text x="300" y="575" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#f6ad55" font-weight="700">→ NATS →</text>
+<text x="415" y="575" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#e8eef7" >worker B Pod</text>
+<text x="600" y="575" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#f6ad55" font-weight="700">→ …</text>
+<text x="115" y="635" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >논리 단계마다 serialize · broker · CNI · DB 경계를 통과</text>
+<text x="115" y="690" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#68d391" >장점: 독립 재시도·격리</text>
+<text x="405" y="690" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#fc8181" >누락: 통신·운영 비용</text>
+<rect x="885" y="285" width="590" height="235" rx="18" fill="#132d32"/>
+<text x="925" y="335" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="31" fill="#4fd1c5" font-weight="800">1 controller process</text>
+<text x="925" y="385" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="24" fill="#e8eef7" font-weight="700">39 management services</text>
+<text x="925" y="430" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="20" fill="#9fb0c6" >33 worker + 4 async + 2 HTTP</text>
+<text x="925" y="475" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="20" fill="#9fb0c6" >InMemoryEventBus · same EventEnvelope</text>
+<line x1="1180" y1="520" x2="1180" y2="565" stroke="#4fd1c5" stroke-width="3"/>
+<rect x="885" y="565" width="590" height="105" rx="18" fill="#1a293d"/>
+<text x="925" y="610" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="24" fill="#e8eef7" font-weight="700">2 agent services remain separate</text>
+<text x="925" y="646" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >target-cluster trust boundary</text>
+<text x="885" y="710" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#68d391" >설계 기준: 같은 소유·DB·릴리스·장애 영역이면 합치고, 권한 경계는 분리</text>
+</svg>

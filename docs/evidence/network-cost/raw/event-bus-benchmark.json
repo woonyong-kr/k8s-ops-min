@@ -1,0 +1,34 @@
+{
+  "captured_at": "2026-08-01T00:36:49+09:00",
+  "host": "Apple M4 / arm64 / macOS 26.5.2",
+  "docker": "29.4.0",
+  "nats_image": "nats:2.11-alpine",
+  "conditions": {
+    "events_per_round": 1000,
+    "measured_rounds": 5,
+    "warmup_rounds": 1,
+    "payload_blob_bytes": 1024,
+    "serialized_event_bytes": 1393
+  },
+  "inprocess": {
+    "median_publish_ms": 11.796,
+    "median_consume_ms": 0.375,
+    "median_total_ms": 12.182,
+    "min_total_ms": 10.588,
+    "max_total_ms": 12.566,
+    "events_per_second": 82088.3
+  },
+  "nats_jetstream_loopback": {
+    "median_publish_ms": 322.261,
+    "median_consume_ms": 50.463,
+    "median_total_ms": 373.955,
+    "min_total_ms": 370.755,
+    "max_total_ms": 403.440,
+    "events_per_second": 2674.1
+  },
+  "comparison": {
+    "batch_time_reduction_percent": 96.74,
+    "throughput_multiplier": 30.70
+  },
+  "scope": "Event transport only. Excludes PostgreSQL, handlers, external APIs, Kubernetes networking and AWS cost."
+}

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect x="0" y="0" width="1600" height="900" rx="0" fill="#08111f"/>
+<text x="80" y="70" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#4fd1c5" font-weight="700" letter-spacing="1">AWS COST EXPLORER · 2026-07-04—27</text>
+<text x="80" y="125" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="42" fill="#e8eef7" font-weight="800">Regional Data Transfer는 마지막 7일에 75.1%가 몰렸습니다</text>
+<line x1="80" y1="155" x2="1520" y2="155" stroke="#26364d" stroke-width="2"/>
+<text x="80" y="858" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#9fb0c6" >Source: AWS Cost Explorer · RecordType=Usage · Estimated=true · snapshot 2026-08-01 KST</text>
+<text x="1520" y="858" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#9fb0c6" text-anchor="end" letter-spacing="1">KYRO · EVIDENCE</text>
+<rect x="80" y="185" width="340" height="115" rx="18" fill="#111d2e"/>
+<text x="104" y="222" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >청구 방향 합계</text>
+<text x="104" y="270" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="34" fill="#f6ad55" font-weight="800">29.68 TB</text>
+<rect x="450" y="185" width="340" height="115" rx="18" fill="#111d2e"/>
+<text x="474" y="222" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >편도 상당량</text>
+<text x="474" y="270" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="34" fill="#4fd1c5" font-weight="800">14.84 TB</text>
+<rect x="820" y="185" width="340" height="115" rx="18" fill="#111d2e"/>
+<text x="844" y="222" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >크레딧 전 비용</text>
+<text x="844" y="270" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="34" fill="#fc8181" font-weight="800">$296.83</text>
+<rect x="1190" y="185" width="340" height="115" rx="18" fill="#111d2e"/>
+<text x="1214" y="222" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >07-20—26 비중</text>
+<text x="1214" y="270" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="34" fill="#68d391" font-weight="800">75.1%</text>
+<line x1="105" y1="750.0" x2="1495" y2="750.0" stroke="#26364d" stroke-width="1"/>
+<text x="92" y="756.0" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="end">0TB</text>
+<line x1="105" y1="668.0" x2="1495" y2="668.0" stroke="#26364d" stroke-width="1"/>
+<text x="92" y="674.0" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="end">1TB</text>
+<line x1="105" y1="586.0" x2="1495" y2="586.0" stroke="#26364d" stroke-width="1"/>
+<text x="92" y="592.0" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="end">2TB</text>
+<line x1="105" y1="504.0" x2="1495" y2="504.0" stroke="#26364d" stroke-width="1"/>
+<text x="92" y="510.0" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="end">3TB</text>
+<line x1="105" y1="422.0" x2="1495" y2="422.0" stroke="#26364d" stroke-width="1"/>
+<text x="92" y="428.0" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="end">4TB</text>
+<line x1="105" y1="340.0" x2="1495" y2="340.0" stroke="#26364d" stroke-width="1"/>
+<text x="92" y="346.0" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="end">5TB</text>
+<rect x="105.0" y="749.817056619243" width="44" height="0.182943380757" rx="5" fill="#4fd1c5"/>
+<text x="127.0" y="785" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="middle">04</text>
+<rect x="166.1818181818182" y="749.307786744424" width="44" height="0.692213255576" rx="5" fill="#4fd1c5"/>
+<rect x="227.36363636363637" y="730.2964637713712" width="44" height="19.7035362286288" rx="5" fill="#4fd1c5"/>
+<rect x="288.54545454545456" y="712.1389612518776" width="44" height="37.8610387481224" rx="5" fill="#4fd1c5"/>
+<rect x="349.72727272727275" y="745.0938014958418" width="44" height="4.9061985041582" rx="5" fill="#4fd1c5"/>
+<rect x="410.90909090909093" y="746.3412562339208" width="44" height="3.6587437660792" rx="5" fill="#4fd1c5"/>
+<rect x="472.0909090909091" y="742.8615902136842" width="44" height="7.138409786315799" rx="5" fill="#4fd1c5"/>
+<text x="494.0909090909091" y="785" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="middle">10</text>
+<rect x="533.2727272727273" y="741.1609640205262" width="44" height="8.8390359794738" rx="5" fill="#4fd1c5"/>
+<rect x="594.4545454545455" y="743.3904847145837" width="44" height="6.609515285416201" rx="5" fill="#4fd1c5"/>
+<rect x="655.6363636363637" y="734.6636766583546" width="44" height="15.336323341645398" rx="5" fill="#4fd1c5"/>
+<rect x="716.8181818181819" y="720.5361191557524" width="44" height="29.4638808442476" rx="5" fill="#4fd1c5"/>
+<rect x="778.0" y="591.4526323231767" width="44" height="158.5473676768234" rx="5" fill="#4fd1c5"/>
+<text x="800.0" y="785" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="middle">15</text>
+<rect x="839.1818181818182" y="640.7956878397248" width="44" height="109.2043121602752" rx="5" fill="#4fd1c5"/>
+<rect x="900.3636363636365" y="706.9522271287494" width="44" height="43.04777287125061" rx="5" fill="#4fd1c5"/>
+<rect x="961.5454545454546" y="685.1939746500142" width="44" height="64.80602534998579" rx="5" fill="#4fd1c5"/>
+<rect x="1022.7272727272727" y="654.195267059534" width="44" height="95.80473294046601" rx="5" fill="#4fd1c5"/>
+<rect x="1083.909090909091" y="573.0389475459248" width="44" height="176.9610524540752" rx="5" fill="#f6ad55"/>
+<text x="1105.909090909091" y="785" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="middle">20</text>
+<rect x="1145.0909090909092" y="447.9085623463244" width="44" height="302.0914376536756" rx="5" fill="#f6ad55"/>
+<rect x="1206.2727272727275" y="374.556838008689" width="44" height="375.443161991311" rx="5" fill="#f6ad55"/>
+<text x="1228.2727272727275" y="785" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="middle">22</text>
+<text x="1228.2727272727275" y="340.556838008689" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="16" fill="#fc8181" text-anchor="middle" font-weight="700">최고</text>
+<text x="1228.2727272727275" y="364.556838008689" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="16" fill="#e8eef7" text-anchor="middle" font-weight="700">4,579GB</text>
+<rect x="1267.4545454545455" y="566.8894701404774" width="44" height="183.1105298595226" rx="5" fill="#f6ad55"/>
+<rect x="1328.6363636363637" y="448.48359634309384" width="44" height="301.51640365690616" rx="5" fill="#f6ad55"/>
+<rect x="1389.818181818182" y="460.022501002348" width="44" height="289.977498997652" rx="5" fill="#f6ad55"/>
+<rect x="1451.0" y="550.8372293211288" width="44" height="199.16277067887123" rx="5" fill="#f6ad55"/>
+<text x="1473.0" y="785" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="15" fill="#9fb0c6" text-anchor="middle">26</text>
+<text x="105" y="815" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="16" fill="#9fb0c6" >7월 (일)</text>
+</svg>

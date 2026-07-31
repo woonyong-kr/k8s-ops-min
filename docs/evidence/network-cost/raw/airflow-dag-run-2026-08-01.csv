@@ -1,0 +1,8 @@
+task_id,map_index,state,end_date_utc
+extract,0,success,2026-07-31T15:58:41.872365Z
+extract,1,success,2026-07-31T15:58:42.167878Z
+extract,2,success,2026-07-31T15:58:42.434387Z
+extract,3,success,2026-07-31T15:58:42.692682Z
+archive_and_load,-1,success,2026-07-31T15:58:42.973777Z
+resolve_status,-1,success,2026-07-31T15:58:43.235602Z
+publish_quality_report,-1,success,2026-07-31T15:58:43.513497Z

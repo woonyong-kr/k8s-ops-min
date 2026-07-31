@@ -1,0 +1,33 @@
+{
+  "captured_at": "2026-08-01T00:58:43+09:00",
+  "airflow_version": "2.10.5",
+  "dag_id": "catalog_reconciliation_daily",
+  "dag_import_errors": 0,
+  "normal_run": {
+    "logical_date": "2026-08-01",
+    "state": "SUCCESS",
+    "mapped_extract_tasks": 4,
+    "total_task_instances": 7,
+    "quality_findings": 0
+  },
+  "same_logical_date_rerun": {
+    "catalog_load_rows_before": 5,
+    "catalog_load_rows_after": 5,
+    "state": "SUCCESS",
+    "archive_bind_mount_preserved": true
+  },
+  "postgres_verification": {
+    "passed": 15,
+    "total": 15
+  },
+  "dependency_boundary": {
+    "airflow_runtime": "SQLAlchemy 1.4.54",
+    "catalog_external_runtime": "SQLAlchemy 2.0.51",
+    "operator": "ExternalPythonOperator"
+  },
+  "remaining": [
+    "Airflow retry exhaustion scenarios",
+    "MinIO object storage adapter",
+    "production workload and capacity measurement"
+  ]
+}

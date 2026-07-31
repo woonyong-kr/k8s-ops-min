@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect x="0" y="0" width="1600" height="900" rx="0" fill="#08111f"/>
+<text x="80" y="70" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#4fd1c5" font-weight="700" letter-spacing="1">LOCAL TRANSPORT MICROBENCHMARK · MEDIAN OF 5 ROUNDS</text>
+<text x="80" y="125" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="42" fill="#e8eef7" font-weight="800">같은 프로세스의 이벤트 왕복은 373.955ms → 12.182ms였습니다</text>
+<line x1="80" y1="155" x2="1520" y2="155" stroke="#26364d" stroke-width="2"/>
+<text x="80" y="858" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#9fb0c6" >Apple M4 · NATS 2.11 Docker loopback · transport only, not end-to-end or AWS cost reduction</text>
+<text x="1520" y="858" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#9fb0c6" text-anchor="end" letter-spacing="1">KYRO · EVIDENCE</text>
+<rect x="80" y="185" width="700" height="145" rx="18" fill="#111d2e"/>
+<text x="115" y="225" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >batch 완료시간</text>
+<text x="115" y="285" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="46" fill="#68d391" font-weight="800">-96.74%</text>
+<rect x="820" y="185" width="700" height="145" rx="18" fill="#111d2e"/>
+<text x="855" y="225" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >전송 처리량</text>
+<text x="855" y="285" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="46" fill="#4fd1c5" font-weight="800">30.7×</text>
+<text x="80" y="442" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#e8eef7" font-weight="700">NATS JetStream</text>
+<rect x="330" y="410" width="1040" height="48" rx="10" fill="#26364d"/>
+<rect x="330" y="410" width="1040" height="48" rx="10" fill="#f6ad55"/>
+<text x="1395" y="443" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="21" fill="#f6ad55" font-weight="800">373.955ms</text>
+<text x="80" y="547" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#e8eef7" font-weight="700">In-process</text>
+<rect x="330" y="515" width="1040" height="48" rx="10" fill="#26364d"/>
+<rect x="330" y="515" width="33.87915658301133" height="48" rx="10" fill="#4fd1c5"/>
+<text x="1395" y="548" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="21" fill="#4fd1c5" font-weight="800">12.182ms</text>
+<rect x="80" y="620" width="1440" height="125" rx="18" fill="#122338"/>
+<text x="115" y="660" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >측정 계약</text>
+<text x="115" y="705" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="24" fill="#e8eef7" font-weight="700">EventEnvelope 1,393B × 1,000건/round × warm-up 1 + 측정 5</text>
+<text x="1000" y="660" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >처리량</text>
+<text x="1000" y="705" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="24" fill="#e8eef7" font-weight="700">2,674 → 82,088 events/s</text>
+<rect x="80" y="780" width="1440" height="50" rx="12" fill="#2a1f24"/>
+<text x="105" y="813" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#fc8181" font-weight="700">금지된 결론: 전체 시스템 82K events/s · AWS 비용 96.74% 절감</text>
+</svg>

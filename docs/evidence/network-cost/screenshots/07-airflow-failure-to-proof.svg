@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<rect x="0" y="0" width="1600" height="900" rx="0" fill="#08111f"/>
+<text x="80" y="70" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#4fd1c5" font-weight="700" letter-spacing="1">FAILURE REPLAY · LOCAL AIRFLOW 2.10.5</text>
+<text x="80" y="125" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="42" fill="#e8eef7" font-weight="800">검증 스크립트가 Airflow의 archive mount를 끊었습니다</text>
+<line x1="80" y1="155" x2="1520" y2="155" stroke="#26364d" stroke-width="2"/>
+<text x="80" y="858" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#9fb0c6" >Evidence: airflow-bind-mount-failure.csv · airflow-validation.json · local Docker, not production</text>
+<text x="1520" y="858" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#9fb0c6" text-anchor="end" letter-spacing="1">KYRO · EVIDENCE</text>
+<text x="95" y="205" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="21" fill="#fc8181" font-weight="800">1 · FAILURE</text>
+<text x="585" y="205" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="21" fill="#f6ad55" font-weight="800">2 · ROOT CAUSE</text>
+<text x="1075" y="205" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="21" fill="#68d391" font-weight="800">3 · FIX &amp; PROOF</text>
+<rect x="80" y="230" width="450" height="455" rx="20" fill="#111d2e"/>
+<rect x="565" y="230" width="450" height="455" rx="20" fill="#111d2e"/>
+<rect x="1050" y="230" width="470" height="455" rx="20" fill="#111d2e"/>
+<text x="115" y="290" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="36" fill="#fc8181" font-weight="800">4 / 4 extract</text>
+<text x="115" y="330" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="30" fill="#e8eef7" font-weight="700">up_for_retry</text>
+<rect x="110" y="370" width="390" height="125" rx="14" fill="#2a1f24"/>
+<text x="135" y="407" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="21" fill="#fc8181" font-weight="800">FileNotFoundError</text>
+<text x="135" y="443" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#e8eef7" >/opt/project/.catalog-archive/</text>
+<text x="135" y="473" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="17" fill="#e8eef7" >2026-08-01</text>
+<text x="115" y="555" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >fixture 실행은 성공했지만</text>
+<text x="115" y="590" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#9fb0c6" >container 재실행에서만 터졌습니다.</text>
+<text x="600" y="285" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="26" fill="#f6ad55" font-weight="800">rm -rf mount root</text>
+<text x="600" y="335" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="30" fill="#f6ad55" font-weight="800">↓</text>
+<text x="600" y="380" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#e8eef7" font-weight="700">container는 삭제된 inode를 보존</text>
+<text x="600" y="430" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="30" fill="#f6ad55" font-weight="800">↓</text>
+<text x="600" y="475" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#e8eef7" >호스트의 동일 경로 재생성은</text>
+<text x="600" y="510" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="19" fill="#e8eef7" >기존 bind mount를 복구하지 못함</text>
+<rect x="595" y="565" width="390" height="80" rx="14" fill="#2d271b"/>
+<text x="620" y="600" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#9fb0c6" >파일이 아니라</text>
+<text x="620" y="628" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="21" fill="#f6ad55" font-weight="800">mount 수명 계약의 문제</text>
+<text x="1085" y="285" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="26" fill="#68d391" font-weight="800">root inode 유지</text>
+<text x="1085" y="323" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="20" fill="#e8eef7" >날짜별 child만 정리</text>
+<rect x="1080" y="370" width="405" height="78" rx="14" fill="#132d32"/>
+<text x="1105" y="405" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="28" fill="#68d391" font-weight="800">7 / 7 task</text>
+<text x="1290" y="405" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="22" fill="#e8eef7" font-weight="700">SUCCESS</text>
+<rect x="1080" y="470" width="405" height="78" rx="14" fill="#132d32"/>
+<text x="1105" y="505" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="28" fill="#68d391" font-weight="800">5 → 5 rows</text>
+<text x="1290" y="505" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#9fb0c6" >same date</text>
+<rect x="1080" y="570" width="405" height="78" rx="14" fill="#132d32"/>
+<text x="1105" y="605" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="28" fill="#68d391" font-weight="800">15 / 15</text>
+<text x="1260" y="605" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#9fb0c6" >PostgreSQL checks</text>
+<rect x="80" y="725" width="1440" height="90" rx="16" fill="#17263a"/>
+<text x="110" y="764" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="18" fill="#9fb0c6" >검증의 완료 조건</text>
+<text x="110" y="799" font-family="Apple SD Gothic Neo, Pretendard, sans-serif" font-size="23" fill="#e8eef7" font-weight="700">정상 1회가 아니라 · 실패 상태 보존 · 수정 후 재실행 · 동일 날짜 멱등성</text>
+</svg>

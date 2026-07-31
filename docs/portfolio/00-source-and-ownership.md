@@ -1,0 +1,134 @@
+[← Kyro로 돌아가기](../../README.md)
+
+# 원본·기여·주장 경계
+
+이 문서는 이 저장소의 문장을 실제 Git 이력과 대조할 수 있게 만든다. 코드가 존재하는 것, 팀이 만든 것, 이민정이 직접 구현한 것, 채용 준비를 위해 후속으로 만든 것은 서로 다른 주장이다.
+
+## 기준 저장소
+
+- 원본 팀 저장소: [`minmings111/Kyro-jungle-final`](https://github.com/minmings111/Kyro-jungle-final)
+- 이 작업본: [`woonyong-kr/k8s-ops-min`](https://github.com/woonyong-kr/k8s-ops-min)
+- 비교 시점: 2026-08-01
+- 원본 파일: 1,644개, 작업본 파일: 1,725개
+- 원본과 byte 단위로 같은 파일: 1,629개
+- 공통 경로에서 수정한 파일: 15개
+- 이 작업본에만 있는 후속 파일: 81개
+- 원본에만 있고 작업본에서 사라진 파일: 0개
+
+`.git`, cache, 실행 중 생성되는 `.catalog-archive`, 정리 대기 디렉터리는 비교에서 제외하고 SHA-256으로 내용을 대조했습니다. 공개 저장소 정리 때문에 legacy ECR account ID만 placeholder로 바꾼 배포 문서도 수정 파일에 포함됩니다. 개수는 기여도의 근거가 아니라 원본 보존 여부를 확인하는 값입니다.
+
+원본 저장소에는 이력 정리와 rebase로 중복된 커밋이 있다. 따라서 커밋 수나 총 변경 줄 수는 성과로 사용하지 않는다. 현재 파일의 blame, 대표 커밋의 diff, 실행 가능한 테스트를 함께 본다.
+
+## 직접 구현으로 확인한 범위
+
+### 네 소스의 증거 수집과 공통 한도
+
+| 현재 파일 | 원본 blame에서 이민정 작성 | 확인할 내용 |
+|---|---:|---|
+| `collection_limits.py` | 157 / 157줄 | 공통 개수·크기 상한과 잘림 메타데이터 |
+| `metadata_providers.py` | 559 / 613줄 | Kubernetes workload metadata 정규화 |
+| `loki_providers.py` | 332 / 447줄 | 로그 구조화·요약·범위 제한 |
+| `prometheus_providers.py` | 139 / 366줄 | metric evidence 정규화·상한 적용 |
+| `tempo_providers.py` | 89 / 215줄 | trace 검색 결과 축약·상한 적용 |
+
+대표 이력:
+
+- [`7cc428e4f`](https://github.com/minmings111/Kyro-jungle-final/commit/7cc428e4f74a6c8b8fc0759616dc5632f5abbf8f): 공통 `collection_limits.py`를 만들고 Kubernetes·Prometheus에 적용
+- [`f533762a5`](https://github.com/minmings111/Kyro-jungle-final/commit/f533762a55f9b0e6e9c560cc13b057d6b0bb0d5e): 한도 계약과 경계 테스트 보강
+- [`d42d8c019`](https://github.com/minmings111/Kyro-jungle-final/commit/d42d8c01972cdc5501dae8a492701ce6471ae92f): 같은 계약을 Loki·Tempo까지 확장
+
+이 근거로 말할 수 있는 것은 “네 시스템 전체를 혼자 처음부터 만들었다”가 아니다. 각 provider의 기존 팀 코드 위에서 수집·정규화·축약 계약을 직접 구현하고 공통화했다는 것이다.
+
+### 불완전한 스냅샷의 삭제 오인 방지
+
+- `src/domains/inventory/coverage.py`: 원본 blame 295 / 295줄
+- `tests/test_inventory_coverage.py`: 원본 blame 384 / 416줄
+- 대표 커밋 [`d29d3c429`](https://github.com/minmings111/Kyro-jungle-final/commit/d29d3c42963335756cf14212f05533e9ea54e57b): 9개 파일, +1,068/-64
+
+이 커밋은 소스별 수집 범위와 잘림 상태를 계산하고, 불완전한 스냅샷이 삭제 권위로 사용되지 않게 만든다. 실제 사용자 데이터가 삭제됐다는 운영 사고는 Git만으로 증명되지 않는다. 따라서 이력서에는 “삭제 사고를 해결했다”가 아니라 “불완전한 수집 결과가 삭제 근거로 쓰일 수 있는 경로를 차단했다”고 쓴다.
+
+### ConfigMap·Secret 참조 조회 API
+
+- `src/domains/inventory/config_references.py`: 원본 blame 681 / 681줄
+- `tests/test_config_references.py`: 원본 blame 624 / 624줄
+- 대표 커밋 [`05c60fdd9`](https://github.com/minmings111/Kyro-jungle-final/commit/05c60fdd9bfd4a6c42f59cbcb33b22d037dd5577): API·응답 계약·테스트, +1,263/-1
+- 리뷰 후 보강 [`6c082d12a`](https://github.com/minmings111/Kyro-jungle-final/commit/6c082d12af40bc4c97bb08df503434b17d4fb860): 입력·응답 상한과 경계 테스트, +168/-15
+
+이 API는 저장된 manifest 전체를 반환하지 않고 Deployment가 참조하는 ConfigMap·Secret의 식별자와 사용 위치만 새 응답 모델로 만든다. Secret 값과 평문 환경변수는 응답에 포함되지 않는 테스트가 있다.
+
+현재 구현은 `secretKeyRef.key` 같은 참조 키 이름은 허용한다. 따라서 “Secret 값은 반환하지 않는다”는 말은 가능하지만 “Secret과 관련된 이름을 전혀 노출하지 않는다”는 말은 사실이 아니다. 저장소 원본에도 값이 남아 있으므로 수집 시점 비밀정보 제거 경험으로 확대해서는 안 된다.
+
+### FastAPI·PostgreSQL의 세로 구현
+
+대표 커밋 [`e5de71d49`](https://github.com/minmings111/Kyro-jungle-final/commit/e5de71d49): 사용자별 노드 별칭 기능을 위해 Alembic migration, SQLAlchemy model·repository, FastAPI router·계약, 프론트 연결, 테스트를 함께 구현했다.
+
+따라서 “FastAPI를 사용해 봤다”보다 다음 주장이 정확하다.
+
+> 사용자별 노드 별칭을 저장하는 PostgreSQL 스키마와 migration을 설계하고, repository와 FastAPI read/write API, 화면 연결, 테스트까지 한 기능 단위로 구현했다.
+
+### MCP 구현과 대표 성과 제외
+
+- `src/services/mcp/internal_control/tools.py`: 원본 blame 4,864 / 4,864줄
+- 전체 등록 도구: 75개
+- 시작 커밋 [`bc36959e0`](https://github.com/minmings111/Kyro-jungle-final/commit/bc36959e072c054c3b8d1215f31a6c6630ed632a): 읽기 도구·서버·API client·테스트
+- gateway 연결 [`ab3fbf3e7`](https://github.com/minmings111/Kyro-jungle-final/commit/ab3fbf3e7fbeb0cbcaea45e3fcd5a5ed08e165b0)
+- AI runtime 연결 [`0071a9095`](https://github.com/minmings111/Kyro-jungle-final/commit/0071a9095601f6f1dc193e27a79c6d7dee9285fa)
+
+구현과 연결 이력은 있다. 그러나 최종 Golden Path의 수용 조건과 실제 사용자 검증 범위에서는 제외됐다. “MCP 서버를 구현하고 권한·입력 경계를 테스트했다”는 말은 가능하지만, “AI 장애 분석을 MCP로 완성했다”거나 사용 효과를 주장해서는 안 된다.
+
+## 팀 성과로만 말할 범위
+
+- 규칙 기반 원인 판정 전체
+- GitHub Draft PR 생성과 GitOps 복구 흐름 전체
+- 배포 후 재확인 전체
+- 프론트엔드 전체
+- EKS 배포 전체
+
+민정이 일부 연결·화면·배포 설정을 수정한 이력은 있어도, 위 기능의 전체 소유자로 말하지 않는다. “5인 팀이 구현했고, 그중 수집·정규화 계층을 담당했다”가 기준이다.
+
+## 후속 확장: 아직 개인 성과로 쓰지 않을 범위
+
+다음은 이 작업본에만 있고 원본 팀 저장소에는 없는 후속 파일에 포함된다.
+
+- `src/domains/datacatalog/`
+- `dags/catalog_reconciliation_daily.py`
+- `sql/quality/`
+- `fixtures/catalog/`
+- `src/services/catalog_mcp/`
+- `tests/catalog/`
+
+이 코드는 우용님 계정으로 준비됐다. 현재 작업본 Git 이력에도 민정의 작성 커밋이 없다. 따라서 지금은 “민정이 구현했다”고 이력서에 쓰지 않는다.
+
+다음 조건을 모두 통과한 뒤에만 후속 개인 프로젝트로 승격한다.
+
+1. 민정이 로컬에서 정상·부분 실패·드리프트 시나리오를 직접 재현한다.
+2. Airflow DAG가 소스를 중복 조회하는 현재 문제를 민정이 수정하고 테스트를 남긴다.
+3. 같은 논리 날짜 재실행, 일부 소스 실패, downstream 실패의 결과를 SQL로 설명한다.
+4. 등록 스키마와 관측 스키마의 양방향 차이를 직접 설명한다.
+5. FastAPI catalog router를 실제 앱에 연결하고 API 테스트를 추가한다.
+6. 민정 본인 계정의 변경 이력으로 판단과 수정 과정이 남는다.
+
+AI 도구를 사용한 사실은 문제가 아니다. 실행 결과와 실패 조건을 설명하지 못한 채 작성자를 바꾸는 것이 문제다.
+
+## 이력서에 지금 쓸 수 있는 세 문장
+
+- Kubernetes API·Prometheus·Loki·Tempo의 서로 다른 응답을 공통 evidence 계약으로 정규화하고, 개수·크기 상한과 잘림 상태를 함께 전달했다.
+- 불완전하거나 잘린 inventory snapshot이 실제 삭제 근거로 쓰이지 않도록 수집 범위와 삭제 권위를 분리했다.
+- Deployment의 ConfigMap·Secret 참조 관계만 반환하는 FastAPI를 구현하고, 원문 값 비노출과 비정상적으로 큰 입력의 경계를 테스트했다.
+
+Airflow·데이터 카탈로그·카탈로그 MCP는 위 승격 조건을 통과하기 전까지 기술 목록과 대표 성과에서 제외한다.
+
+## 현재 검증 결과
+
+```text
+550 tests: 549 passed, 1 skipped
+PostgreSQL catalog verification: 15/15 passed
+Airflow DAG import errors: 0
+Airflow normal dags test: SUCCESS (7 task instances)
+```
+
+전체 단위·문서 게이트, PostgreSQL 기반 멱등성·부분 실패·드리프트 검증, 정상 Airflow DAG 실행까지 확인했습니다. 실제 Airflow task 재시도 소진, MinIO 객체 저장, 운영 부하는 아직 검증하지 않았으므로 완료 범위로 확대하지 않습니다.
+
+---
+
+[다음: 빈 결과와 실패를 구분하기 →](01-collection-contract.md)

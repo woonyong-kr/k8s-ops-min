@@ -1,0 +1,5 @@
+task_id,map_index,state,error,observed_at_utc
+extract,0,up_for_retry,FileNotFoundError:/opt/project/.catalog-archive/2026-08-01,2026-07-31T15:56:36Z
+extract,1,up_for_retry,FileNotFoundError:/opt/project/.catalog-archive/2026-08-01,2026-07-31T15:56:37Z
+extract,2,up_for_retry,FileNotFoundError:/opt/project/.catalog-archive/2026-08-01,2026-07-31T15:56:37Z
+extract,3,up_for_retry,FileNotFoundError:/opt/project/.catalog-archive/2026-08-01,2026-07-31T15:56:37Z

@@ -1,0 +1,9 @@
+date,revision,deployment_documents,worker_entrypoints,service_entrypoints,declared_replica_sum,note
+2026-07-05,4a2f66e63,36,27,34,39,manifest counts are not running pod counts
+2026-07-10,cc77485e5,43,30,39,50,manifest counts are not running pod counts
+2026-07-15,add40c854,46,32,41,55,manifest counts are not running pod counts
+2026-07-18,637af5a9f,46,32,42,55,three replacement clusters created
+2026-07-20,46a2a816f,46,32,42,55,manifest counts are not running pod counts
+2026-07-22,6017b5866,46,32,42,55,battlegrounds nodegroups active
+2026-07-25,2724af33d,47,32,42,56,largest declared topology
+2026-07-27,892c4c71c,47,32,42,56,clusters already deleted on July 26 UTC
