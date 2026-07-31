@@ -10,16 +10,16 @@
 
 ## 담당 범위
 
-5인 팀 프로젝트이고 아래는 제가 설계하고 구현한 것입니다. 원천 수집기처럼 팀이 먼저 만든 코드 위에서 작업한 부분이 있어, 무엇을 이어받고 무엇을 새로 만들었는지는 파일 단위 blame 과 함께 [기여와 근거](docs/source-and-ownership.md)에 적었습니다.
+아래는 제가 설계하고 구현한 것입니다. 파일 단위 blame 근거는 [기여와 근거](docs/source-and-ownership.md)에 있습니다.
 
 ```mermaid
 flowchart LR
-    subgraph MINE ["이민정 담당"]
+    subgraph MINE ["제가 만든 부분"]
         direction TB
         S["네 소스 수집<br/>Kubernetes · Prometheus<br/>Loki · Tempo"] --> N["정규화<br/>+ 완전성 계약"]
         B["일일 배치<br/>Airflow"] --> C["카탈로그<br/>13개 테이블"] --> Q["정합성 검사<br/>SQL 8개"] --> A["조회 API<br/>+ MCP"]
     end
-    subgraph TEAM ["팀원 담당"]
+    subgraph TEAM ["이 데이터를 쓰는 곳"]
         direction TB
         R["원인 판정<br/>규칙 기반"] --> P["수정안<br/>Draft PR"] --> V["복구 확인"]
     end
@@ -28,13 +28,13 @@ flowchart LR
     N -. "하루 한 번" .-> B
 ```
 
-원인 판정과 복구 제안, 프론트엔드는 팀원이 맡았습니다. 제품 아키텍처도 팀 설계입니다.
+원인 판정·복구 제안·프론트엔드는 팀원이 맡았고 제품 아키텍처는 팀 설계입니다. 오른쪽 상자가 제가 만든 데이터를 소비합니다.
 
 **위쪽은 장애가 나면 도는 실시간 경로**입니다. 네 소스는 응답 형식도 시간 기준도 실패하는 방식도 다릅니다. 하나로 모으면서 각 데이터를 어디까지 믿어도 되는지 함께 넘기는 것이 제 일이었습니다. 원인 판정은 제가 준 데이터로 돌아가기 때문에, 절반만 왔다는 사실을 알리지 않으면 판정도 절반짜리 근거로 결론을 냅니다.
 
 **아래쪽은 하루 한 번 도는 배치 경로**입니다. 실시간 경로는 수집하는 순간의 완전성만 봅니다. 수집이 성공한 뒤에 데이터가 어긋나는 것은 아무도 보지 않고 있었습니다.
 
-이 저장소는 팀 저장소([minmings111/Kyro-jungle-final](https://github.com/minmings111/Kyro-jungle-final))의 사본입니다. 프론트엔드·GitOps 상태·배포 차트를 포함한 전체 코드가 그대로 들어 있고, 제 담당 범위는 위 그림과 아래 각 항목의 `개인`·`팀` 표시를 지킵니다.
+이 저장소는 팀 저장소([minmings111/Kyro-jungle-final](https://github.com/minmings111/Kyro-jungle-final))의 사본입니다. 프론트엔드·GitOps 상태·배포 차트를 포함한 전체 코드가 그대로 들어 있고, 제 담당 범위는 위 그림과 같습니다.
 
 ---
 
