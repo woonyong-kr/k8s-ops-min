@@ -95,7 +95,17 @@ erDiagram
     data_assets         ||--o{ quality_results     : "검사 대상"
     data_assets         ||--o{ normalized_evidence : "정규화 결과"
     observed_rows       ||--o{ observed_fields     : "필드"
+    data_assets         ||--o{ loads                : "적재 이력"
+    data_sources        ||--o{ loads                : "원천별"
 
+    loads {
+        int         id PK
+        date        logical_date
+        text        source_id FK
+        text        asset_id FK
+        int         row_count
+        timestamptz loaded_at
+    }
     dag_runs {
         text        dag_run_id PK
         date        logical_date

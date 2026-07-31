@@ -17,7 +17,7 @@
 
 `.git`, cache, 실행 중 생성되는 `.catalog-archive`, 정리 대기 디렉터리는 비교에서 제외하고 SHA-256으로 내용을 대조했습니다. 공개 저장소 정리 때문에 legacy ECR account ID만 placeholder로 바꾼 배포 문서도 수정 파일에 포함됩니다. 개수는 기여도의 근거가 아니라 원본 보존 여부를 확인하는 값입니다.
 
-원본 저장소에는 이력 정리와 rebase로 중복된 커밋이 있다. 따라서 커밋 수나 총 변경 줄 수는 성과로 사용하지 않는다. 현재 파일의 blame, 대표 커밋의 diff, 실행 가능한 테스트를 함께 본다.
+원본 저장소에는 이력 정리와 rebase로 중복된 커밋이 있습니다. 따라서 커밋 수나 총 변경 줄 수는 성과로 사용하지 않습니다. 현재 파일의 blame, 대표 커밋의 diff, 실행 가능한 테스트를 함께 봅니다.
 
 ## 직접 구현으로 확인한 범위
 
@@ -37,7 +37,7 @@
 - [`f533762a5`](https://github.com/minmings111/Kyro-jungle-final/commit/f533762a55f9b0e6e9c560cc13b057d6b0bb0d5e): 한도 계약과 경계 테스트 보강
 - [`d42d8c019`](https://github.com/minmings111/Kyro-jungle-final/commit/d42d8c01972cdc5501dae8a492701ce6471ae92f): 같은 계약을 Loki·Tempo까지 확장
 
-이 근거로 말할 수 있는 것은 “네 시스템 전체를 혼자 처음부터 만들었다”가 아니다. 각 provider의 기존 팀 코드 위에서 수집·정규화·축약 계약을 직접 구현하고 공통화했다는 것이다.
+이 근거로 말할 수 있는 것은 “네 시스템 전체를 혼자 처음부터 만들었다”가 아닙니다. 각 provider의 기존 팀 코드 위에서 수집·정규화·축약 계약을 직접 구현하고 공통화했다는 것입니다.
 
 ### 불완전한 스냅샷의 삭제 오인 방지
 
@@ -45,7 +45,7 @@
 - `tests/test_inventory_coverage.py`: 원본 blame 384 / 416줄
 - 대표 커밋 [`d29d3c429`](https://github.com/minmings111/Kyro-jungle-final/commit/d29d3c42963335756cf14212f05533e9ea54e57b): 9개 파일, +1,068/-64
 
-이 커밋은 소스별 수집 범위와 잘림 상태를 계산하고, 불완전한 스냅샷이 삭제 권위로 사용되지 않게 만든다. 실제 사용자 데이터가 삭제됐다는 운영 사고는 Git만으로 증명되지 않는다. 따라서 이력서에는 “삭제 사고를 해결했다”가 아니라 “불완전한 수집 결과가 삭제 근거로 쓰일 수 있는 경로를 차단했다”고 쓴다.
+이 커밋은 소스별 수집 범위와 잘림 상태를 계산하고, 불완전한 스냅샷이 삭제 권위로 사용되지 않게 만듭니다. 실제 사용자 데이터가 삭제됐다는 운영 사고는 Git만으로 증명되지 않습니다. 따라서 이력서에는 “삭제 사고를 해결했다”가 아니라 “불완전한 수집 결과가 삭제 근거로 쓰일 수 있는 경로를 차단했다”고 씁니다.
 
 ### ConfigMap·Secret 참조 조회 API
 
@@ -54,9 +54,9 @@
 - 대표 커밋 [`05c60fdd9`](https://github.com/minmings111/Kyro-jungle-final/commit/05c60fdd9bfd4a6c42f59cbcb33b22d037dd5577): API·응답 계약·테스트, +1,263/-1
 - 초기 기능 커밋 39분 뒤 보강 [`6c082d12a`](https://github.com/minmings111/Kyro-jungle-final/commit/6c082d12af40bc4c97bb08df503434b17d4fb860): 입력·응답 상한과 경계 테스트, +168/-15
 
-이 API는 저장된 manifest 전체를 반환하지 않고 Deployment가 참조하는 ConfigMap·Secret의 식별자와 사용 위치만 새 응답 모델로 만든다. Secret 값과 평문 환경변수는 응답에 포함되지 않는 테스트가 있다.
+이 API는 저장된 manifest 전체를 반환하지 않고 Deployment가 참조하는 ConfigMap·Secret의 식별자와 사용 위치만 새 응답 모델로 만듭니다. Secret 값과 평문 환경변수는 응답에 포함되지 않는 테스트가 있습니다.
 
-현재 구현은 `secretKeyRef.key` 같은 참조 키 이름은 허용한다. 따라서 “Secret 값은 반환하지 않는다”는 말은 가능하지만 “Secret과 관련된 이름을 전혀 노출하지 않는다”는 말은 사실이 아니다. 저장소 원본에도 값이 남아 있으므로 수집 시점 비밀정보 제거 경험으로 확대해서는 안 된다.
+현재 구현은 `secretKeyRef.key` 같은 참조 키 이름은 허용합니다. 따라서 “Secret 값은 반환하지 않는다”는 말은 가능하지만 “Secret과 관련된 이름을 전혀 노출하지 않는다”는 말은 사실이 아닙니다. 저장소 원본에도 값이 남아 있으므로 수집 시점 비밀정보 제거 경험으로 확대해서는 안 됩니다.
 
 ### FastAPI·PostgreSQL의 세로 구현
 
@@ -74,7 +74,7 @@
 - gateway 연결 [`ab3fbf3e7`](https://github.com/minmings111/Kyro-jungle-final/commit/ab3fbf3e7fbeb0cbcaea45e3fcd5a5ed08e165b0)
 - AI runtime 연결 [`0071a9095`](https://github.com/minmings111/Kyro-jungle-final/commit/0071a9095601f6f1dc193e27a79c6d7dee9285fa)
 
-구현과 연결 이력은 있다. 그러나 최종 Golden Path의 수용 조건과 실제 사용자 검증 범위에서는 제외됐다. “MCP 서버를 구현하고 권한·입력 경계를 테스트했다”는 말은 가능하지만, “AI 장애 분석을 MCP로 완성했다”거나 사용 효과를 주장해서는 안 된다.
+구현과 연결 이력은 있습니다. 그러나 최종 Golden Path의 수용 조건과 실제 사용자 검증 범위에서는 제외됐다. “MCP 서버를 구현하고 권한·입력 경계를 테스트했다”는 말은 가능하지만, “AI 장애 분석을 MCP로 완성했다”거나 사용 효과를 주장해서는 안 됩니다.
 
 ## 팀 성과로만 말할 범위
 
@@ -88,7 +88,7 @@
 
 ## 후속 확장: 아직 개인 성과로 쓰지 않을 범위
 
-다음은 이 작업본에만 있고 원본 팀 저장소에는 없는 후속 파일에 포함된다.
+다음은 이 작업본에만 있고 원본 팀 저장소에는 없는 후속 파일에 포함됩니다.
 
 - `src/domains/datacatalog/`
 - `dags/catalog_reconciliation_daily.py`
@@ -118,7 +118,7 @@
 - 불완전하거나 잘린 inventory snapshot이 실제 삭제 근거로 쓰이지 않도록 수집 범위와 삭제 권위를 분리했다.
 - Deployment의 ConfigMap·Secret 참조 관계만 반환하는 FastAPI를 구현하고, 원문 값 비노출과 비정상적으로 큰 입력의 경계를 테스트했다.
 
-Airflow·데이터 카탈로그·카탈로그 MCP는 위 승격 조건을 통과하기 전까지 기술 목록과 대표 성과에서 제외한다.
+Airflow·데이터 카탈로그·카탈로그 MCP는 위 승격 조건을 통과하기 전까지 기술 목록과 대표 성과에서 제외합니다.
 
 ## 현재 검증 결과
 

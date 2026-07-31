@@ -67,7 +67,7 @@ flowchart LR
 - PostgreSQL 13개 테이블 메타데이터 모델 설계
   (자산 / 필드 계약 / 스키마 관측 이력 / 리니지 / 실행 이력 / 품질 결과 / 원본 스냅샷)
 - 등록 계약과 관측 이력 분리 (버전을 올리지 않은 스키마 변경까지 검출)
-- 유일 제약 8종으로 멱등 적재 보장 (재시도 · backfill 중복 차단)
+- 유일 제약 11종으로 멱등 적재 보장 (재시도 · backfill 중복 차단)
 - 리니지 간선에 확인 시각 저장, 정규화 행 → S3 원본 역추적
 - 실시간 3-state와 배치 4-state 상태 어휘 매핑 정의
 - 외부 데이터 카탈로그 도구 미도입 결정 (자산 6종 규모에서 운영 비용이 이득을 초과. 자체 카탈로그 구축과의 구분은 [범위 결정](docs/portfolio/scope-decisions.md) 참조)
@@ -139,20 +139,32 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 
 ## 문서
 
-| | |
-|---|---|
-| [수집 완전성 계약](docs/portfolio/collection-contract.md) | 빈 목록 다섯 가지를 어떻게 나눴나 |
-| [수집 한도 설계](docs/portfolio/collection-limits.md) | 어떤 순서로 잘랐나 |
-| [설정 참조 조회 API](docs/portfolio/config-reference-api.md) | 열거에서 카나리로 |
-| [메타데이터 카탈로그](docs/portfolio/metadata-catalog.md) | 13개 테이블과 검사 8종 |
-| [배치 파이프라인](docs/portfolio/airflow-pipeline.md) | 부분 실패를 어떻게 보존하나 |
-| [검사 SQL 열 개](docs/portfolio/sql-quality-checks.md) | 질의별 설계와 측정 |
-| [조회 API 와 MCP](docs/portfolio/catalog-api-mcp.md) | 응답 경계와 권한 |
-| [기술 리서치](docs/portfolio/tech-research.md) | 쓰지 않기로 한 것들 |
-| [범위 판단](docs/portfolio/scope-decisions.md) | 만들었지만 걷어낸 것 |
-| [엔지니어링 로그](docs/portfolio/engineering-log.md) | 판단이 바뀐 지점 |
-| [AWS 청구 원장 재확인](docs/evidence/aws-bill-2026-07/README.md) | 7월 청구서 콘솔 캡처와 대조 |
-| [검사는 어디서 돌아야 하는가](docs/portfolio/where-checks-run.md) | 무엇만 배치여야 하는지와 이동 계획 |
-| [측정과 한계](docs/portfolio/load-and-design-limits.md) | 어디까지 재봤고 어디서 먼저 무너지는가 |
+읽는 순서를 나눠 두었습니다. 하나만 고른다면 **검사 SQL 열 개**입니다 — 질의마다 왜 그 모양인지, 무엇을 잘못 만들었다가 고쳤는지가 다 들어 있습니다.
+
+**무엇을 만들었나**
+
+- [수집 완전성 계약](docs/portfolio/collection-contract.md) — 원천이 빈 목록을 돌려줄 때, 정말 없는 것인지 못 가져온 것인지를 어떻게 구분했나
+- [수집 한도 설계](docs/portfolio/collection-limits.md) — 응답이 한도를 넘을 때 무엇부터 버리고, 버렸다는 사실을 어떻게 남겼나
+- [설정 참조 조회 API](docs/portfolio/config-reference-api.md) — Secret 값을 보여주지 않으면서 "이 설정을 누가 쓰는가"에 답하는 방법
+- [메타데이터 카탈로그](docs/portfolio/metadata-catalog.md) — 테이블 13개를 등록·실행 이력·관측으로 나눈 이유와 유일 제약 11종
+- [배치 파이프라인](docs/portfolio/airflow-pipeline.md) — 네 원천 중 하나만 실패했을 때 나머지를 살리면서 실패를 숨기지 않는 구조
+- [조회 API 와 MCP](docs/portfolio/catalog-api-mcp.md) — 모델에게 카탈로그를 열어주되 권한과 응답 크기를 어떻게 묶어 두었나
+
+**어떻게 검증했나**
+
+- [검사 SQL 열 개](docs/portfolio/sql-quality-checks.md) — 질의 하나하나의 설계 근거와, 아무것도 못 잡던 검사를 발견해 고친 기록
+- [측정과 한계](docs/portfolio/load-and-design-limits.md) — 관측 470만 행까지 재본 결과와 어느 질의가 먼저 무너지는지
+- [AWS 청구 원장 재확인](docs/evidence/aws-bill-2026-07/README.md) — 7월 청구서를 콘솔에서 다시 열어 문서 수치와 대조한 기록
+
+**무엇을 안 만들었나**
+
+- [기술 리서치](docs/portfolio/tech-research.md) — OpenMetadata·DataHub 등을 검토하고 쓰지 않기로 한 근거
+- [범위 판단](docs/portfolio/scope-decisions.md) — 만들었다가 걷어낸 것과, 결론이 먼저였던 판단을 남긴 기록
+- [검사는 어디서 돌아야 하는가](docs/portfolio/where-checks-run.md) — 배치에 있으면 안 되는 검사를 가려낸 기준
+
+**판단이 바뀐 기록**
+
+- [엔지니어링 로그](docs/portfolio/engineering-log.md) — 처음 생각과 달라진 지점들
+- [아키텍처 비용 회고](docs/portfolio/architecture-cost-postmortem.md) — Deployment 47개로 나눈 대가가 청구서에 어떻게 찍혔나
 
 크래프톤 정글 SW-AI Lab 22주 과정을 수료했습니다.
