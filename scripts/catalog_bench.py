@@ -14,7 +14,7 @@ import os
 import statistics
 import sys
 import time
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -127,7 +127,7 @@ def main() -> int:
         conn.execute(text("ANALYZE"))
         with_index = measure(conn, args.repeat)
 
-    print(f"\n적재 규모: " + ", ".join(f"{k} {v:,}" for k, v in list(sizes.items())[:4]))
+    print("\n적재 규모: " + ", ".join(f"{k} {v:,}" for k, v in list(sizes.items())[:4]))
     print(f"\n{'질의':28}{'인덱스 없음':>14}{'인덱스 있음':>14}{'배':>8}")
     print("-" * 64)
     for name in without:

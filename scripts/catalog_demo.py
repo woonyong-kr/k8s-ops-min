@@ -97,7 +97,7 @@ def demo_drift() -> None:
 
 def demo_duplicate() -> None:
     date = TODAY.isoformat()
-    print(f"■ 같은 관측을 다른 실행이 다시 적재한 상황을 만듭니다\n")
+    print("■ 같은 관측을 다른 실행이 다시 적재한 상황을 만듭니다\n")
     engine = create_engine(DSN, future=True)
     with engine.begin() as conn:
         before = len(check("08_duplicate_candidates", date))

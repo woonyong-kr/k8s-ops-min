@@ -33,6 +33,8 @@
 | realtime | [Project Map](./PROJECT-MAP.md) | `realtime-gateway`는 browser/agent WebSocket 연결 표면이다. |
 | portfolio | [Portfolio Evidence Index](./portfolio/README.md) | 개인 기여, 후속 확장, AWS 비용 회고를 주장 강도와 함께 확인한다. |
 | network cost | [AWS·Git Evidence](./evidence/network-cost/README.md) | Cost Explorer·CloudWatch·Git 원장과 이미지의 단위·한계를 함께 확인한다. |
+| AWS bill | [2026년 7월 AWS 청구 원장](./evidence/aws-bill-2026-07/README.md) | 서비스별 시간 요금·데이터 처리 비용·크레딧 상계를 콘솔 화면으로 확인한다. |
+| quality check placement | [검사는 어디서 돌아야 하는가](./portfolio/where-checks-run.md) | 수집 시점·실행 직후·주기 실행·배치로 검사 위치를 분리한다. |
 
 ## 문서 목록
 
@@ -44,6 +46,8 @@
 - [Resume Draft](./resume.md): 확인된 프로젝트 근거만 반영한 지원 이력서 초안.
 - [Development Timeline](./portfolio/development-timeline.md): 실패·리뷰·수정 과정을 커밋으로 복원한 기록.
 - [AWS·Git Network Evidence](./evidence/network-cost/README.md): Regional Transfer 원본 CSV, 재현 명령, 16:9 증거판.
+- [2026년 7월 AWS 청구 원장](./evidence/aws-bill-2026-07/README.md): 서비스 요금·점유 시간·크레딧 상계 콘솔 근거.
+- [검사는 어디서 돌아야 하는가](./portfolio/where-checks-run.md): 정합성 검사 8종의 실행 위치와 이동 계획.
 
 ## 아직 없는 문서 표면
 

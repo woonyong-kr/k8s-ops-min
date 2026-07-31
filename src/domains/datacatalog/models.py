@@ -380,8 +380,18 @@ class CatalogQualityResultRecord(Base):
         # 다른 값으로 취급되어 ON CONFLICT 가 발화하지 않는다.
         # check_name(파일명)까지 키에 넣는 이유: 03·04 는 둘 다 SCHEMA_DRIFT
         # 지만 서로 다른 검사다. check_type 만으로는 구분되지 않는다.
+        #
+        # subject_key 가 키에 있어야 하는 이유: 한 검사가 한 자산에서 위반을
+        # 여러 건 찾는다. 03 은 필드마다, 02 는 누락 필드마다, 08 은 리소스마다다.
+        # 이 컬럼이 없으면 ON CONFLICT 가 같은 자산의 두 번째 위반부터 앞의 것을
+        # 덮어써서, 자산당 1건만 남고 나머지는 조용히 사라진다. 통과·실패를 모두
+        # 남긴다는 설계가 실패 쪽에서 깨진다.
         UniqueConstraint(
-            "dag_run_id", "check_name", "asset_id", name="uq_catalog_quality_results"
+            "dag_run_id",
+            "check_name",
+            "asset_id",
+            "subject_key",
+            name="uq_catalog_quality_results",
         ),
         Index("ix_catalog_quality_results_open", "status", "severity"),
     )
@@ -393,6 +403,9 @@ class CatalogQualityResultRecord(Base):
     check_name: Mapped[str] = text_column()
     check_type: Mapped[str] = text_column()
     asset_id: Mapped[str] = mapped_column(Text, nullable=False, default="-")
+    # 자산 안에서 위반을 구분하는 값. 필드 경로·리소스 UID 등이 들어간다.
+    # 자산 단위 검사는 '-' 를 쓴다.
+    subject_key: Mapped[str] = mapped_column(Text, nullable=False, default="-")
     status: Mapped[str] = text_column()
     severity: Mapped[str] = text_column()
     finding: Mapped[str | None] = mapped_column(Text, nullable=True)

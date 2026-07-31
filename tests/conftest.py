@@ -13,6 +13,10 @@ from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 from typing import Any
 
+import pytest
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+
 from packages.runtime.app import EventContext
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -308,3 +312,34 @@ class SpyDb:
 
     def called(self, name: str) -> bool:
         return any(c[0] == name for c in self.calls)
+
+
+@pytest.fixture(scope="session")
+def engine() -> Engine:
+    dsn = os.environ.get("CATALOG_DATABASE_URL")
+    if not dsn:
+        pytest.skip("CATALOG_DATABASE_URL 이 없어 DB 테스트를 건너뜁니다")
+    engine = create_engine(dsn, future=True)
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except Exception as exc:  # pragma: no cover - 환경 문제
+        pytest.skip(f"DB 에 붙을 수 없습니다: {exc}")
+
+    from domains.datacatalog import models  # noqa: F401 - 테이블 등록
+    from packages.storage.base import Base
+
+    tables = [table for name, table in Base.metadata.tables.items() if name.startswith("catalog_")]
+    Base.metadata.drop_all(engine, tables=tables)
+    Base.metadata.create_all(engine, tables=tables)
+    return engine
+
+
+@pytest.fixture
+def conn(engine: Engine):
+    with engine.connect() as connection:
+        transaction = connection.begin()
+        try:
+            yield connection
+        finally:
+            transaction.rollback()

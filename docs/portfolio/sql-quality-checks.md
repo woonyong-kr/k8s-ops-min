@@ -18,7 +18,7 @@ Python은 질의를 실행하고 결과를 `quality_results`에 적재하는 역
 
 ## 검사와 조회를 구분한다
 
-파일이 8개지만 **검사는 6종입니다.** 나머지 둘은 위반 집합을 반환하지 않는 조회 도구입니다. 초기에는 이걸 묶어서 "질의 8종"이라고 셌는데, 검사 개수를 부풀린 것이라 나눴습니다.
+파일이 10개지만 **검사는 8종입니다.** 나머지 둘(`90`·`91`)은 위반 집합을 반환하지 않는 조회 도구입니다. 초기에는 이걸 묶어서 세다가 검사 개수를 부풀린 것이라 나눴고, 이후 `04`·`08` 이 추가되어 검사가 6종에서 8종이 됐습니다.
 
 | 파일 | 유형 | [카탈로그 검사](metadata-catalog.md#정합성-검사) |
 |---|---|---|
@@ -393,8 +393,9 @@ SELECT
     MAX(ingested_at)           AS last_ingested_at,
     ARRAY_AGG(DISTINCT run_id) AS from_runs
 FROM normalized_evidence
-GROUP BY cluster_id, source_id, resource_uid, observed_at
-HAVING COUNT(*) > 1
+GROUP BY cluster_id, source_id, resource_uid, DATE_TRUNC('day', observed_at)
+HAVING COUNT(DISTINCT run_id) > 1
+   AND MAX(ingested_at) >= (:logical_ts - INTERVAL '2 days')
    AND MAX(ingested_at) >= (:logical_ts - INTERVAL '2 days')
 ORDER BY duplicate_count DESC;
 ```
@@ -424,7 +425,8 @@ ORDER BY duplicate_count DESC;
 -- 상태 비교에 IS DISTINCT FROM을 쓴다. <> 는 status가 NULL일 때 NULL을 반환하고
 -- 소비자는 그걸 false로 읽는다. 가장 불완전한 상태가 완전으로 보고된다.
 --
--- 조회 범위를 반드시 좁힌다. 이 질의는 API 읽기 경로에 있다.
+-- 조회 범위를 반드시 좁힌다. 리소스 상태를 읽는 경로를 염두에 두고 만들었다.
+-- 다만 현재 소비자가 없다. 조회 API 는 91 만 사용한다.
 -- WHERE 없이 전체 이력을 정렬하면 데이터가 쌓일수록 응답이 선형으로 느려진다.
 WITH ranked AS (
     SELECT
@@ -578,7 +580,7 @@ make catalog-sql
 
 ## 남은 것
 
-- **인덱스를 설계하지 않았습니다.** 조인 키(`run_id`, `asset_id`, `row_id`, `source_id`)가 전부 비인덱스다. 02·03번은 `:run_id`로 출력은 좁히지만 I/O는 좁히지 못해 전체 스캔이 걸립니다. 데이터가 쌓이면 여기가 먼저 무너진다
+- 인덱스는 이후 추가했습니다(`models.py` 에 9개). 위 측정표가 그 전후 비교입니다. 다만 **08번은 인덱스로 해결되지 않습니다** — 정확성을 위해 기간 조건을 `HAVING` 에 두어 매 실행마다 전량을 읽습니다. [측정과 한계](load-and-design-limits.md) 참고
 - `normalized_evidence`·`observed_rows`에 파티셔닝이 없습니다. 90번은 조회 범위를 좁혔지만 근본 해법은 시간 파티셔닝이다
 - 임계값(성공률 0.8, 절단 비율 0.5, 재귀 깊이 10, 간선 신선도 7일)이 질의에 상수로 박혀 있습니다. 자산별로 다르게 두려면 설정 테이블이 필요하다
 - 02·03번은 `:run_id` 범위 안에서만 봅니다. 여러 실행에 걸친 추세는 별도 집계가 필요하다

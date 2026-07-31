@@ -222,29 +222,49 @@ flowchart LR
 ## 검증
 
 ```bash
-make catalog-mcp
+make catalog-test        # 카탈로그 계층 70종
+make catalog-mcp         # 도구 목록과 인자 스키마
+make catalog-mcp-serve   # stdio MCP 서버 기동 (주체 토큰 필요)
+make catalog-api         # 조회 API 기동
 ```
 
-| 막으려는 사고 | 검증 |
-|---|---|
-| 정의되지 않은 도구 호출 | 알 수 없는 도구명 거부 |
-| 인자 확대 | `additionalProperties: false` 위반 거부 |
-| 임의 URL·헤더 주입 | 열거·길이 검증에서 차단 |
-| DB 직접 접근 | MCP 프로세스에 DB 자격증명 미주입 확인 |
-| 토큰 과다 권한 | 교환된 토큰의 `aud`·`scope`·TTL 검증 |
-| **토큰 전달 오류** | **Alice 세션으로 Bob 자산 요청 → 아웃바운드 헤더가 Alice 토큰인지 확인 후 `403`** |
-| 큰 응답이 컨텍스트를 밀어냄 | 절단 후 원본 개수·커서 부착 |
-| 세션 단위 열거 | 200회 초과 시 `429` |
-| 주입 문자열이 지시로 읽힘 | `untrusted` 블록 밖으로 새지 않는지 확인 |
-| 내부 오류 노출 | 응답에 스택·접속 정보 없음 |
+각 줄에 대응하는 테스트 파일과 함수를 함께 적습니다. 파일이 없는 줄은 아래
+"구현하지 않은 것"으로 내렸습니다.
 
-여섯 번째 줄이 중요합니다. **API가 거부하는지가 아니라 MCP가 올바른 주체를 전달하는지**를 검증합니다. 전자만 보면 정적 서비스 계정을 쓰고 있어도 통과합니다.
+| 막으려는 사고 | 검증 | 어디에 |
+|---|---|---|
+| 정의되지 않은 도구 호출 | 알 수 없는 도구명 거부 | `test_mcp_boundary.py::test_정의되지_않은_도구를_거부한다` |
+| 인자 확대 | `additionalProperties: false` 위반 거부 | `test_mcp_boundary.py::test_스키마_밖_인자를_거부한다` |
+| 임의 URL·헤더 주입 | 열거·길이·제어문자 검증에서 차단 | `test_mcp_boundary.py::test_열거_밖_값을_거부한다` 외 2종 |
+| DB 직접 접근 | MCP 패키지가 DB 드라이버를 import 하지 않고, `CATALOG_DATABASE_URL` 이 있어도 읽지 않음 | `test_mcp_trust_boundary.py::test_mcp_모듈은_db_드라이버를_들이지_않는다` |
+| 토큰 과다 권한 | 교환 결과의 `aud`·`scope`·TTL 검증. 셋 중 하나라도 요청보다 넓으면 거부 | `test_mcp_trust_boundary.py::test_교환_결과가_요청보다_넓으면_거부한다` (4 케이스) |
+| **토큰 전달 오류** | **Alice 세션의 subject_token 이 교환되어 아웃바운드 `Authorization` 에 실리는지 확인. Bob 자산 요청은 상위 `403` 을 그대로 실패로** | `test_mcp_trust_boundary.py::test_alice_세션은_alice_토큰을_교환해_전달한다` · `test_bob_자산_요청은_상위_403_을_그대로_실패로_만든다` |
+| 교환 실패 시 우회 | 교환에 실패하면 원본 토큰으로 물러서지 않고 상위 호출 자체를 하지 않음 | `test_mcp_trust_boundary.py::test_교환에_실패하면_원본_토큰으로_물러서지_않는다` |
+| 큰 응답이 컨텍스트를 밀어냄 | 절단 후 원본 개수·커서 부착 | `test_mcp_boundary.py::test_큰_응답은_절단되고_절단_사실이_남는다` |
+| 세션 단위 열거 | 예산 초과 시 `session_budget_exhausted` + `retry_after_seconds`. 인자 검증 실패는 예산을 깎지 않음 | `test_mcp_trust_boundary.py::test_예산을_넘기면_거부하고_retry_after_를_준다` · `test_인자_검증_실패는_예산을_깎지_않는다` |
+| 주입 문자열이 지시로 읽힘 | `untrusted` 블록 밖으로 새지 않음 | `test_mcp_boundary.py::test_원천에서_온_값은_untrusted_로_분리된다` |
+| 내부 오류 노출 | 상위 500 본문에 드라이버명·경로·내부 IP 가 있어도 `correlation_id` 만 반환 | `test_mcp_trust_boundary.py::test_상위_오류에_내부_정보가_섞이지_않는다` |
+| "누가 읽었나"에 답할 수 없음 | 성공·거부 모두 `principal_sub` 와 함께 감사 로그에 기록 | `test_mcp_trust_boundary.py::test_감사_로그에_주체가_남는다` · `test_거부된_시도도_감사_로그에_남는다` |
+| 도구 인자와 API 파라미터 불일치 | 도구 인자를 API 쿼리 이름으로 옮기고 경로 인자는 이스케이프 | `test_mcp_trust_boundary.py::test_도구_인자가_api_쿼리_이름으로_옮겨진다` · `test_경로_인자는_이스케이프된다` |
+
+**토큰 전달 줄이 중요합니다.** API가 거부하는지가 아니라 **MCP가 올바른 주체를 전달하는지**를 봅니다. 전자만 보면 정적 서비스 계정을 쓰고 있어도 통과합니다. 그래서 테스트가 아웃바운드 헤더를 직접 확인합니다.
+
+프로토콜도 별도로 검증합니다 — `initialize` 핸드셰이크, `tools/list`, `tools/call`, 통지 무응답, 깨진 JSON 이후 연결 유지, 주체 없이 기동 거부까지 `test_mcp_protocol.py` 8종입니다.
+
+### 구현하지 않은 것
+
+| 항목 | 지금 상태 |
+|---|---|
+| STS 자체 | 없습니다. `TokenExchanger` 는 RFC 8693 폼을 만들고 응답을 검증하는 클라이언트이며, 테스트는 STS 를 가짜로 세웁니다. 실제 인증 서버에 붙여 본 적이 없습니다 |
+| 실제 MCP 클라이언트 연동 | Claude Desktop 등에 붙여 본 적이 없습니다. 프로토콜은 테스트로만 확인했습니다 |
+| API 측 인가 | 카탈로그 API 는 `Authorization` 헤더를 받지만 검사하지 않습니다. MCP 가 올바른 토큰을 **보내는지**는 검증되지만, API 가 그 토큰으로 **권한을 판정하는지**는 아직 아닙니다 |
+| 감사 로그 보관 | stderr 로 구조화 출력만 합니다. 수집·보관 경로가 없습니다 |
 
 ## 이 작업이 증명하는 것
 
 - **FastAPI 조회 API 설계** — 응답 규격, 페이지네이션, 상태 코드, 오류 처리
-- AI가 사용할 수 있는 **도구 서버(MCP) 구현**
-- 토큰 교환으로 **권한을 좁혀서 전달**하는 설계
+- AI가 사용할 수 있는 **도구 서버(MCP) 구현** — stdio JSON-RPC, 도구 6종, 세션 예산, 감사 로그
+- 토큰 교환(RFC 8693)으로 **권한을 좁혀서 전달**하는 구현과 교환 결과 검증
 - 외부에서 들어온 문자열이 **모델에 지시로 읽히는 위험**에 대한 이해와 대응
 
 ## 남은 것

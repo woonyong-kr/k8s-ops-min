@@ -250,14 +250,21 @@ def list_quality_issues(
     cursor: str | None = None,
 ):
     offset = decode_cursor(cursor)
-    where = "WHERE status = 'failed' AND (:sev IS NULL OR severity = :sev)"
+    # "미해결"은 최신 실행에서 여전히 실패인 것이다. 실행 전체를 대상으로 하면
+    # 6월에 한 번 실패한 결과가 오늘도 미해결로 나오고, 실행이 30번 돌면 같은
+    # 이슈가 30행 반환된다. 해소 여부를 판정하지 않는 목록은 이슈 목록이 아니다.
+    where = (
+        "WHERE status = 'failed' AND (CAST(:sev AS text) IS NULL OR severity = :sev) "
+        "AND dag_run_id = (SELECT dag_run_id FROM catalog_dag_runs "
+        "                  ORDER BY logical_date DESC, started_at DESC LIMIT 1)"
+    )
     params = {"sev": severity, "l": limit, "o": offset}
     total = conn.execute(
         text(f"SELECT count(*) FROM catalog_quality_results {where}"), params
     ).scalar_one()
     rows = conn.execute(
         text(
-            f"SELECT result_id, check_name, check_type, asset_id, severity, finding, "
+            f"SELECT result_id, check_name, check_type, asset_id, subject_key, severity, finding, "
             f"       observed_value, expected_value, first_seen_dag_run_id, checked_at "
             f"FROM catalog_quality_results {where} "
             f"ORDER BY severity, checked_at DESC LIMIT :l OFFSET :o"
@@ -269,13 +276,25 @@ def list_quality_issues(
 
 
 @router.get("/runs")
-def list_runs(conn: Conn, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None):
+def list_runs(
+    conn: Conn,
+    logical_date: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
+):
     """실행 이력과 소스별 지표.
 
     별도 지표 저장소를 두지 않았다. 실행 이력이 이미 지표의 원천이다.
     """
     offset = decode_cursor(cursor)
-    total = conn.execute(text("SELECT count(*) FROM catalog_dag_runs")).scalar_one()
+    date_filter = "WHERE (CAST(:d AS text) IS NULL OR d.logical_date = CAST(:d AS date))"
+    total = conn.execute(
+        text(
+            "SELECT count(*) FROM catalog_dag_runs d "
+            + date_filter.replace("d.logical_date", "d.logical_date")
+        ),
+        {"d": logical_date},
+    ).scalar_one()
     rows = conn.execute(
         text(
             """
@@ -286,11 +305,12 @@ def list_runs(conn: Conn, limit: Limit = DEFAULT_LIMIT, cursor: str | None = Non
                    sum(c.attempt)                                            AS attempts
             FROM catalog_dag_runs d
             LEFT JOIN catalog_collection_runs c ON c.dag_run_id = d.dag_run_id
+            WHERE (CAST(:d AS text) IS NULL OR d.logical_date = CAST(:d AS date))
             GROUP BY d.dag_run_id, d.logical_date, d.status, d.started_at, d.finished_at
             ORDER BY d.logical_date DESC LIMIT :l OFFSET :o
             """
         ),
-        {"l": limit, "o": offset},
+        {"l": limit, "o": offset, "d": logical_date},
     ).mappings().all()
     data = [
         {

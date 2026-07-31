@@ -20,12 +20,12 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from dataclasses import dataclass
 from typing import Any
 
 MAX_ITEMS = 50
 MAX_BYTES = 64 * 1024
-SESSION_CALL_BUDGET = 200
 
 API_BASE = os.environ.get("CATALOG_API_BASE", "http://localhost:8000/v1/catalog")
 
@@ -48,7 +48,11 @@ TOOLS: tuple[Tool, ...] = (
         name="list_data_sources",
         description="등록된 원천 시스템 목록. 어떤 시스템에서 데이터를 가져오는지 답한다.",
         path="/sources",
-        input_schema={"type": "object", "properties": {}, "additionalProperties": False},
+        input_schema={
+            "type": "object",
+            "properties": {"limit": _LIMIT, "cursor": _CURSOR},
+            "additionalProperties": False,
+        },
     ),
     Tool(
         name="search_assets",
@@ -110,6 +114,7 @@ TOOLS: tuple[Tool, ...] = (
             "properties": {
                 "logical_date": {"type": "string", "maxLength": 10},
                 "limit": _LIMIT,
+                "cursor": _CURSOR,
             },
             "additionalProperties": False,
         },
@@ -230,10 +235,20 @@ def list_tools() -> list[dict[str, Any]]:
     ]
 
 
-def main() -> int:
-    """도구 목록과 호출 예시를 출력한다. make catalog-mcp 가 이걸 부른다."""
-    print(json.dumps({"tools": list_tools()}, ensure_ascii=False, indent=2))
-    return 0
+def main(argv: list[str] | None = None) -> int:
+    """MCP 서버를 stdio 로 띄운다.
+
+    --list-tools 를 주면 도구 목록만 출력하고 끝난다. 프로토콜을 말하지 않는
+    확인용 경로다.
+    """
+    argv = sys.argv[1:] if argv is None else argv
+    if "--list-tools" in argv:
+        print(json.dumps({"tools": list_tools()}, ensure_ascii=False, indent=2))
+        return 0
+
+    from .stdio import serve_stdio
+
+    return serve_stdio()
 
 
 if __name__ == "__main__":

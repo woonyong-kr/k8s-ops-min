@@ -26,13 +26,12 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from sqlalchemy import create_engine, text  # noqa: E402
 
+from domains.datacatalog import checks, pipeline  # noqa: E402
 from domains.datacatalog.sources import (  # noqa: E402
     CollectedSource,
     FixtureSource,
     source_tables_present,
 )
-
-from domains.datacatalog import checks, pipeline  # noqa: E402
 
 DEFAULT_DSN = os.environ.get(
     "CATALOG_DATABASE_URL", "postgresql+psycopg://postgres@127.0.0.1:5433/catalog"

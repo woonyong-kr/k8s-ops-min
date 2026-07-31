@@ -91,6 +91,7 @@ def run_checks(
                 check_name=name,
                 check_type=check_type,
                 asset_id="-",
+                subject_key="-",
                 status="passed",
                 severity=severity,
                 finding=None,
@@ -103,8 +104,9 @@ def run_checks(
         for row in rows:
             asset_id = row.get("asset_id") or row.get("source_id") or row.get("dag_run_id")
             finding = row.get("finding") or row.get("drift_type") or check_type
+            subject_key = _subject_key(row)
             first_seen = _first_seen_dag_run(
-                conn, check_type, str(asset_id), str(finding), dag_run_id
+                conn, check_type, str(asset_id), subject_key, str(finding), dag_run_id
             )
             _write_result(
                 conn,
@@ -112,6 +114,7 @@ def run_checks(
                 check_name=name,
                 check_type=check_type,
                 asset_id=str(asset_id) if asset_id is not None else "-",
+                subject_key=subject_key,
                 status="failed",
                 severity=severity,
                 finding=str(finding),
@@ -127,6 +130,19 @@ def run_checks(
     return findings
 
 
+def _subject_key(row: Any) -> str:
+    """한 자산 안에서 위반을 구분하는 값.
+
+    03 은 필드마다, 02 는 누락 필드마다, 08 은 리소스마다 위반을 낸다.
+    이 값이 없으면 유일 제약이 자산 단위라 두 번째 위반부터 앞의 것을 덮어쓴다.
+    """
+    for key in ("field_path", "resource_uid", "schema_version", "qualified_name"):
+        value = row.get(key)
+        if value is not None:
+            return str(value)[:256]
+    return "-"
+
+
 def _stringify(row: Any, keys: tuple[str, ...]) -> str | None:
     for key in keys:
         value = row.get(key)
@@ -136,7 +152,12 @@ def _stringify(row: Any, keys: tuple[str, ...]) -> str | None:
 
 
 def _first_seen_dag_run(
-    conn: Connection, check_type: str, asset_id: str, finding: str, dag_run_id: str
+    conn: Connection,
+    check_type: str,
+    asset_id: str,
+    subject_key: str,
+    finding: str,
+    dag_run_id: str,
 ) -> str:
     """이 위반이 처음 발생한 실행을 찾는다.
 
@@ -150,10 +171,11 @@ def _first_seen_dag_run(
             FROM catalog_quality_results
             WHERE check_type = :c AND status = 'failed'
               AND asset_id = :a
+              AND subject_key = :sk
               AND finding IS NOT DISTINCT FROM :f
             """
         ),
-        {"c": check_type, "a": asset_id, "f": finding},
+        {"c": check_type, "a": asset_id, "sk": subject_key, "f": finding},
     ).scalar()
     return previous or dag_run_id
 
@@ -165,6 +187,7 @@ def _write_result(
     check_name: str,
     check_type: str,
     asset_id: str,
+    subject_key: str,
     status: str,
     severity: str,
     finding: str | None,
@@ -173,15 +196,16 @@ def _write_result(
     checked_at: datetime,
     first_seen: str | None = None,
 ) -> None:
-    key = f"{dag_run_id}/{check_name}/{asset_id}"
+    key = f"{dag_run_id}/{check_name}/{asset_id}/{subject_key}"
     conn.execute(
         text(
             """
             INSERT INTO catalog_quality_results
-                (result_id, dag_run_id, check_name, check_type, asset_id, status, severity,
-                 finding, observed_value, expected_value, first_seen_dag_run_id, checked_at)
-            VALUES (:rid, :d, :cn, :c, :a, :s, :sev, :f, :obs, :exp, :first, :t)
-            ON CONFLICT (dag_run_id, check_name, asset_id) DO UPDATE
+                (result_id, dag_run_id, check_name, check_type, asset_id, subject_key,
+                 status, severity, finding, observed_value, expected_value,
+                 first_seen_dag_run_id, checked_at)
+            VALUES (:rid, :d, :cn, :c, :a, :sk, :s, :sev, :f, :obs, :exp, :first, :t)
+            ON CONFLICT (dag_run_id, check_name, asset_id, subject_key) DO UPDATE
                 SET status = EXCLUDED.status,
                     severity = EXCLUDED.severity,
                     finding = EXCLUDED.finding,
@@ -196,6 +220,7 @@ def _write_result(
             "cn": check_name,
             "c": check_type,
             "a": asset_id,
+            "sk": subject_key,
             "s": status,
             "sev": severity,
             "f": finding,

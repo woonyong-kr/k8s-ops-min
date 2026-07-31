@@ -8,7 +8,7 @@ PY ?= .venv/bin/python
 
 .PHONY: help sync lint format test demo-fail-source demo-drift demo-duplicate \
         catalog-up catalog-down catalog-schema catalog-seed catalog-run \
-        catalog-verify catalog-sql catalog-mcp catalog-test \
+        catalog-verify catalog-sql catalog-mcp catalog-mcp-serve catalog-api catalog-test \
         controller-check benchmark-event-bus benchmark-event-bus-compare \
         evidence-screenshots portfolio-verify clean
 
@@ -52,7 +52,13 @@ catalog-sql: ## 정합성 검사 SQL 실행 결과 출력
 	PYTHONPATH=src $(PY) scripts/catalog_sql.py
 
 catalog-mcp: ## MCP 도구 목록과 인자 스키마 출력
+	PYTHONPATH=src $(PY) -m services.catalog_mcp.server --list-tools
+
+catalog-mcp-serve: ## MCP 서버를 stdio 로 기동 (주체 토큰 필요)
 	PYTHONPATH=src $(PY) -m services.catalog_mcp.server
+
+catalog-api: ## 카탈로그 조회 API 기동
+	PYTHONPATH=src $(PY) -m uvicorn domains.datacatalog.app:create_app --factory --port 8000
 
 catalog-test: ## 카탈로그 계층 테스트
 	PYTHONPATH=src $(PY) -m pytest tests/catalog -q

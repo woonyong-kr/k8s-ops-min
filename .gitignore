@@ -47,3 +47,7 @@ _to_delete/
 
 # 카탈로그 로컬 산출물
 .catalog-archive/
+
+# 세션 전송용 임시 파일
+*.tar.gz
+_to_delete/
