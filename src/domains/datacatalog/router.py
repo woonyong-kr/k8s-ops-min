@@ -1,6 +1,6 @@
 """카탈로그 조회 API.
 
-설계 근거: docs/portfolio/07-catalog-api-mcp.md
+설계 근거: docs/portfolio/catalog-api-mcp.md
 
 모든 응답이 같은 envelope 을 쓴다. data / page / evidence 셋이다.
 

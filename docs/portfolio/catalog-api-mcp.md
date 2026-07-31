@@ -1,6 +1,6 @@
-[← Kyro로 돌아가기](../../README.md) · [← 06](06-sql-quality-checks.md)
+[← Kyro로 돌아가기](../../README.md) · [← 06](sql-quality-checks.md)
 
-# 07. 카탈로그 조회 API와 읽기 전용 MCP
+# 카탈로그 조회 API와 읽기 전용 MCP
 
 > **⑥ 자료 목록 관리** · 프로젝트 종료 후 개인 작업
 
@@ -22,7 +22,7 @@ GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 
 → [`src/domains/datacatalog/router.py`](../../src/domains/datacatalog/router.py)
 
-경로에 `/v1`을 둡니다. [01번 문서](01-collection-contract.md)에서 응답 계약에 버전이 없다고 적었는데, 그 구멍은 자산 스키마 버전이 아니라 **API 버전**으로 메워야 하는 것이었습니다. 자산의 `schema_version`은 데이터의 계약이지 응답의 계약이 아닙니다.
+경로에 `/v1`을 둡니다. [관련 문서](collection-contract.md)에서 응답 계약에 버전이 없다고 적었는데, 그 구멍은 자산 스키마 버전이 아니라 **API 버전**으로 메워야 하는 것이었습니다. 자산의 `schema_version`은 데이터의 계약이지 응답의 계약이 아닙니다.
 
 ### 응답 envelope
 
@@ -51,11 +51,11 @@ GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 
 세 가지를 지켰다.
 
-**`evidence`가 항상 붙습니다.** `run_status`가 `PARTIAL`이면 **이 조회 결과 자체가 부분 데이터**라는 뜻입니다. 카탈로그가 "이슈 0건"이라고 답해도, 그 검사가 일부 소스를 못 봤다면 0건의 의미가 다릅니다. [01번 문서](01-collection-contract.md)의 원칙이 한 단계 위로 올라갑니다. 수집 결과의 완전성뿐 아니라 **검사 결과의 완전성**도 전달합니다.
+**`evidence`가 항상 붙습니다.** `run_status`가 `PARTIAL`이면 **이 조회 결과 자체가 부분 데이터**라는 뜻입니다. 카탈로그가 "이슈 0건"이라고 답해도, 그 검사가 일부 소스를 못 봤다면 0건의 의미가 다릅니다. [관련 문서](collection-contract.md)의 원칙이 한 단계 위로 올라갑니다. 수집 결과의 완전성뿐 아니라 **검사 결과의 완전성**도 전달합니다.
 
 **`reason_codes`가 구조체다.** 처음에는 `"SOURCE_FAILED:loki"` 같은 문자열이었습니다. 소비자가 전부 `split(":")`을 쓰게 되고, 그 문자열은 LLM이 읽는 제어 필드이기도 하다. 코드와 대상을 분리했습니다. 코드 목록은 [`contracts/catalog/reason_codes.py`](../../src/packages/contracts/catalog/reason_codes.py)에 닫힌 열거로 둡니다.
 
-**`page.next_cursor`가 있습니다.** 상한만 두고 페이지네이션이 없으면 상한 너머 데이터에 영원히 접근할 수 없습니다. [02번 문서](02-collection-limits.md)에서 잘림을 숨기지 않기로 했는데, **숨기지 않는 것과 도달할 수 있게 하는 것은 다릅니다.**
+**`page.next_cursor`가 있습니다.** 상한만 두고 페이지네이션이 없으면 상한 너머 데이터에 영원히 접근할 수 없습니다. [관련 문서](collection-limits.md)에서 잘림을 숨기지 않기로 했는데, **숨기지 않는 것과 도달할 수 있게 하는 것은 다릅니다.**
 
 ### 상태 코드
 
@@ -70,7 +70,7 @@ GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 | 카탈로그 DB 조회 불가 | `503` | `Retry-After` 헤더, 재시도 가능 |
 | 내부 오류 | `500` | `error.correlation_id`만 |
 
-자산은 있는데 아직 검사되지 않은 경우는 `200`입니다. `evidence.run_status`가 `NEVER_RUN`이 됩니다. 이 값은 [카탈로그 상태 열거](04-metadata-catalog.md#실행-단위와-상태)에 정의돼 있습니다.
+자산은 있는데 아직 검사되지 않은 경우는 `200`입니다. `evidence.run_status`가 `NEVER_RUN`이 됩니다. 이 값은 [카탈로그 상태 열거](metadata-catalog.md#실행-단위와-상태)에 정의돼 있습니다.
 
 **"아직 검사 안 됨"과 "검사했는데 이슈 없음"을 같은 응답으로 내보내지 않습니다.**
 
@@ -82,7 +82,7 @@ GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 
 ### 왜 다시 붙였는가 — 그리고 무엇이 부족한가
 
-팀 프로젝트에서 AI 조회 도구 계층을 만들었지만 최종 경로에서 빠졌습니다. 코드는 저장소에 남아 있습니다. 실사용자가 없었기 때문입니다. 그 판단은 [09번 문서](09-scope-decisions.md)에 있습니다.
+팀 프로젝트에서 AI 조회 도구 계층을 만들었지만 최종 경로에서 빠졌습니다. 코드는 저장소에 남아 있습니다. 실사용자가 없었기 때문입니다. 그 판단은 [관련 문서](scope-decisions.md)에 있습니다.
 
 거기서 세운 규칙은 두 가지였습니다. **누가 실제로 쓰는가. 잘못됐을 때 알아차릴 방법이 있는가.**
 
@@ -257,4 +257,4 @@ make catalog-mcp
 
 ---
 
-[다음: 기술 리서치 →](08-tech-research.md)
+[다음: 기술 리서치 →](tech-research.md)

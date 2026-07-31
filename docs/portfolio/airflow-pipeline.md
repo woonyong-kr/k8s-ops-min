@@ -1,6 +1,6 @@
-[← Kyro로 돌아가기](../../README.md) · [← 04](04-metadata-catalog.md)
+[← Kyro로 돌아가기](../../README.md) · [← 04](metadata-catalog.md)
 
-# 05. Airflow를 어디에 쓰고, 어디에 쓰지 않을 것인가
+# Airflow를 어디에 쓰고, 어디에 쓰지 않을 것인가
 
 > **⑤ 매일 재검사** · 프로젝트 종료 후 검증 · 개인 성과와 분리
 
@@ -169,4 +169,4 @@ source별 상태와 DAG 전체 상태를 분리합니다.
 
 ---
 
-[← Kyro로 돌아가기](../../README.md) · [다음: SQL 품질검사 →](06-sql-quality-checks.md)
+[← Kyro로 돌아가기](../../README.md) · [다음: SQL 품질검사 →](sql-quality-checks.md)

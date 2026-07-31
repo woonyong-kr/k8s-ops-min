@@ -13,7 +13,7 @@
 | EC2 (서울) 사용 요금 | USD 637.42 | [04](04-ec2-credit-offset.jpg) |
 | 위 EC2 요금에 적용된 크레딧 | −USD 637.42 (`KRAFTON_Jungle`, credit id 10063350968) | [04](04-ec2-credit-offset.jpg) |
 
-**총합계가 낮게 보이는 이유는 크레딧입니다.** EC2 사용 요금 전액이 정글 크레딧으로 상계돼 순결제액이 0이 됐습니다. [비용 회고](../../portfolio/13-architecture-cost-postmortem.md)의 Regional Data Transfer 29.68TB / $296.83 도 같은 구조로, 크레딧이 없었다면 발생했을 사용 비용입니다.
+**총합계가 낮게 보이는 이유는 크레딧입니다.** EC2 사용 요금 전액이 정글 크레딧으로 상계돼 순결제액이 0이 됐습니다. [비용 회고](../../portfolio/architecture-cost-postmortem.md)의 Regional Data Transfer 29.68TB / $296.83 도 같은 구조로, 크레딧이 없었다면 발생했을 사용 비용입니다.
 
 ## 비용이 어디로 갔나
 
@@ -33,7 +33,7 @@
 - NAT Gateway — 시간 요금 $75.17 대 처리 데이터 $5.18. 같은 모양입니다
 - 공인 IPv4 8,179시간을 7월 744시간으로 나누면 **약 11개가 한 달 내내** 붙어 있었다는 뜻입니다
 
-Deployment 를 47개까지 나눈 대가는 컴퓨트가 아니라 **각 조각에 붙는 상시 점유 자원**으로 청구됐습니다. 논리적 경계를 물리적 배포 경계로 그대로 옮긴 결과입니다. 판단의 경위는 [비용 회고](../../portfolio/13-architecture-cost-postmortem.md)에 있습니다.
+Deployment 를 47개까지 나눈 대가는 컴퓨트가 아니라 **각 조각에 붙는 상시 점유 자원**으로 청구됐습니다. 논리적 경계를 물리적 배포 경계로 그대로 옮긴 결과입니다. 판단의 경위는 [비용 회고](../../portfolio/architecture-cost-postmortem.md)에 있습니다.
 
 ## 한계
 

@@ -3,7 +3,7 @@
 DAG 는 이 함수들을 호출하기만 한다. Airflow 없이도 테스트할 수 있도록
 오케스트레이션과 로직을 분리했다.
 
-설계 근거는 docs/portfolio/05-airflow-pipeline.md 에 있다.
+설계 근거는 docs/portfolio/airflow-pipeline.md 에 있다.
 """
 
 from __future__ import annotations

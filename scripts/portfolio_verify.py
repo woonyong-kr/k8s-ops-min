@@ -89,7 +89,7 @@ def evidence_drift() -> list[str]:
             encoding="utf-8"
         )
     )
-    benchmark_text = (ROOT / "docs/portfolio/13-architecture-cost-postmortem.md").read_text(
+    benchmark_text = (ROOT / "docs/portfolio/architecture-cost-postmortem.md").read_text(
         encoding="utf-8"
     )
     for value in _benchmark_medians(benchmark):

@@ -1,6 +1,6 @@
-[← Kyro로 돌아가기](../../README.md) · [← 05](05-airflow-pipeline.md)
+[← Kyro로 돌아가기](../../README.md) · [← 05](airflow-pipeline.md)
 
-# 06. SQL 정합성 질의
+# SQL 정합성 질의
 
 > **⑥ 자료 목록 관리** · 프로젝트 종료 후 개인 작업
 
@@ -20,7 +20,7 @@ Python은 질의를 실행하고 결과를 `quality_results`에 적재하는 역
 
 파일이 8개지만 **검사는 6종입니다.** 나머지 둘은 위반 집합을 반환하지 않는 조회 도구입니다. 초기에는 이걸 묶어서 "질의 8종"이라고 셌는데, 검사 개수를 부풀린 것이라 나눴습니다.
 
-| 파일 | 유형 | [카탈로그 검사](04-metadata-catalog.md#정합성-검사) |
+| 파일 | 유형 | [카탈로그 검사](metadata-catalog.md#정합성-검사) |
 |---|---|---|
 | `01_source_coverage.sql` | 검사 | `SOURCE_COVERAGE` |
 | `02_required_field.sql` | 검사 | `REQUIRED_FIELD` |
@@ -546,7 +546,7 @@ ORDER BY u.origin, u.ancestor, u.depth, c.finished_at DESC NULLS LAST, u.run_id 
 make catalog-sql
 ```
 
-검사 6종은 결과를 `quality_results`에 적재합니다. **위반 0건이어도 통과 결과를 남깁니다.** 검사하지 않은 것과 검사해서 통과한 것을 구분하기 위해서다. [01번 문서](01-collection-contract.md)의 원칙과 같습니다.
+검사 8종은 결과를 `quality_results`에 적재합니다. **위반 0건이어도 통과 결과를 남깁니다.** 검사하지 않은 것과 검사해서 통과한 것을 구분하기 위해서입니다. [관련 문서](collection-contract.md)의 원칙과 같습니다.
 
 ## 검증
 
@@ -586,4 +586,4 @@ make catalog-sql
 
 ---
 
-[다음: 카탈로그 API와 MCP →](07-catalog-api-mcp.md)
+[다음: 카탈로그 API와 MCP →](catalog-api-mcp.md)

@@ -30,7 +30,7 @@ Cost Explorer의 서비스 분해 결과, 총 29,683.72GB 중 **EC2 - Other가 2
 - [`screenshots/README.md`](screenshots/README.md): 포트폴리오용 16:9 증거판과 Airflow raw DAG graph
 - [`aws-console/`](aws-console/): 로그인된 AWS Console에서 직접 캡처한 Cost Explorer·CloudWatch 화면
 
-전체 해석과 설계 변경은 [아키텍처 비용 회고](../../portfolio/13-architecture-cost-postmortem.md)에 있습니다.
+전체 해석과 설계 변경은 [아키텍처 비용 회고](../../portfolio/architecture-cost-postmortem.md)에 있습니다.
 
 ## 출처와 재현 조건
 

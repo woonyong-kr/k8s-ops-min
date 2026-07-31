@@ -1,6 +1,6 @@
-[← Kyro로 돌아가기](../../README.md) · [← 03](03-config-reference-api.md)
+[← Kyro로 돌아가기](../../README.md) · [← 03](config-reference-api.md)
 
-# 04. 메타데이터 카탈로그와 정합성 검증
+# 메타데이터 카탈로그와 정합성 검증
 
 > **⑥ 자료 목록 관리** · 프로젝트 종료 후 개인 작업
 
@@ -10,7 +10,7 @@
 
 ## 문제
 
-Kyro는 **수집하는 순간**의 완전성을 다뤘습니다. [수집 완전성 계약](01-collection-contract.md)과 [수집 한도](02-collection-limits.md)가 그것입니다.
+Kyro는 **수집하는 순간**의 완전성을 다뤘습니다. [수집 완전성 계약](collection-contract.md)과 [수집 한도](collection-limits.md)가 그것입니다.
 
 프로젝트를 마치고 보니 **수집이 성공한 뒤**가 비어 있었다.
 
@@ -55,7 +55,7 @@ Kyro는 **수집하는 순간**의 완전성을 다뤘습니다. [수집 완전�
 
 그런데 상태를 나누기 전에 **실행 단위**를 먼저 정해야 했습니다. 처음에는 DAG 실행 하나에 `collection_runs` 행 하나를 두고 거기에 `source_id`를 달았다. 그러면 소스가 넷인데 행이 하나라 **어느 소스가 실패했는지 기록할 자리가 없습니다.** 부분 실패 보존이 스키마에서 표현 불가능해진다.
 
-단위를 둘로 나눴습니다. 자세한 이유는 [Airflow 문서](05-airflow-pipeline.md#실행-단위를-먼저-정해야-했다)에 있습니다.
+단위를 둘로 나눴습니다. 자세한 이유는 [Airflow 문서](airflow-pipeline.md#실행-단위를-먼저-정해야-했다)에 있습니다.
 
 | 테이블 | 단위 | 상태 |
 |---|---|---|
@@ -212,7 +212,7 @@ erDiagram
 | `observed_rows` | `(run_id, asset_id, row_key)` | 재시도 시 관측 행이 복제된다 |
 | `observed_fields` | `(row_id, field_path)` | 필드가 중복된다 |
 
-`quality_results.severity`와 `first_seen_dag_run_id`도 컬럼으로 둡니다. 심각도를 저장하지 않으면 [실행 정합성 검사](06-sql-quality-checks.md#07-실행-정합성)가 warning까지 위반으로 승격시켜 모든 실행이 붉어진다. `first_seen_dag_run_id`가 없으면 한 번 발생한 영구 위반이 이후 모든 실행을 오염시킨다.
+`quality_results.severity`와 `first_seen_dag_run_id`도 컬럼으로 둡니다. 심각도를 저장하지 않으면 [실행 정합성 검사](sql-quality-checks.md#07-실행-정합성)가 warning까지 위반으로 승격시켜 모든 실행이 붉어진다. `first_seen_dag_run_id`가 없으면 한 번 발생한 영구 위반이 이후 모든 실행을 오염시킨다.
 
 ### 검사 대상과 카탈로그
 
@@ -228,7 +228,7 @@ erDiagram
 
 검사 정의는 코드에 두었습니다. DB에 두면 검사 로직 변경과 정의 변경이 따로 배포돼 어긋납니다. 자산이 수백 개가 되고 팀이 나뉘면 그때 분리하는 게 맞습니다. 그 이관을 염두에 두고 `qualified_name`을 유일 키로 잡았다.
 
-**인덱스는 설계하지 않았습니다.** 조인 키가 전부 비인덱스라 데이터가 쌓이면 검사 질의가 전체 스캔합니다. [SQL 문서의 남은 것](06-sql-quality-checks.md#남은-것) 참고.
+**인덱스는 설계하지 않았습니다.** 조인 키가 전부 비인덱스라 데이터가 쌓이면 검사 질의가 전체 스캔합니다. [SQL 문서의 남은 것](sql-quality-checks.md#남은-것) 참고.
 
 ## 정합성 검사
 
@@ -248,12 +248,12 @@ flowchart LR
 
 | 검사 | 무엇을 잡나 | SQL | 심각도 |
 |---|---|---|---|
-| `SOURCE_COVERAGE` | 활성인데 침묵하는 소스, 비활성인데 도는 소스, 미등록 소스, 성공률 저하 | [`01`](06-sql-quality-checks.md#01-소스-커버리지) | error |
-| `REQUIRED_FIELD` | 필수 필드가 빠진 행 | [`02`](06-sql-quality-checks.md#02-필수-필드-누락) | error |
-| `SCHEMA_DRIFT` | 필드 누락·추가, 타입 변경, 버전 미갱신 변경 | [`03`](06-sql-quality-checks.md#03-스키마-드리프트) · [`04`](06-sql-quality-checks.md#04-버전을-올리지-않은-변경) | error |
-| `FRESHNESS` | 자산 단위 최신성 SLA 초과, 한 번도 관측 안 됨 | [`05`](06-sql-quality-checks.md#05-최신성-위반) | warning |
-| `LINEAGE_BREAK` | upstream 없는 정규화 자산, dangling 간선, 오래된 간선 | [`06`](06-sql-quality-checks.md#06-리니지-단절) | error |
-| `RUN_CONSISTENCY` | 실패 검사가 있는데 SUCCESS로 기록된 실행, 중복 적재 | [`07`](06-sql-quality-checks.md#07-실행-정합성) · [`08`](06-sql-quality-checks.md#08-중복-적재-후보) | error |
+| `SOURCE_COVERAGE` | 활성인데 침묵하는 소스, 비활성인데 도는 소스, 미등록 소스, 성공률 저하 | [`01`](sql-quality-checks.md#01-소스-커버리지) | error |
+| `REQUIRED_FIELD` | 필수 필드가 빠진 행 | [`02`](sql-quality-checks.md#02-필수-필드-누락) | error |
+| `SCHEMA_DRIFT` | 필드 누락·추가, 타입 변경, 버전 미갱신 변경 | [`03`](sql-quality-checks.md#03-스키마-드리프트) · [`04`](sql-quality-checks.md#04-버전을-올리지-않은-변경) | error |
+| `FRESHNESS` | 자산 단위 최신성 SLA 초과, 한 번도 관측 안 됨 | [`05`](sql-quality-checks.md#05-최신성-위반) | warning |
+| `LINEAGE_BREAK` | upstream 없는 정규화 자산, dangling 간선, 오래된 간선 | [`06`](sql-quality-checks.md#06-리니지-단절) | error |
+| `RUN_CONSISTENCY` | 실패 검사가 있는데 SUCCESS로 기록된 실행, 중복 적재 | [`07`](sql-quality-checks.md#07-실행-정합성) · [`08`](sql-quality-checks.md#08-중복-적재-후보) | error |
 
 검사 결과는 **통과·실패 모두 저장합니다.** 실패만 저장하면 "검사를 안 한 것"과 "검사했는데 통과한 것"을 구분할 수 없습니다. 01번 문서의 빈 목록 문제와 같은 구조입니다.
 
@@ -301,7 +301,7 @@ make catalog-verify
 - 실행 실패 없이 어긋나던 6가지 유형이 배치에서 자동 검출된다
 - 버전을 올리지 않은 스키마 변경이 계약 이력 비교로 잡힌다
 - 정규화 결과에서 S3 원본 객체까지 역추적 경로가 생겼다
-- [01번 문서](01-collection-contract.md)에서 남겨 뒀던 스키마 버전·원본 추적 구멍이 메워졌다
+- [관련 문서](collection-contract.md)에서 남겨 뒀던 스키마 버전·원본 추적 구멍이 메워졌다
 
 ## 이 작업이 증명하는 것
 
@@ -312,11 +312,11 @@ make catalog-verify
 
 ## 남은 것
 
-- 대상은 이 프로젝트가 만드는 운영 데이터 6종입니다. 외부 SaaS·업무 시스템 연동은 [리서치](08-tech-research.md)에서 설계까지만 다뤘습니다
+- 대상은 이 프로젝트가 만드는 운영 데이터 6종입니다. 외부 SaaS·업무 시스템 연동은 [리서치](tech-research.md)에서 설계까지만 다뤘습니다
 - 소유자·분류가 컬럼이므로 자산이 늘고 팀이 나뉘면 테이블 분리가 필요하다
 - 검사 정의가 코드에 있어 비개발자가 검사를 추가할 수 없다
-- `classification`은 조회 필터로만 쓰인다. 접근 제어 입력으로는 쓰지 않습니다. [07번 문서](07-catalog-api-mcp.md#분류는-권한이-아니다) 참고
+- `classification`은 조회 필터로만 쓰인다. 접근 제어 입력으로는 쓰지 않습니다. [관련 문서](catalog-api-mcp.md#분류는-권한이-아니다) 참고
 
 ---
 
-[다음: Airflow 파이프라인 →](05-airflow-pipeline.md)
+[다음: Airflow 파이프라인 →](airflow-pipeline.md)

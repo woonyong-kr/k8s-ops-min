@@ -1,6 +1,6 @@
 [← Kyro로 돌아가기](../../README.md)
 
-# 16. 어디까지 재봤고 어디서 무너지는가
+# 어디까지 재봤고 어디서 무너지는가
 
 `부하 한계를 재지 않았습니다`라고 적어 두고 있었습니다. 그 상태로는 만든 것이 어느 규모까지 쓸 수 있는지 저도 모릅니다.
 
@@ -256,7 +256,7 @@ MCP 도구   list_data_sources / search_assets / get_asset_schema
 
 **`90_latest_state` 에 소비자가 없습니다.** 조회 API 는 `91_lineage_trace` 만 쓰고, 90 은 `catalog_sql.py` 디버그 출력과 벤치마크에서만 돕니다. 벤치마크 합계 2,590ms 중 157ms 가 아무도 안 쓰는 질의입니다.
 
-→ 상태 테이블로 옮기면서 조회 API 에 연결하거나, 소비자가 없으면 뺍니다. [09번 문서](09-scope-decisions.md)에 적은 기준("소비자가 없으면 만들지 않는다")에 걸립니다.
+→ 상태 테이블로 옮기면서 조회 API 에 연결하거나, 소비자가 없으면 뺍니다. [관련 문서](scope-decisions.md)에 적은 기준("소비자가 없으면 만들지 않는다")에 걸립니다.
 
 ## 7. 상한을 만드는 법 — 계층형 보존
 
@@ -389,4 +389,4 @@ MCP 도구   list_data_sources / search_assets / get_asset_schema
 
 ---
 
-[← Kyro](../../README.md) · [검사 SQL 열 개](06-sql-quality-checks.md) · [검사는 어디서 돌아야 하는가](15-where-checks-run.md)
+[← Kyro](../../README.md) · [검사 SQL 열 개](sql-quality-checks.md) · [검사는 어디서 돌아야 하는가](where-checks-run.md)

@@ -37,8 +37,8 @@ flowchart TD
 | SQL 조회·조인·집계 | `sql/quality/01~08, 90, 91` — 재귀 CTE, 윈도 함수, FULL OUTER JOIN | `make catalog-sql` | 개인 |
 | FastAPI·Flask API | `inventory/config_references.py`, `datacatalog/router.py` (7개 엔드포인트) | `pytest tests/test_config_references.py` | 팀·개인 |
 | LLM·AI Agent 개념 | `ai/agent/pipeline/evidence_bundle.py`, `services/catalog_mcp/` | `make catalog-mcp` | 팀·개인 |
-| Git 협업·리뷰 | 리뷰 지적 39분 뒤 경계 조건 보강 커밋 | [엔지니어링 로그](10-engineering-log.md#4-리뷰-40분-뒤) | 팀 |
-| 진행 공유·문서화 | 계약 변경과 문서를 같은 커밋에서 갱신 | [엔지니어링 로그](10-engineering-log.md) | 팀 |
+| Git 협업·리뷰 | 리뷰 지적 39분 뒤 경계 조건 보강 커밋 | [엔지니어링 로그](engineering-log.md#4-리뷰-40분-뒤) | 팀 |
+| 진행 공유·문서화 | 계약 변경과 문서를 같은 커밋에서 갱신 | [엔지니어링 로그](engineering-log.md) | 팀 |
 
 ### 우대 요건
 
@@ -49,13 +49,13 @@ flowchart TD
 | 메타데이터·데이터 카탈로그 설계 | `datacatalog/models.py` 13개 테이블, 계약 이력 분리 | `make demo-drift` | 개인 |
 | MCP 서버 개발 | `services/catalog_mcp/server.py` — 읽기 전용 도구 6종, 응답 경계 | `pytest tests/catalog/test_mcp_boundary.py` | 개인 |
 | Docker·컨테이너 | `docker-compose.catalog.yml` — PostgreSQL·MinIO·Airflow | `make catalog-up` | 개인 |
-| AWS·클라우드 | EKS 배포와 담당 수집 경로 설정, 청구 원장 분석 | [비용 회고](13-architecture-cost-postmortem.md) | 팀 |
+| AWS·클라우드 | EKS 배포와 담당 수집 경로 설정, 청구 원장 분석 | [비용 회고](architecture-cost-postmortem.md) | 팀 |
 
 ### 범위에 대한 주석
 
 Airflow·카탈로그·MCP는 **팀 프로젝트 기간이 아니라 종료 후 개인 작업**으로 구현했습니다. 팀 협업 맥락에서 운영해 본 경험은 아닙니다. 그 대신 로컬에서 전부 재현되도록 만들었고, 확인 명령을 위 표에 적었습니다.
 
-무엇을 만들었고 무엇이 남았는지는 [카탈로그 구현 계획과 진행 상태](12a-catalog-implementation-plan.md)에 있습니다.
+무엇을 만들었고 무엇이 남았는지는 [카탈로그 구현 계획과 진행 상태](catalog-implementation-plan.md)에 있습니다.
 
 ## 정식 카탈로그와 다른 점
 

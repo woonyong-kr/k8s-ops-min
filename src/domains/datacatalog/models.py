@@ -1,6 +1,6 @@
 """데이터 카탈로그 테이블 — 자산·계약 이력·리니지·품질 결과.
 
-설계 근거는 docs/portfolio/04-metadata-catalog.md 에 있다.
+설계 근거는 docs/portfolio/metadata-catalog.md 에 있다.
 
 기존 domains/catalog 는 서비스 카탈로그이고 이 도메인과 무관하다.
 

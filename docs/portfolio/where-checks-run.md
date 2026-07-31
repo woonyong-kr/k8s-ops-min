@@ -1,6 +1,6 @@
 [← Kyro로 돌아가기](../../README.md)
 
-# 15. 검사는 어디서 돌아야 하는가
+# 검사는 어디서 돌아야 하는가
 
 정합성 검사 8종을 지금은 전부 하루 한 번 배치에서 돌립니다. **편의로 그렇게 된 것이지 설계로 그렇게 정한 것이 아닙니다.**
 
@@ -48,7 +48,7 @@
 
 그리고 둘 다 **테이블 전체 스캔**입니다. 08 은 관측 60만 행에서 95ms 였고, 이 값은 행 수에 비례해 자랍니다. 30초마다 돌릴 성질의 질의가 아닙니다. 하루 한 번이 맞습니다.
 
-→ 측정값은 [검사 SQL 문서의 측정 절](06-sql-quality-checks.md#측정)에 있습니다.
+→ 측정값은 [검사 SQL 문서의 측정 절](sql-quality-checks.md#측정)에 있습니다.
 
 ## 나머지 여섯은 배치일 이유가 없습니다
 
@@ -74,7 +74,7 @@ SLA 가 1시간인 자산이 있는데 배치가 하루에 한 번 돌면, 위�
 
 [`scripts/catalog_run.py`](../../scripts/catalog_run.py) 가 extract → normalize → load → check 를 스스로 전부 했습니다. 그런데 cluster-agent 가 이미 30초마다 같은 원천을 수집하고 있습니다.
 
-버그는 아니었습니다. fixture 에서 읽는 코드는 **실제 입력이 붙기 전의 자리 표시**였습니다. 문제는 [엔지니어링 로그](10-engineering-log.md)에 이렇게 적어 둔 것입니다.
+버그는 아니었습니다. fixture 에서 읽는 코드는 **실제 입력이 붙기 전의 자리 표시**였습니다. 문제는 [엔지니어링 로그](engineering-log.md)에 이렇게 적어 둔 것입니다.
 
 > 기존 수집 API를 입력으로만 사용합니다.
 
@@ -148,4 +148,4 @@ pytest tests/catalog -q   →   24 passed
 
 ---
 
-[← Kyro](../../README.md) · [검사 SQL 열 개](06-sql-quality-checks.md) · [배치 설계](05-airflow-pipeline.md)
+[← Kyro](../../README.md) · [검사 SQL 열 개](sql-quality-checks.md) · [배치 설계](airflow-pipeline.md)

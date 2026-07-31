@@ -1,6 +1,6 @@
-[← Kyro로 돌아가기](../../README.md) · [← 02](02-collection-limits.md)
+[← Kyro로 돌아가기](../../README.md) · [← 02](collection-limits.md)
 
-# 03. Secret 값 대신 참조 관계만 반환하기
+# Secret 값 대신 참조 관계만 반환하기
 
 > **소비 경계** · 5인 팀 프로젝트 · 담당: ConfigMap·Secret 참조 API
 
@@ -158,4 +158,4 @@ initContainer 참조를 수집하지만 응답에는 app container와 구분하�
 
 ---
 
-[← Kyro로 돌아가기](../../README.md) · [다음: 메타데이터 카탈로그 →](04-metadata-catalog.md)
+[← Kyro로 돌아가기](../../README.md) · [다음: 메타데이터 카탈로그 →](metadata-catalog.md)

@@ -48,7 +48,7 @@ flowchart LR
 - 장애 근거 로그 네임스페이스 귀속 필터 및 집계 재계산 (근거 1,180줄 → 240줄, 66.8KB → 13.3KB)
 - 노드 지표 수집기(node-collector) 개발
 
-→ [수집 완전성 계약](docs/portfolio/01-collection-contract.md) · [수집 한도 설계](docs/portfolio/02-collection-limits.md) · [근거의 귀속 범위](docs/portfolio/11-evidence-scope.md)
+→ [수집 완전성 계약](docs/portfolio/collection-contract.md) · [수집 한도 설계](docs/portfolio/collection-limits.md) · [근거의 귀속 범위](docs/portfolio/evidence-scope.md)
 
 ### 배치 파이프라인 및 재처리 · 개인
 
@@ -60,7 +60,7 @@ flowchart LR
 - 재수집 범위 4개 소스 → 실패한 1개
 - 고장 주입 시연 3종 (소스 실패 / 스키마 드리프트 / 중복 적재)
 
-→ [배치 설계](docs/portfolio/05-airflow-pipeline.md) · [검사는 어디서 돌아야 하는가](docs/portfolio/15-where-checks-run.md) · 확인 `make demo-fail-source`
+→ [배치 설계](docs/portfolio/airflow-pipeline.md) · [검사는 어디서 돌아야 하는가](docs/portfolio/where-checks-run.md) · 확인 `make demo-fail-source`
 
 ### 메타데이터 카탈로그 설계 · 개인
 
@@ -70,21 +70,21 @@ flowchart LR
 - 유일 제약 8종으로 멱등 적재 보장 (재시도 · backfill 중복 차단)
 - 리니지 간선에 확인 시각 저장, 정규화 행 → S3 원본 역추적
 - 실시간 3-state와 배치 4-state 상태 어휘 매핑 정의
-- 외부 데이터 카탈로그 도구 미도입 결정 (자산 6종 규모에서 운영 비용이 이득을 초과. 자체 카탈로그 구축과의 구분은 [범위 결정](docs/portfolio/09-scope-decisions.md) 참조)
+- 외부 데이터 카탈로그 도구 미도입 결정 (자산 6종 규모에서 운영 비용이 이득을 초과. 자체 카탈로그 구축과의 구분은 [범위 결정](docs/portfolio/scope-decisions.md) 참조)
 
-→ [메타데이터 카탈로그](docs/portfolio/04-metadata-catalog.md) · [기술 리서치](docs/portfolio/08-tech-research.md) · 확인 `make demo-drift`
+→ [메타데이터 카탈로그](docs/portfolio/metadata-catalog.md) · [기술 리서치](docs/portfolio/tech-research.md) · 확인 `make demo-drift`
 
 ### 데이터 품질 검증 · 개인
 
 - 정합성 검사 SQL 8본 + 조회 SQL 2본 (재귀 CTE / 윈도 함수 / FULL OUTER JOIN / IS DISTINCT FROM)
-- 검사 6종 (소스 커버리지 / 필수 필드 누락 / 스키마 드리프트 / 최신성 SLA / 리니지 단절 / 실행 정합성)
+- 검사 8종 (소스 커버리지 / 필수 필드 누락 / 스키마 드리프트 / 버전 미갱신 변경 / 최신성 SLA / 리니지 단절 / 실행 정합성 / 중복 적재 후보) + 조회 질의 2종
 - 통과 · 실패 결과 모두 적재 (검사하지 않은 것과 검사해서 통과한 것을 구분)
 - 관측 60만 행 기준 검사 질의 인덱스 설계 (검사 전체 424.5ms → 150.0ms, 드리프트 110.9ms → 2.5ms)
 - 관측 470만 행 / 3.4GB 까지 부하 특성 측정 (합계 2,590ms, 병목 질의 1종이 80% 차지, 개선안 1.76배 검증)
 - 오탐 검증 포함 15항목 자동 검증 (정상 데이터에서 모든 검사 0행 확인)
 - 카탈로그 계층 단위 테스트 24종
 
-→ [검사 SQL 열 개](docs/portfolio/06-sql-quality-checks.md) · [측정과 한계](docs/portfolio/16-load-and-design-limits.md) · 확인 `make catalog-sql` `make catalog-bench`
+→ [검사 SQL 열 개](docs/portfolio/sql-quality-checks.md) · [측정과 한계](docs/portfolio/load-and-design-limits.md) · 확인 `make catalog-sql` `make catalog-bench`
 
 ### 조회 API 및 MCP · 팀 + 개인
 
@@ -95,7 +95,7 @@ flowchart LR
 - Gateway API 상한값 상수 단일 출처 (91줄, 단독 작성)
 - 자연어 → SQL 생성 기능 제외 결정 (생성 질의의 정확성 검증 수단 부재)
 
-→ [조회 API와 MCP](docs/portfolio/07-catalog-api-mcp.md) · [설정 참조 조회 API](docs/portfolio/03-config-reference-api.md) · 확인 `make catalog-mcp`
+→ [조회 API와 MCP](docs/portfolio/catalog-api-mcp.md) · [설정 참조 조회 API](docs/portfolio/config-reference-api.md) · 확인 `make catalog-mcp`
 
 ---
 
@@ -128,7 +128,7 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 ## 한계
 
 - 조회 API 가 Secret 값을 반환하지 않을 뿐, 스냅샷 저장소와 S3 원본에는 값이 남습니다
-- 관측 470만 행 / 3.4GB 까지 측정했습니다. 그 지점에서 검사 8종 합계 2,590ms 이고 그중 80% 를 중복 적재 검사 하나가 씁니다. 정확성을 위해 전체 스캔을 감수한 결과이며, 2단계 질의로 1.76배 줄어드는 것까지 확인했으나 아직 적용하지 않았습니다. 수억 행 규모는 외삽할 수 없습니다 — [측정과 한계](docs/portfolio/16-load-and-design-limits.md)
+- 관측 470만 행 / 3.4GB 까지 측정했습니다. 그 지점에서 검사 8종 합계 2,590ms 이고 그중 80% 를 중복 적재 검사 하나가 씁니다. 정확성을 위해 전체 스캔을 감수한 결과이며, 2단계 질의로 1.76배 줄어드는 것까지 확인했으나 아직 적용하지 않았습니다. 수억 행 규모는 외삽할 수 없습니다 — [측정과 한계](docs/portfolio/load-and-design-limits.md)
 - 관측 데이터에 보존 정책이 없습니다. 상한이 없어 계속 쌓입니다. 계층형 보존과 롤업 설계는 문서에 있으나 구현하지 않았습니다
 - 실제로 반복 사용한 사용자가 없습니다. 시연에 성공한 것과 쓰인 것은 다릅니다. 다만 7월 AWS 원장에 로그 수집 64.35GB, LoadBalancer 2,150시간, 공인 IPv4 8,179시간이 남아 있어 한 달 가까이 가동된 것은 확인됩니다 — [청구 원장](docs/evidence/aws-bill-2026-07/)
 - 카탈로그가 다루는 것은 이 프로젝트가 만드는 운영 데이터 6종입니다. 외부 업무 시스템 연동은 조사까지만 했습니다
@@ -141,20 +141,18 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 
 | | |
 |---|---|
-| [수집 완전성 계약](docs/portfolio/01-collection-contract.md) | 빈 목록 다섯 가지를 어떻게 나눴나 |
-| [수집 한도 설계](docs/portfolio/02-collection-limits.md) | 어떤 순서로 잘랐나 |
-| [설정 참조 조회 API](docs/portfolio/03-config-reference-api.md) | 열거에서 카나리로 |
-| [메타데이터 카탈로그](docs/portfolio/04-metadata-catalog.md) | 13개 테이블과 검사 6종 |
-| [배치 파이프라인](docs/portfolio/05-airflow-pipeline.md) | 부분 실패를 어떻게 보존하나 |
-| [검사 SQL 열 개](docs/portfolio/06-sql-quality-checks.md) | 질의별 설계와 측정 |
-| [조회 API 와 MCP](docs/portfolio/07-catalog-api-mcp.md) | 응답 경계와 권한 |
-| [기술 리서치](docs/portfolio/08-tech-research.md) | 쓰지 않기로 한 것들 |
-| [범위 판단](docs/portfolio/09-scope-decisions.md) | 만들었지만 걷어낸 것 |
-| [엔지니어링 로그](docs/portfolio/10-engineering-log.md) | 판단이 바뀐 지점 |
-| [근거의 귀속 범위](docs/portfolio/11-evidence-scope.md) | 로그를 무엇으로 걸렀나 |
-| [카탈로그 구현 계획과 진행 상태](docs/portfolio/12a-catalog-implementation-plan.md) | 무엇이 완료·부분·계획인가 |
+| [수집 완전성 계약](docs/portfolio/collection-contract.md) | 빈 목록 다섯 가지를 어떻게 나눴나 |
+| [수집 한도 설계](docs/portfolio/collection-limits.md) | 어떤 순서로 잘랐나 |
+| [설정 참조 조회 API](docs/portfolio/config-reference-api.md) | 열거에서 카나리로 |
+| [메타데이터 카탈로그](docs/portfolio/metadata-catalog.md) | 13개 테이블과 검사 8종 |
+| [배치 파이프라인](docs/portfolio/airflow-pipeline.md) | 부분 실패를 어떻게 보존하나 |
+| [검사 SQL 열 개](docs/portfolio/sql-quality-checks.md) | 질의별 설계와 측정 |
+| [조회 API 와 MCP](docs/portfolio/catalog-api-mcp.md) | 응답 경계와 권한 |
+| [기술 리서치](docs/portfolio/tech-research.md) | 쓰지 않기로 한 것들 |
+| [범위 판단](docs/portfolio/scope-decisions.md) | 만들었지만 걷어낸 것 |
+| [엔지니어링 로그](docs/portfolio/engineering-log.md) | 판단이 바뀐 지점 |
 | [AWS 청구 원장 재확인](docs/evidence/aws-bill-2026-07/) | 7월 청구서 콘솔 캡처와 대조 |
-| [검사는 어디서 돌아야 하는가](docs/portfolio/15-where-checks-run.md) | 무엇만 배치여야 하는지와 이동 계획 |
-| [측정과 한계](docs/portfolio/16-load-and-design-limits.md) | 어디까지 재봤고 어디서 먼저 무너지는가 |
+| [검사는 어디서 돌아야 하는가](docs/portfolio/where-checks-run.md) | 무엇만 배치여야 하는지와 이동 계획 |
+| [측정과 한계](docs/portfolio/load-and-design-limits.md) | 어디까지 재봤고 어디서 먼저 무너지는가 |
 
 크래프톤 정글 SW-AI Lab 22주 과정을 수료했습니다.

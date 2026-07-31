@@ -29,7 +29,7 @@ Data Foundation 엔지니어 지원
 
 원인 판정, GitOps 복구, 프론트엔드와 EKS 배포는 5인 팀의 공동 결과입니다.
 
-[코드·커밋·테스트 근거](portfolio/00-source-and-ownership.md)
+[코드·커밋·테스트 근거](portfolio/source-and-ownership.md)
 
 ## Skills
 

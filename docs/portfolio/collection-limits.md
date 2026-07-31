@@ -1,6 +1,6 @@
-[← Kyro로 돌아가기](../../README.md) · [← 01](01-collection-contract.md)
+[← Kyro로 돌아가기](../../README.md) · [← 01](collection-contract.md)
 
-# 02. 잘라도 되지만 숨기면 안 됩니다
+# 잘라도 되지만 숨기면 안 됩니다
 
 > **수집 계층** · 5인 팀 프로젝트 · 담당: 수집 한도·잘림 계약
 
@@ -16,7 +16,7 @@
 
 **한쪽으로 쏠립니다.** 목록이 그룹 순서로 정렬돼 있으면 뒤쪽 그룹은 한 건도 못 들어옵니다. A팀 서버만 잔뜩 나오고 B팀은 통째로 빠집니다.
 
-**받는 쪽이 전부라고 착각합니다.** 그리고 이게 더 위험합니다. [01번 문서](01-collection-contract.md)의 삭제 오인 경로가 여기서 생깁니다.
+**받는 쪽이 전부라고 착각합니다.** 그리고 이게 더 위험합니다. [관련 문서](collection-contract.md)의 삭제 오인 경로가 여기서 생깁니다.
 
 ---
 
@@ -62,7 +62,7 @@ INVENTORY_RESOURCE_MAX_LIMIT     = 1000  # 명시적으로 요청해야 최대�
 
 ## 10분 — 코드와 검증
 
-같은 로직이 네 곳에 흩어지는 것을 보고 공통 모듈로 뽑았습니다. 그 과정은 [10번 문서](10-engineering-log.md#2-한도를-네-번-조인-새벽)에 커밋 단위로 있습니다.
+같은 로직이 네 곳에 흩어지는 것을 보고 공통 모듈로 뽑았습니다. 그 과정은 [관련 문서](engineering-log.md#2-한도를-네-번-조인-새벽)에 커밋 단위로 있습니다.
 
 → [`src/services/target/cluster-agent/providers/collection_limits.py`](../../src/services/target/cluster-agent/providers/collection_limits.py)
 
@@ -123,8 +123,8 @@ sequenceDiagram
 
 - 상한 값은 실제 측정이 아니라 보수적 추정으로 정했습니다. 서버 규모별 부하 측정은 못 했습니다
 - **이 한도는 상한 약속이지 처리 능력의 근거가 아닙니다.** 대용량 처리 경험으로 설명하지 않습니다
-- 상한 너머 자료에 도달할 방법이 이 계층에는 없습니다. [03번 문서](03-config-reference-api.md)의 조회 API에서만 붙였습니다
+- 상한 너머 자료에 도달할 방법이 이 계층에는 없습니다. [관련 문서](config-reference-api.md)의 조회 API에서만 붙였습니다
 
 ---
 
-[← Kyro로 돌아가기](../../README.md) · [다음: 비밀번호를 빼고 관계만 보여주기 →](03-config-reference-api.md)
+[← Kyro로 돌아가기](../../README.md) · [다음: 비밀번호를 빼고 관계만 보여주기 →](config-reference-api.md)

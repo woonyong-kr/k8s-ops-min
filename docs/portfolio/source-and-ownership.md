@@ -133,4 +133,4 @@ Airflow normal dags test: SUCCESS (7 task instances)
 
 ---
 
-[다음: 빈 결과와 실패를 구분하기 →](01-collection-contract.md)
+[다음: 빈 결과와 실패를 구분하기 →](collection-contract.md)

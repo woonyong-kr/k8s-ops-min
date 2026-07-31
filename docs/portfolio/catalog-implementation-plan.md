@@ -1,6 +1,6 @@
-[← Kyro로 돌아가기](../../README.md) · [← 12](12-data-foundation-fit.md)
+[← Kyro로 돌아가기](../../README.md) · [← 12](data-foundation-fit.md)
 
-# 12a. 카탈로그 구현 계획과 진행 상태
+# 카탈로그 구현 계획과 진행 상태
 
 팀 프로젝트는 **수집하는 순간**의 완전성만 다뤘습니다. 수집이 성공한 뒤가 비어 있었습니다. 그 공백을 메우려고 종료 후 개인 작업으로 세운 계획과, 지금 어디까지 왔는지를 적었습니다.
 
@@ -20,7 +20,7 @@
 | 소유자·분류를 별도 테이블로 분리 | 계획 | 자산 6종·팀 하나 규모에서는 조인 비용이 이득을 넘습니다 |
 | 인덱스 설계 | 완료 | `make catalog-bench` |
 
-테이블 13개입니다. 설계 근거는 [카탈로그 문서](04-metadata-catalog.md)에 있습니다.
+테이블 13개입니다. 설계 근거는 [카탈로그 문서](metadata-catalog.md)에 있습니다.
 
 ## 2. 배치 파이프라인
 
@@ -84,4 +84,4 @@ JD 의 SAP·Salesforce·사내 DB 같은 업무 시스템 연동은 **하지 않
 
 ---
 
-[← 12. Data Foundation 연결](12-data-foundation-fit.md)
+[← 12. Data Foundation 연결](data-foundation-fit.md)
