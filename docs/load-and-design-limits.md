@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md)
+[← Kyro로 돌아가기](../README.md)
 
 # 어디까지 재봤고 어디서 무너지는가
 
@@ -358,7 +358,7 @@ MCP 도구   list_data_sources / search_assets / get_asset_schema
 
 ## 실제로 얼마나 돌았나
 
-부하는 못 쟀지만 **가동 이력은 남아 있습니다.** 2026년 7월 AWS 청구 원장입니다.
+부하는 못 쟀지만 **가동 이력은 남아 있습니다.** 2026년 7월 AWS 청구서입니다.
 
 | 항목 | 사용량 |
 |---|---|
@@ -372,7 +372,7 @@ MCP 도구   list_data_sources / search_assets / get_asset_schema
 
 **반복 사용자를 확보했다는 뜻은 아닙니다.** 다만 "시연 한 번 하고 껐다"와는 다릅니다.
 
-→ 콘솔 캡처: [AWS 청구 원장 재확인](../evidence/aws-bill-2026-07/README.md)
+→ 콘솔 캡처: [AWS 청구서 다시 확인](evidence/aws-bill-2026-07/README.md)
 
 ---
 
@@ -399,4 +399,4 @@ MCP 도구   list_data_sources / search_assets / get_asset_schema
 
 ---
 
-[← Kyro](../../README.md) · [검사 SQL 열 개](sql-quality-checks.md) · [검사는 어디서 돌아야 하는가](where-checks-run.md)
+[← Kyro](../README.md) · [검사 SQL 열 개](sql-quality-checks.md) · [검사는 어디서 돌아야 하는가](where-checks-run.md)

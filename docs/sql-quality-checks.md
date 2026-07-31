@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 05](airflow-pipeline.md)
+[← Kyro로 돌아가기](../README.md) · [← 05](airflow-pipeline.md)
 
 # SQL 정합성 질의
 
@@ -12,7 +12,7 @@
 
 Python은 질의를 실행하고 결과를 `quality_results`에 적재하는 역할만 합니다.
 
-→ [`sql/quality/`](../../sql/quality/)
+→ [`sql/quality/`](../sql/quality/)
 
 ---
 
@@ -41,7 +41,7 @@ Python은 질의를 실행하고 결과를 `quality_results`에 적재하는 역
 
 ### 01. 소스 커버리지
 
-→ [`sql/quality/01_source_coverage.sql`](../../sql/quality/01_source_coverage.sql)
+→ [`sql/quality/01_source_coverage.sql`](../sql/quality/01_source_coverage.sql)
 
 ```sql
 -- 등록된 소스와 실제 실행을 대조한다.
@@ -108,7 +108,7 @@ WHERE (enabled AND runs_in_window = 0)
 
 ### 02. 필수 필드 누락
 
-→ [`sql/quality/02_required_field.sql`](../../sql/quality/02_required_field.sql)
+→ [`sql/quality/02_required_field.sql`](../sql/quality/02_required_field.sql)
 
 ```sql
 -- 자산 계약에 required로 등록된 필드가 실제 행에 없는 경우를 찾는다.
@@ -150,7 +150,7 @@ ORDER BY violation_count DESC;
 
 ### 03. 스키마 드리프트
 
-→ [`sql/quality/03_schema_drift.sql`](../../sql/quality/03_schema_drift.sql)
+→ [`sql/quality/03_schema_drift.sql`](../sql/quality/03_schema_drift.sql)
 
 ```sql
 -- 등록 계약과 실제 관측 필드를 양방향으로 대조한다.
@@ -201,7 +201,7 @@ WHERE o.field_path IS NULL
 
 ### 04. 버전을 올리지 않은 변경
 
-→ [`sql/quality/04_unversioned_change.sql`](../../sql/quality/04_unversioned_change.sql)
+→ [`sql/quality/04_unversioned_change.sql`](../sql/quality/04_unversioned_change.sql)
 
 ```sql
 -- 스키마가 바뀌면 버전을 올리는 것이 규칙이다. 규칙을 지키지 않은 변경이 진짜 문제다.
@@ -227,7 +227,7 @@ HAVING COUNT(DISTINCT o.schema_hash) > 1;
 
 ### 05. 최신성 위반
 
-→ [`sql/quality/05_freshness.sql`](../../sql/quality/05_freshness.sql)
+→ [`sql/quality/05_freshness.sql`](../sql/quality/05_freshness.sql)
 
 ```sql
 -- 자산 단위로 마지막 관측 시각을 본다.
@@ -272,7 +272,7 @@ WHERE l.last_observed_at IS NULL
 
 ### 06. 리니지 단절
 
-→ [`sql/quality/06_lineage_break.sql`](../../sql/quality/06_lineage_break.sql)
+→ [`sql/quality/06_lineage_break.sql`](../sql/quality/06_lineage_break.sql)
 
 ```sql
 -- 세 가지를 함께 잡는다.
@@ -308,7 +308,7 @@ WHERE r.finished_at < (:logical_ts - INTERVAL '7 days');
 
 ### 07. 실행 정합성
 
-→ [`sql/quality/07_run_consistency.sql`](../../sql/quality/07_run_consistency.sql)
+→ [`sql/quality/07_run_consistency.sql`](../sql/quality/07_run_consistency.sql)
 
 ```sql
 -- 실행이 실제보다 좋게 기록된 경우를 찾는다.
@@ -372,7 +372,7 @@ WHERE d.logical_date = :logical_date
 
 ### 08. 중복 적재 후보
 
-→ [`sql/quality/08_duplicate_candidates.sql`](../../sql/quality/08_duplicate_candidates.sql)
+→ [`sql/quality/08_duplicate_candidates.sql`](../sql/quality/08_duplicate_candidates.sql)
 
 ```sql
 -- 같은 대상이 서로 다른 실행에서 다시 적재된 경우를 찾는다.
@@ -418,7 +418,7 @@ ORDER BY observation_count DESC;
 
 ### 90. 리소스별 최신 상태
 
-→ [`sql/quality/90_latest_state.sql`](../../sql/quality/90_latest_state.sql)
+→ [`sql/quality/90_latest_state.sql`](../sql/quality/90_latest_state.sql)
 
 ```sql
 -- 리소스별로 가장 최근 관측 행 하나를 고른다.
@@ -466,7 +466,7 @@ WHERE rn = 1;
 
 ### 91. 리니지 역추적
 
-→ [`sql/quality/91_lineage_trace.sql`](../../sql/quality/91_lineage_trace.sql)
+→ [`sql/quality/91_lineage_trace.sql`](../sql/quality/91_lineage_trace.sql)
 
 ```sql
 -- 정규화 자산에서 원본 자산까지 경로를 거슬러 올라간다.
@@ -549,7 +549,7 @@ ORDER BY u.origin, u.ancestor, u.depth, c.finished_at DESC NULLS LAST, u.run_id 
 
 **08번을 고치기 전에는 이 질의가 전체의 52% 를 쓰면서 아무것도 잡지 못했습니다.** 사유는 위 [08번 항목](#08-중복-적재-후보)에 있습니다.
 
-→ 벤치마크 코드: [`scripts/catalog_bench.py`](../../scripts/catalog_bench.py)
+→ 벤치마크 코드: [`scripts/catalog_bench.py`](../scripts/catalog_bench.py)
 
 ---
 

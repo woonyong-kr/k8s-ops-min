@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md)
+[← Kyro로 돌아가기](../README.md)
 
 # 기여와 근거
 
@@ -112,18 +112,10 @@
 
 여섯 조건을 모두 통과했습니다. 다만 통과가 곧 운영은 아닙니다 — 실제 사용자가 이 API 를 호출한 적이 없고, 인가는 MCP 가 올바른 토큰을 보내는 데까지만 검증되어 있습니다. API 가 그 토큰으로 권한을 판정하는 경로는 아직 없습니다.
 
-## 이력서에 지금 쓸 수 있는 세 문장
-
-- Kubernetes API·Prometheus·Loki·Tempo의 서로 다른 응답을 공통 evidence 계약으로 정규화하고, 개수·크기 상한과 잘림 상태를 함께 전달했다.
-- 불완전하거나 잘린 inventory snapshot이 실제 삭제 근거로 쓰이지 않도록 수집 범위와 삭제 권위를 분리했다.
-- Deployment의 ConfigMap·Secret 참조 관계만 반환하는 FastAPI를 구현하고, 원문 값 비노출과 비정상적으로 큰 입력의 경계를 테스트했다.
-
-Airflow·데이터 카탈로그·카탈로그 MCP 는 위 승격 조건을 통과했으므로 기술 목록에 넣되, **팀 프로젝트 성과와 섞지 않고 프로젝트 종료 후 개인 작업으로 따로 적습니다.**
-
 ## 현재 검증 결과
 
 ```text
-550 tests: 549 passed, 1 skipped
+전체 테스트: 621종 수집
 PostgreSQL catalog verification: 15/15 passed
 Airflow DAG import errors: 0
 Airflow normal dags test: SUCCESS (7 task instances)

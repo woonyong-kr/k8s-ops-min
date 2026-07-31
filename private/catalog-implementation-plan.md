@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 12](data-foundation-fit.md)
+[← Kyro로 돌아가기](../README.md) · [← 12](data-foundation-fit.md)
 
 # 카탈로그 구현 계획과 진행 상태
 
@@ -20,7 +20,7 @@
 | 소유자·분류를 별도 테이블로 분리 | 계획 | 자산 6종·팀 하나 규모에서는 조인 비용이 이득을 넘습니다 |
 | 인덱스 설계 | 완료 | `make catalog-bench` |
 
-테이블 13개입니다. 설계 근거는 [카탈로그 문서](metadata-catalog.md)에 있습니다.
+테이블 13개입니다. 설계 근거는 [카탈로그 문서](../docs/metadata-catalog.md)에 있습니다.
 
 ## 2. 배치 파이프라인
 

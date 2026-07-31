@@ -19,7 +19,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 SQL_DIR = ROOT / "sql" / "quality"
-DOCS = ROOT / "docs" / "portfolio"
+DOCS = ROOT / "docs"
 README = ROOT / "README.md"
 
 

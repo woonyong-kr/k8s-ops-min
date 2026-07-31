@@ -21,6 +21,7 @@ NOW = datetime(2026, 7, 20, 3, 0, tzinfo=UTC)
 def client(engine):
     with engine.begin() as conn:
         conn.execute(text("DELETE FROM catalog_quality_results"))
+        conn.execute(text("DELETE FROM catalog_data_assets"))
         conn.execute(text("DELETE FROM catalog_dag_runs"))
         conn.execute(text("DELETE FROM catalog_data_sources"))
         conn.execute(
@@ -112,3 +113,42 @@ def test_잘못된_날짜_형식은_거부한다(client):
 
 def test_없는_자산은_404(client):
     assert client.get("/v1/catalog/assets/없는자산").status_code == 404
+
+
+def test_자산_검색이_동작한다(client, engine):
+    """이 엔드포인트에 테스트가 없어서 바인드 타입 누락으로 500 이던 것을 못 잡았다."""
+    from sqlalchemy import text as _t
+    with engine.begin() as conn:
+        conn.execute(_t("DELETE FROM catalog_data_assets"))
+        conn.execute(
+            _t(
+                "INSERT INTO catalog_data_assets "
+                "(asset_id, source_id, qualified_name, asset_type, freshness_sla_seconds, "
+                "classification, owner, current_schema_version, created_at) "
+                "VALUES ('a1','loki','loki.log_stream','stream',3600,'internal','platform',1,:t), "
+                "       ('a2','tempo','tempo.trace','stream',3600,'internal','platform',1,:t)"
+            ),
+            {"t": NOW},
+        )
+    assert client.get("/v1/catalog/assets").status_code == 200
+    body = client.get("/v1/catalog/assets", params={"q": "loki"}).json()
+    assert [r["qualified_name"] for r in body["data"]] == ["loki.log_stream"]
+
+
+def test_자산_검색을_원천으로_거른다(client, engine):
+    from sqlalchemy import text as _t
+    with engine.begin() as conn:
+        conn.execute(_t("DELETE FROM catalog_data_assets"))
+        conn.execute(
+            _t(
+                "INSERT INTO catalog_data_assets "
+                "(asset_id, source_id, qualified_name, asset_type, freshness_sla_seconds, "
+                "classification, owner, current_schema_version, created_at) "
+                "VALUES ('a1','loki','loki.log_stream','stream',3600,'internal','platform',1,:t), "
+                "       ('a2','tempo','tempo.trace','stream',3600,'internal','platform',1,:t)"
+            ),
+            {"t": NOW},
+        )
+    body = client.get("/v1/catalog/assets", params={"source": "tempo"}).json()
+    assert [r["asset_id"] for r in body["data"]] == ["a2"]
+    assert body["page"]["total_estimated"] == 1

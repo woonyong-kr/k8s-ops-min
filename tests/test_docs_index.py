@@ -1,7 +1,9 @@
 import re
 from pathlib import Path
 
-DOCS_ROOT = Path(__file__).resolve().parents[1] / "docs"
+# 내부 문서 지도는 private/ 에 있다. docs/ 는 외부 공개용 색인이라
+# 내부 키워드(command, RCA, Safe PR 등)를 담지 않는다.
+DOCS_ROOT = Path(__file__).resolve().parents[1] / "private"
 README = DOCS_ROOT / "README.md"
 
 REQUIRED_KEYWORDS = (
@@ -34,10 +36,10 @@ LOCAL_MD_LINK = re.compile(r"\[[^\]]+\]\(([^)]+\.md(?:#[^)]+)?)\)")
 
 
 def test_docs_readme_links_all_docs_within_three_levels() -> None:
-    assert README.exists(), "docs/README.md must be the documentation root"
+    assert README.exists(), "private/README.md must be the internal documentation root"
 
     docs = sorted(path.resolve() for path in DOCS_ROOT.rglob("*.md") if path != README)
-    assert docs, "docs/README.md should link at least one docs/*.md file"
+    assert docs, "private/README.md should link at least one private/*.md file"
 
     seen: dict[Path, int] = {README.resolve(): 0}
     queue = [README.resolve()]
@@ -52,13 +54,13 @@ def test_docs_readme_links_all_docs_within_three_levels() -> None:
                 queue.append(target)
 
     missing = [str(path.relative_to(DOCS_ROOT)) for path in docs if path not in seen]
-    assert not missing, "docs/README.md is missing <=3-level links to: " + ", ".join(missing)
+    assert not missing, "private/README.md is missing <=3-level links to: " + ", ".join(missing)
 
 
 def test_docs_readme_keyword_entrypoints() -> None:
     text = README.read_text(encoding="utf-8")
     missing = [keyword for keyword in REQUIRED_KEYWORDS if keyword not in text]
-    assert not missing, f"docs/README.md missing keyword entrypoints: {', '.join(missing)}"
+    assert not missing, f"private/README.md missing keyword entrypoints: {', '.join(missing)}"
 
 
 def test_docs_avoid_forbidden_external_product_terms() -> None:

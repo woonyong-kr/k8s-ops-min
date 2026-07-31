@@ -1,56 +1,67 @@
-# Docs
+[← 저장소로 돌아가기](../README.md)
 
-> 기준: 현재 저장소 코드와 반복 점검에서 통과한 `make manifest-check`, `make check` 결과를 문서의 source of truth로 둔다.
+# 문서
 
-이 문서는 문서 루트이자 위키형 진입점이다. 새 문서를 추가하면 이 파일의 문서 목록과 키워드 표에 함께 연결한다.
+이 폴더는 **판단의 근거**를 담습니다. 무엇을 만들었는지는 코드가 말하고, 왜 그렇게 만들었는지는 여기 있습니다.
 
-## 역할별 진입점
+전부 읽을 필요는 없습니다. 아래 셋 중 관심 가는 곳부터 보시면 됩니다.
 
-- 민정: [Golden Path](./GOLDEN-PATH.md)에서 image pull 장애가 evidence, RCA, Safe PR, verification으로 이어지는 순서를 따라간다.
-- 가인: [Project Map](./PROJECT-MAP.md)에서 현재 runtime, route surface, worker composition, provider 경계를 먼저 확인한다.
-- 찬빈: [Cleanup Matrix](./CLEANUP-MATRIX.md)에서 command, dashboard, permission, GitOps 정리 우선순위와 삭제 gate를 확인한다.
+---
 
-현재 별도 민정/가인/찬빈 onboarding 문서는 없다. 따라서 전용 onboarding을 추가하기 전까지는 위 세 문서가 역할별 시작점이다.
+## 데이터 품질 · 카탈로그를 보신다면
 
-## 키워드 진입점
+수집이 성공한 뒤에 데이터가 조용히 어긋나는 것을 잡는 부분입니다.
 
-| 키워드 | 시작 문서 | 현재 기준 |
-|---|---|---|
-| command | [Cleanup Matrix](./CLEANUP-MATRIX.md) | 직접 cluster command는 PR-only 방향과 충돌하므로 default 경로에서 제거 대상으로 본다. |
-| target | [Project Map](./PROJECT-MAP.md) | `cluster-agent`와 target identity가 evidence 수집의 시작점이다. |
-| evidence | [Golden Path](./GOLDEN-PATH.md) | `cluster.evidence.received`에서 RCA 입력이 만들어진다. |
-| RCA | [Golden Path](./GOLDEN-PATH.md) | 규칙 기반 후보 계획, 평가, blocked/completed 판정을 source of truth로 둔다. |
-| Safe PR | [Golden Path](./GOLDEN-PATH.md) | `safe_pr.requested`부터 `safe_pr.created`까지 source authority와 diff policy를 통과해야 한다. |
-| dashboard | [Cleanup Matrix](./CLEANUP-MATRIX.md) | 대형 dashboard projection은 core Golden Path 밖으로 분리한다. |
-| permission | [Golden Path](./GOLDEN-PATH.md) | read-only agent, PR-only delivery, source authority 실패 처리가 안전 경계다. |
-| Bruno | 이 문서 | 현재 `docs/api` Bruno collection은 없다. 추가되면 `tests/test_bruno_collection.py`가 `.bru` 문법을 검사한다. |
-| AWS | [Cleanup Matrix](./CLEANUP-MATRIX.md) | 개인 AWS 배포·운영 경로는 공개 core에서 제거 대상으로 본다. |
-| event | [Project Map](./PROJECT-MAP.md) | event body와 subject registry, outbox/ledger/retry/DLQ 구조는 유지 대상이다. |
-| provider | [Project Map](./PROJECT-MAP.md) | telemetry와 SCM provider는 실제 adapter와 설정 경계를 문서화한다. |
-| worker | [Project Map](./PROJECT-MAP.md) | `src/services/**/app.py`의 handler가 현재 worker 설명의 기준이다. |
-| test | [Project Map](./PROJECT-MAP.md) | 반복 점검에서 확인한 gate는 `make manifest-check`와 `make check`다. |
-| GitOps | [Golden Path](./GOLDEN-PATH.md) | Opsia는 GitOps reconciler를 대체하지 않고 검토 가능한 source 변경 제안을 만든다. |
-| realtime | [Project Map](./PROJECT-MAP.md) | `realtime-gateway`는 browser/agent WebSocket 연결 표면이다. |
-| portfolio | [Portfolio Evidence Index](./portfolio/README.md) | 개인 기여, 후속 확장, AWS 비용 회고를 주장 강도와 함께 확인한다. |
-| network cost | [AWS·Git Evidence](./evidence/network-cost/README.md) | Cost Explorer·CloudWatch·Git 원장과 이미지의 단위·한계를 함께 확인한다. |
-| AWS bill | [2026년 7월 AWS 청구 원장](./evidence/aws-bill-2026-07/README.md) | 서비스별 시간 요금·데이터 처리 비용·크레딧 상계를 콘솔 화면으로 확인한다. |
-| quality check placement | [검사는 어디서 돌아야 하는가](./portfolio/where-checks-run.md) | 수집 시점·실행 직후·주기 실행·배치로 검사 위치를 분리한다. |
+- [검사 SQL 열 개 — 질의마다 왜 그 모양이고, 무엇을 잘못 만들었다가 고쳤나](sql-quality-checks.md)
+  질의 하나하나에 설계 근거가 붙어 있습니다. 유일 제약이 이미 막는 것을 다시 세고 있어서 어떤 데이터에서도 0행이던 검사를 찾아 고친 기록도 있습니다.
 
-## 문서 목록
+- [메타데이터 카탈로그 — 테이블 13개를 어떻게 나눴나](metadata-catalog.md)
+  등록 정보, 실행 이력, 관측 데이터를 나눈 이유와 유일 제약 11종. 나눈 기준이 나중에 성능까지 갈랐습니다.
 
-- [Project Map](./PROJECT-MAP.md): 현재 runtime, 디렉터리, domain, service, event architecture 지도.
-- [Golden Path](./GOLDEN-PATH.md): image pull 장애에서 Safe PR과 후속 evidence 검증까지의 좁은 성공 경로.
-- [Cleanup Matrix](./CLEANUP-MATRIX.md): KEEP/LATER/EXPERIMENT/DELETE 분류와 삭제 전 gate.
-- [Advanced Course Plan](./advanced-course-plan/README.md): 심화과정 팀 프로젝트·학습 계획과 개인별 제출 문서.
-- [Portfolio Evidence Index](./portfolio/README.md): 직접 기여, 종료 후 확장, 아키텍처 비용 회고.
-- [Resume Draft](./resume.md): 확인된 프로젝트 근거만 반영한 지원 이력서 초안.
-- [Development Timeline](./portfolio/development-timeline.md): 실패·리뷰·수정 과정을 커밋으로 복원한 기록.
-- [AWS·Git Network Evidence](./evidence/network-cost/README.md): Regional Transfer 원본 CSV, 재현 명령, 16:9 증거판.
-- [2026년 7월 AWS 청구 원장](./evidence/aws-bill-2026-07/README.md): 서비스 요금·점유 시간·크레딧 상계 콘솔 근거.
-- [검사는 어디서 돌아야 하는가](./portfolio/where-checks-run.md): 정합성 검사 8종의 실행 위치와 이동 계획.
+- [측정과 한계 — 어디까지 재봤고 어디서 먼저 무너지는가](load-and-design-limits.md)
+  관측 470만 행까지 재고 실행 계획을 뜯어봤습니다. 어느 질의가 먼저 무너지는지, 왜 그런지, 어떻게 고칠지까지.
 
-## 아직 없는 문서 표면
+- [검사는 어디서 돌아야 하는가](where-checks-run.md)
+  배치에 있으면 안 되는 검사를 가려낸 기준.
 
-- `docs/api`: Bruno collection이 아직 없다.
-- `docs/events.md`: 별도 event 문서는 아직 없으며 현재는 [Project Map](./PROJECT-MAP.md)과 [Golden Path](./GOLDEN-PATH.md)에 분산되어 있다.
-- 민정/가인/찬빈 전용 onboarding 문서: 아직 없다.
+## 수집 · 신뢰성을 보신다면
+
+원천에서 데이터를 가져올 때 "못 가져온 것"을 "없는 것"으로 만들지 않는 부분입니다.
+
+- [수집 완전성 계약 — 빈 목록 다섯 가지를 어떻게 나눴나](collection-contract.md)
+  원천이 빈 목록을 돌려줄 때, 정말 없는 것인지 못 가져온 것인지 구분하지 못하면 소비자가 잘린 목록을 삭제 근거로 씁니다.
+
+- [수집 한도 설계 — 무엇부터 버리고 어떻게 남기나](collection-limits.md)
+  응답 크기에 상한을 두되, 잘랐다는 사실과 원본 개수를 함께 돌려줍니다.
+
+- [배치 파이프라인 — 부분 실패를 어떻게 보존하나](airflow-pipeline.md)
+  네 원천 중 하나만 실패했을 때 나머지를 살리면서, 실패를 성공으로 덮지 않는 구조.
+
+## API · AI 연동을 보신다면
+
+- [조회 API 와 MCP — 응답 경계와 권한](catalog-api-mcp.md)
+  모델에게 카탈로그를 열어주되 권한을 좁혀 전달하고 응답 크기를 묶습니다. 무엇을 검증했고 무엇을 구현하지 않았는지 표로 나눠 뒀습니다.
+
+- [설정 참조 조회 API — Secret 값 대신 참조 관계만](config-reference-api.md)
+  "이 설정을 누가 쓰는가"에 답하면서 값은 내보내지 않는 방법.
+
+---
+
+## 판단이 바뀐 기록
+
+만들면서 생각이 달라진 지점들입니다. 결과보다 과정에 관심 있으시면 여기가 더 유용할 수 있습니다.
+
+- [엔지니어링 로그 — 처음 생각과 달라진 지점들](engineering-log.md)
+- [아키텍처 비용 회고 — Deployment 를 47개로 나눈 대가](architecture-cost-postmortem.md)
+- [기술 리서치 — 쓰지 않기로 한 것들과 그 근거](tech-research.md)
+- [범위 판단 — 만들었다가 걷어낸 것](scope-decisions.md)
+
+## 근거 자료
+
+- [AWS 청구서 다시 확인 — 7월 청구 내역과 문서 수치 대조](evidence/aws-bill-2026-07/README.md)
+- [네트워크 비용 — 29.68TB 가 어디서 나왔나](evidence/network-cost/README.md)
+
+## 기여 경계
+
+- [어디까지가 제 몫이고 어디부터 팀 코드인가](source-and-ownership.md)
+  5인 팀 프로젝트의 사본이라 이 구분이 먼저 필요합니다. 승격 조건과 남은 한계도 함께 적었습니다.

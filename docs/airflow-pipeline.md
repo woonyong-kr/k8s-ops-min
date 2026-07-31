@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 04](metadata-catalog.md)
+[← Kyro로 돌아가기](../README.md) · [← 04](metadata-catalog.md)
 
 # Airflow를 어디에 쓰고, 어디에 쓰지 않을 것인가
 
@@ -57,7 +57,7 @@ flowchart TD
 
 ## 현재 DAG의 구조
 
-→ [`dags/catalog_reconciliation_daily.py`](../../dags/catalog_reconciliation_daily.py)
+→ [`dags/catalog_reconciliation_daily.py`](../dags/catalog_reconciliation_daily.py)
 
 ```text
 extract.expand(kubernetes, prometheus, loki, tempo)
@@ -121,7 +121,7 @@ Airflow 내부 의존성을 SQLAlchemy 2로 강제 업그레이드하면 schedul
 
 ### sequential runner와 DAG가 같은 의미가 아닙니다
 
-[`scripts/catalog_run.py`](../../scripts/catalog_run.py)는 source를 한 번만 읽고 `archive → normalize → load → lineage → check` 순서로 실행합니다. 로직 함수를 Airflow 밖에서 시험할 수 있다는 장점은 있지만, 현재 DAG의 중복 조회와 task 재시도 의미까지 검증하지는 않습니다.
+[`scripts/catalog_run.py`](../scripts/catalog_run.py)는 source를 한 번만 읽고 `archive → normalize → load → lineage → check` 순서로 실행합니다. 로직 함수를 Airflow 밖에서 시험할 수 있다는 장점은 있지만, 현재 DAG의 중복 조회와 task 재시도 의미까지 검증하지는 않습니다.
 
 ## 상태 모델
 
@@ -150,7 +150,7 @@ source별 상태와 DAG 전체 상태를 분리합니다.
 - 한 source 실패를 전체 성공으로 기록하지 않는가
 - downstream이 실패했는데 적재 0건인 실행이 성공으로 남지 않는가
 
-이 질문을 [`scripts/catalog_verify.py`](../../scripts/catalog_verify.py)에 15개 검증 항목으로 작성했고 PostgreSQL에서 15/15 통과했습니다. Airflow에서는 import error 0건, 정상 실행 7개 task instance 전부 성공, 품질 위반 0건을 확인했습니다.
+이 질문을 [`scripts/catalog_verify.py`](../scripts/catalog_verify.py)에 15개 검증 항목으로 작성했고 PostgreSQL에서 15/15 통과했습니다. Airflow에서는 import error 0건, 정상 실행 7개 task instance 전부 성공, 품질 위반 0건을 확인했습니다.
 
 ## 완료 조건
 
@@ -169,4 +169,4 @@ source별 상태와 DAG 전체 상태를 분리합니다.
 
 ---
 
-[← Kyro로 돌아가기](../../README.md) · [다음: SQL 품질검사 →](sql-quality-checks.md)
+[← Kyro로 돌아가기](../README.md) · [다음: SQL 품질검사 →](sql-quality-checks.md)

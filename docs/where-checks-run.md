@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md)
+[← Kyro로 돌아가기](../README.md)
 
 # 검사는 어디서 돌아야 하는가
 
@@ -16,8 +16,8 @@
 
 | 위치 | 무엇 | 주기 |
 |---|---|---|
-| [`cluster-agent/evidence/jobs.py`](../../src/services/target/cluster-agent/evidence/jobs.py) `EvidenceJobScheduler` | provider별 근거 수집 | 기본 30초, 관리면 정책으로 런타임 변경 |
-| [`gitops/github-poll-worker/poller.py`](../../src/services/gitops/github-poll-worker/poller.py) | GitOps 저장소 폴링 | 환경변수로 설정 |
+| [`cluster-agent/evidence/jobs.py`](../src/services/target/cluster-agent/evidence/jobs.py) `EvidenceJobScheduler` | provider별 근거 수집 | 기본 30초, 관리면 정책으로 런타임 변경 |
+| [`gitops/github-poll-worker/poller.py`](../src/services/gitops/github-poll-worker/poller.py) | GitOps 저장소 폴링 | 환경변수로 설정 |
 
 특히 poller 에는 이런 주석이 있습니다.
 
@@ -72,7 +72,7 @@ SLA 가 1시간인 자산이 있는데 배치가 하루에 한 번 돌면, 위�
 
 ### 무엇이 문제였나
 
-[`scripts/catalog_run.py`](../../scripts/catalog_run.py) 가 extract → normalize → load → check 를 스스로 전부 했습니다. 그런데 cluster-agent 가 이미 30초마다 같은 원천을 수집하고 있습니다.
+[`scripts/catalog_run.py`](../scripts/catalog_run.py) 가 extract → normalize → load → check 를 스스로 전부 했습니다. 그런데 cluster-agent 가 이미 30초마다 같은 원천을 수집하고 있습니다.
 
 버그는 아니었습니다. fixture 에서 읽는 코드는 **실제 입력이 붙기 전의 자리 표시**였습니다. 문제는 [엔지니어링 로그](engineering-log.md)에 이렇게 적어 둔 것입니다.
 
@@ -92,7 +92,7 @@ SLA 가 1시간인 자산이 있는데 배치가 하루에 한 번 돌면, 위�
 
 ### 어떻게 고쳤나
 
-입력을 어댑터로 분리했습니다. → [`src/domains/datacatalog/sources.py`](../../src/domains/datacatalog/sources.py)
+입력을 어댑터로 분리했습니다. → [`src/domains/datacatalog/sources.py`](../src/domains/datacatalog/sources.py)
 
 | 어댑터 | 무엇을 읽나 | 언제 쓰나 |
 |---|---|---|
@@ -122,10 +122,10 @@ prometheus   5
 tempo        5
 ```
 
-어댑터 단위 테스트 9종은 [`tests/catalog/test_sources.py`](../../tests/catalog/test_sources.py) 에 있습니다. `kubernetes` 질의에 `evidence_windows` 가 섞이지 않는지, `uid` 가 없을 때 `namespace/name` 으로 떨어지는지, 하루치만 읽는지를 확인합니다.
+어댑터 단위 테스트 9종은 [`tests/catalog/test_sources.py`](../tests/catalog/test_sources.py) 에 있습니다. `kubernetes` 질의에 `evidence_windows` 가 섞이지 않는지, `uid` 가 없을 때 `namespace/name` 으로 떨어지는지, 하루치만 읽는지를 확인합니다.
 
 ```
-pytest tests/catalog -q   →   88 passed
+pytest tests/catalog -q   →   90 passed
 ```
 
 ### 아직 남은 것
@@ -148,4 +148,4 @@ pytest tests/catalog -q   →   88 passed
 
 ---
 
-[← Kyro](../../README.md) · [검사 SQL 열 개](sql-quality-checks.md) · [배치 설계](airflow-pipeline.md)
+[← Kyro](../README.md) · [검사 SQL 열 개](sql-quality-checks.md) · [배치 설계](airflow-pipeline.md)

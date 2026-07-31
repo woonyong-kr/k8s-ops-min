@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 06](sql-quality-checks.md)
+[← Kyro로 돌아가기](../README.md) · [← 06](sql-quality-checks.md)
 
 # 카탈로그 조회 API와 읽기 전용 MCP
 
@@ -20,7 +20,7 @@ GET  /v1/catalog/quality/issues              미해결 품질 이슈
 GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 ```
 
-→ [`src/domains/datacatalog/router.py`](../../src/domains/datacatalog/router.py)
+→ [`src/domains/datacatalog/router.py`](../src/domains/datacatalog/router.py)
 
 경로에 `/v1`을 둡니다. [관련 문서](collection-contract.md)에서 응답 계약에 버전이 없다고 적었는데, 그 구멍은 자산 스키마 버전이 아니라 **API 버전**으로 메워야 하는 것이었습니다. 자산의 `schema_version`은 데이터의 계약이지 응답의 계약이 아닙니다.
 
@@ -53,7 +53,7 @@ GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 
 **`evidence`가 항상 붙습니다.** `run_status`가 `PARTIAL`이면 **이 조회 결과 자체가 부분 데이터**라는 뜻입니다. 카탈로그가 "이슈 0건"이라고 답해도, 그 검사가 일부 소스를 못 봤다면 0건의 의미가 다릅니다. [관련 문서](collection-contract.md)의 원칙이 한 단계 위로 올라갑니다. 수집 결과의 완전성뿐 아니라 **검사 결과의 완전성**도 전달합니다.
 
-**`reason_codes`가 구조체다.** 처음에는 `"SOURCE_FAILED:loki"` 같은 문자열이었습니다. 소비자가 전부 `split(":")`을 쓰게 되고, 그 문자열은 LLM이 읽는 제어 필드이기도 하다. 코드와 대상을 분리했습니다. 코드 목록은 [`contracts/catalog/reason_codes.py`](../../src/packages/contracts/catalog/reason_codes.py)에 닫힌 열거로 둡니다.
+**`reason_codes`가 구조체다.** 처음에는 `"SOURCE_FAILED:loki"` 같은 문자열이었습니다. 소비자가 전부 `split(":")`을 쓰게 되고, 그 문자열은 LLM이 읽는 제어 필드이기도 하다. 코드와 대상을 분리했습니다. 코드 목록은 [`contracts/catalog/reason_codes.py`](../src/packages/contracts/catalog/reason_codes.py)에 닫힌 열거로 둡니다.
 
 **`page.next_cursor`가 있습니다.** 상한만 두고 페이지네이션이 없으면 상한 너머 데이터에 영원히 접근할 수 없습니다. [관련 문서](collection-limits.md)에서 잘림을 숨기지 않기로 했는데, **숨기지 않는 것과 도달할 수 있게 하는 것은 다릅니다.**
 
@@ -111,7 +111,7 @@ GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 | `list_quality_issues` | `/v1/catalog/quality/issues` | 지금 문제 있는 자산은 |
 | `get_run_status` | `/v1/catalog/runs` | 어제 배치는 잘 돌았나 |
 
-→ [`src/services/catalog_mcp/`](../../src/services/catalog_mcp/)
+→ [`src/services/catalog_mcp/`](../src/services/catalog_mcp/)
 
 ### 전송과 토큰 출처
 
@@ -128,7 +128,7 @@ flowchart LR
     MCP -.->|"자격증명 없음"| DB
 ```
 
-****지금은 stdio 로 만들었고, 주체는 프로세스 환경변수로 받습니다.** stdio 서버는 사용자 세션마다 새로 기동되므로 프로세스 하나가 곧 주체 하나입니다. 다만 이 방식은 기동 주체를 클라이언트가 정한다는 뜻이라, 여러 사용자가 한 프로세스를 공유하는 배치에서는 성립하지 않습니다. HTTP 전송으로 옮기면 요청마다 신원을 받을 수 있고 그때 이 제약이 사라집니다 — 아직 만들지 않았습니다.
+**지금은 stdio 로 만들었고, 주체는 프로세스 환경변수로 받습니다.** stdio 서버는 사용자 세션마다 새로 기동되므로 프로세스 하나가 곧 주체 하나입니다. 다만 이 방식은 기동 주체를 클라이언트가 정한다는 뜻이라, 여러 사용자가 한 프로세스를 공유하는 배치에서는 성립하지 않습니다. HTTP 전송으로 옮기면 요청마다 신원을 받을 수 있고 그때 이 제약이 사라집니다 — 아직 만들지 않았습니다.
 
 **토큰을 그대로 넘기지 않습니다.** 사용자 토큰을 받아 `aud=catalog-api`, `scope=catalog:read`, TTL 5분으로 교환한 뒤 그것으로 API를 호출합니다. 그대로 넘기면 LLM이 사람의 전체 권한 자격증명을 무인으로 들고 있게 됩니다. 형식적 권한이 같아도 실질 위험이 다릅니다.
 
@@ -214,14 +214,14 @@ flowchart LR
 | `result_count` / `result_bytes` | 반환 규모 |
 | `truncated` | 절단 여부 |
 | `correlation_id` | API 호출과 연결 |
-| `outcome` | ok · forbidden · rejected |
+| `outcome` | ok · 또는 거부 사유 코드 |
 
 `principal_sub`가 있어야 사고 후 "누가 읽었나"에 답할 수 있습니다. 세션 ID만 남기면 에이전트가 읽은 것만 알고 누구를 대신해 읽었는지는 모릅니다.
 
 ## 검증
 
 ```bash
-make catalog-test        # 카탈로그 계층 70종
+make catalog-test        # 카탈로그 계층 90종
 make catalog-mcp         # 도구 목록과 인자 스키마
 make catalog-mcp-serve   # stdio MCP 서버 기동 (주체 토큰 필요)
 make catalog-api         # 조회 API 기동

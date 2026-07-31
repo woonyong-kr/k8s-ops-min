@@ -166,8 +166,10 @@ def search_assets(
     그 한계는 07번 문서에 적어 두었다.
     """
     offset = decode_cursor(cursor)
-    where = "WHERE (:q IS NULL OR qualified_name ILIKE '%' || :q || '%') " \
-            "AND (:s IS NULL OR source_id = :s)"
+    # 바인드에 타입을 준다. 없으면 Postgres 가 파라미터 타입을 정하지 못해
+    # 이 엔드포인트가 어떤 입력에도 500 이 된다.
+    where = "WHERE (CAST(:q AS text) IS NULL OR qualified_name ILIKE '%' || :q || '%') " \
+            "AND (CAST(:s AS text) IS NULL OR source_id = :s)"
     params = {"q": q, "s": source, "l": limit, "o": offset}
     total = conn.execute(
         text(f"SELECT count(*) FROM catalog_data_assets {where}"), params

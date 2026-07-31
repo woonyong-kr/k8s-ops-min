@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_DOCS = (
     ROOT / "README.md",
     ROOT / "docs" / "resume.md",
-    *(ROOT / "docs" / "portfolio").glob("*.md"),
+    *(ROOT / "docs").glob("*.md"),
     *(ROOT / "docs" / "evidence" / "network-cost").glob("*.md"),
 )
 LOCAL_LINK = re.compile(r"\[[^\]]+\]\((?!https?://|mailto:)([^)#]+)(?:#[^)]+)?\)")
@@ -89,7 +89,7 @@ def evidence_drift() -> list[str]:
             encoding="utf-8"
         )
     )
-    benchmark_text = (ROOT / "docs/portfolio/architecture-cost-postmortem.md").read_text(
+    benchmark_text = (ROOT / "docs/architecture-cost-postmortem.md").read_text(
         encoding="utf-8"
     )
     for value in _benchmark_medians(benchmark):

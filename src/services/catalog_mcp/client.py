@@ -18,7 +18,7 @@ from typing import Any, Protocol
 from urllib.parse import quote
 
 from .session import Session
-from .sts import TokenExchangeError, TokenExchanger
+from .sts import ExchangedToken, TokenExchangeError, TokenExchanger
 
 
 class HttpTransport(Protocol):

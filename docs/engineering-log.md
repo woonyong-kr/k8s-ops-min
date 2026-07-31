@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 09](scope-decisions.md)
+[← Kyro로 돌아가기](../README.md) · [← 09](scope-decisions.md)
 
 # 엔지니어링 로그
 
@@ -44,7 +44,7 @@ payload가 한도를 넘기기 시작했습니다. 처음엔 터진 곳만 막�
 | 시각 | 커밋 | 무엇을 했나 |
 |---|---|---|
 | 04:28 | `fix: bound metadata evidence` | endpoint slices·service selectors·workload snapshots에 **각각** 한도 추가 |
-| 05:27 | `fix: bound evidence payload` | **[`collection_limits.py`](../../src/services/target/cluster-agent/providers/collection_limits.py) 신규.** kubernetes·prometheus provider에 적용 |
+| 05:27 | `fix: bound evidence payload` | **[`collection_limits.py`](../src/services/target/cluster-agent/providers/collection_limits.py) 신규.** kubernetes·prometheus provider에 적용 |
 | 05:39 | `fix: harden evidence payload` | 한도 강화 + 테스트 3파일 |
 | 06:01 | `fix: bound loki and tempo` | loki·tempo까지 확대 + 테스트 |
 
@@ -136,7 +136,7 @@ metadata provider를 확장하면서 문서에 필드 설명을 대량으로 추
 
 따라서 **커밋 수는 기여의 근거가 아닙니다.** 위에서 인용한 것은 판단이 바뀐 지점의 변경 내용이지 커밋 개수가 아닙니다.
 
-기여 범위는 파일 단위 blame과 코드 자체로 확인하는 편이 정확합니다. 담당 범위는 [README](../../README.md#1-이-계층이-푸는-문제)에 있습니다.
+기여 범위는 파일 단위 blame과 코드 자체로 확인하는 편이 정확합니다. 담당 범위는 [README](../README.md#1-이-계층이-푸는-문제)에 있습니다.
 
 ---
 
@@ -152,4 +152,4 @@ metadata provider를 확장하면서 문서에 필드 설명을 대량으로 추
 
 ---
 
-[← Kyro](../../README.md)
+[← Kyro](../README.md)

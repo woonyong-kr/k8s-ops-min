@@ -1,8 +1,8 @@
-# management·target Deployment 47개 이후, 29.68TB 청구 사용량을 해부했습니다
+# management·target Deployment 47개 이후, 29.68TB 청구 사용량을 뜯어봤습니다
 
-초기에는 장애 분석 단계를 작은 워커로 나누면 책임, 재시도, 장애 격리가 명확해진다고 판단했습니다. 논리적 경계로는 맞았지만, 그 경계를 거의 그대로 Kubernetes Deployment와 NATS 왕복으로 옮겼습니다. Git과 AWS 원장을 대조하자 코드 구조가 실행 비용으로 바뀌는 지점이 보였습니다.
+초기에는 장애 분석 단계를 작은 워커로 나누면 책임, 재시도, 장애 격리가 명확해진다고 판단했습니다. 논리적 경계로는 맞았지만, 그 경계를 거의 그대로 Kubernetes Deployment와 NATS 왕복으로 옮겼습니다. Git과 AWS 청구서을 대조하자 코드 구조가 실행 비용으로 바뀌는 지점이 보였습니다.
 
-이 회고는 개인 기여를 주장하는 문서가 아닙니다. 원본은 5인 팀 아키텍처이고 통합 controller는 프로젝트 종료 후 확장입니다. 직접 기여와 지원서 주장은 [기여와 근거](source-and-ownership.md)를 따릅니다.
+이 회고는 개인 기여를 주장하는 문서가 아닙니다. 원본은 5인 팀 아키텍처이고 통합 controller는 프로젝트 종료 후 확장입니다. 직접 기여와 지원서 주장은 [기여와 근거](source-and-ownership.md)를 지킵니다.
 
 ## 1. 처음 무엇을 얻으려고 했나
 
@@ -18,7 +18,7 @@ incident.detected
   → recovery.verification.updated
 ```
 
-모든 이벤트는 다음 봉투를 공유합니다.
+모든 이벤트는 다음 공통 응답를 공유합니다.
 
 ```text
 event_id          중복 처리 방지의 식별자
@@ -58,7 +58,7 @@ Git 각 날짜의 마지막 revision에서 `deploy/management/**`·`deploy/targe
 
 CloudTrail에서는 7월 4일 기존 management 1개와 target 2개를 만들고, 7월 18일 management/game/demo 3개로 교체한 기록을 확인했습니다. 교체 시점에는 기존과 신규 클러스터가 잠시 겹쳤습니다.
 
-## 3. AWS 원장은 무엇을 보여줬나
+## 3. AWS 청구서은 무엇을 보여줬나
 
 2026-08-01 Cost Explorer를 다시 조회한 결과입니다.
 
@@ -66,7 +66,7 @@ CloudTrail에서는 7월 4일 기존 management 1개와 target 2개를 만들고
 |---|---:|---|
 | Regional transfer 청구 사용량 | **29,683.72GB** | 송·수신 과금 방향 합계 |
 | Usage 비용 | **$296.83** | 크레딧 적용 전 사용 비용 |
-| Credit | **-$296.83** | 이번 계정의 프로모션 상계 |
+| Credit | **-$296.83** | 이번 계정의 프로모션 차감 |
 | 편도 상당량 | **14,841.86 billed GB** | 사용량÷2, byte·패킷 실측 아님 |
 | 최고일 | **07-22, 4,578.58GB / $45.79** | 전체의 15.4% |
 | 집중 구간 | **07-20~26, 22,295.89GB** | 전체의 75.1% |
@@ -89,7 +89,7 @@ CloudWatch의 노드그룹별 EC2 인터페이스 합계는 전송 방향을 좁
 
 시간상 상관관계는 있습니다. 배포 문서가 46개로 늘어난 7월 15일 사용량이 1,933.50GB로 뛰었고, 신규 3개 클러스터와 battlegrounds 노드그룹이 운영된 7월 20~26일에 전체의 75.1%가 발생했습니다.
 
-그러나 현재 원장에는 Pod별 flow log, NATS subject별 payload/throughput, AZ별 Pod 배치 이력이 없습니다. 추가로 분리 검증해야 할 트래픽 가설은 최소 둘입니다.
+그러나 현재 청구서에는 Pod별 flow log, NATS subject별 payload/throughput, AZ별 Pod 배치 이력이 없습니다. 추가로 분리 검증해야 할 트래픽 가설은 최소 둘입니다.
 
 1. management 내부에서 논리 단계마다 serialize → NATS → consumer → DB를 반복했을 가능성
 2. game 노드에서 infra 노드로 게임 데이터면 트래픽을 전달했을 가능성
@@ -171,34 +171,5 @@ game→infra는 프로세스 통합으로 해결할 문제가 아닙니다. 다�
 
 이 실험은 같은 프로세스 안의 논리 단계를 NATS로 왕복시킬 이유가 있는지 판단하는 microbenchmark입니다. PostgreSQL, handler, 외부 API, Kubernetes CNI, Cross-AZ는 포함하지 않았습니다. 따라서 “전체 시스템이 82K events/s를 처리한다” 또는 “AWS 비용이 96.74% 줄었다”고 쓰면 안 됩니다.
 
-재현 코드는 [`benchmarks/event_bus_transport.py`](../../benchmarks/event_bus_transport.py)에 있으며, 원장은 [증거 묶음](../evidence/network-cost/README.md)에 있습니다.
+재현 코드는 [`benchmarks/event_bus_transport.py`](../benchmarks/event_bus_transport.py)에 있으며, 청구서은 [증거 묶음](evidence/network-cost/README.md)에 있습니다.
 
-## 8. 이력서에 쓸 문장
-
-현재 증거만으로 안전한 문장:
-
-> Git 배포 이력과 AWS Cost Explorer·CloudWatch를 대조해 management·target manifest의 Deployment 문서 47개와 29.68TB Regional Data Transfer 청구 사용량을 추적했습니다. 관리면 5,173.35GiB out/5,334.27GiB in과 게임→인프라 4,895.28GiB out/5,227.56GiB in을 분리했습니다. 논리적 이벤트 경계는 유지하고 39개 관리 서비스를 단일 controller와 프로세스 내부 이벤트 전달로 조립했습니다. 동일 1,393B 이벤트 1,000건의 로컬 실험에서 전달 완료시간은 373.955ms에서 12.182ms로 줄었습니다. 이 값은 종료 후 전송 계층 실험이며 AWS 비용 절감 결과가 아닙니다.
-
-한 줄형:
-
-> management·target manifest의 Deployment 문서 47개와 AWS 29.68TB Regional Transfer 원장을 대조해 관리면·데이터면 트래픽을 분리했습니다. 종료 후 39개 관리 서비스를 in-process controller로 조립하고 로컬 이벤트 전달 시간을 373.955ms→12.182ms로 검증했습니다.
-
-아직 쓰면 안 되는 문장:
-
-- “32개 워커 때문에 편도 14,841.86 billed GB가 발생했다” — Pod별 귀속이 없음
-- “AWS 비용을 96.74% 절감했다” — 재배포 후 비용 비교가 없음
-- “82K events/s를 처리하는 시스템” — 전송 microbenchmark일 뿐 end-to-end가 아님
-- “프로젝트 기간에 39개 서비스를 통합했다” — controller는 종료 후 확장
-
-지원서에서는 이 사건을 팀 시스템의 아키텍처 회고로 설명하고, 프로젝트 기간의 직접 구현인 수집 계약·부분 실패·잘림 메타데이터와 분리합니다.
-
-## 9. 다음 측정이 완료돼야 닫히는 주장
-
-1. 기존 NATS 모드와 통합 controller 모드를 같은 fixture·같은 24시간 부하로 배포
-2. subject별 publish bytes/events, consumer lag p95, handler duration p95 수집
-3. AZ별 Pod 배치와 VPC Flow Logs로 Cross-AZ tuple 집계
-4. Cost Explorer가 확정된 뒤 daily Regional-Bytes 비교
-5. 장애 격리 회귀: 한 handler 실패가 controller 전체를 종료하지 않는지 검증
-6. 메모리·CPU p95와 재시작 횟수 비교
-
-이 여섯 항목을 통과해야 비용 감소와 운영 용량을 이력서의 “결과”로 승격할 수 있습니다.

@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md)
+[← Kyro로 돌아가기](../README.md)
 
 # 빈 결과와 실패를 구분하기
 
@@ -85,7 +85,7 @@ flowchart TD
   DA -->|"불완전 · 잘림"| SKIP["삭제 범위에서 제외"]
 ```
 
-→ [`src/domains/inventory/coverage.py`](../../src/domains/inventory/coverage.py)
+→ [`src/domains/inventory/coverage.py`](../src/domains/inventory/coverage.py)
 
 이 파일의 `_delete_authoritative_entry` 함수가 결론입니다. 이름 그대로 **"이 자료를 삭제 판단의 근거로 삼아도 되는가"** 를 결정합니다. 불완전하거나 잘렸으면 삭제 범위에서 뺍니다.
 
@@ -93,7 +93,7 @@ flowchart TD
 
 ### 무엇을 시험했나
 
-→ [`tests/test_inventory_coverage.py`](../../tests/test_inventory_coverage.py)
+→ [`tests/test_inventory_coverage.py`](../tests/test_inventory_coverage.py)
 
 기능이 되는지가 아니라 **어떤 사고를 막았는지**로 시험을 짰습니다.
 
@@ -129,4 +129,4 @@ flowchart TD
 
 ---
 
-[← Kyro로 돌아가기](../../README.md) · [다음: 잘라도 되지만 숨기면 안 됩니다 →](collection-limits.md)
+[← Kyro로 돌아가기](../README.md) · [다음: 잘라도 되지만 숨기면 안 됩니다 →](collection-limits.md)

@@ -1,12 +1,12 @@
 # Kubernetes 실행 토폴로지와 네트워크 비용 증거 묶음
 
-이 디렉터리는 `서비스를 작게 나누면 책임과 실패를 격리하기 쉽다`는 초기 판단이 실제 AWS 실행 환경에서 어떤 비용을 만들었는지 검증하기 위한 원장입니다. 이미지에 적힌 숫자는 아래 CSV와 코드에서 다시 계산할 수 있습니다.
+이 디렉터리는 `서비스를 작게 나누면 책임과 실패를 격리하기 쉽다`는 초기 판단이 실제 AWS 실행 환경에서 어떤 비용을 만들었는지 검증하기 위한 청구서입니다. 이미지에 적힌 숫자는 아래 CSV와 코드에서 다시 계산할 수 있습니다.
 
 ## 먼저 읽을 결론
 
 - Git에는 2026-07-25 기준 `deploy/management/**`·`deploy/target/**` 범위의 Kubernetes `Deployment` 문서 47개와 선언 replica 합계 56개가 있었습니다. `src/services/**/app.py` 기준 서비스 entrypoint는 42개, 직계 디렉터리명이 `*-worker`인 entrypoint는 32개였습니다. 실제 가동 Pod 수가 아니라 정적 파일 집계입니다.
 - AWS Cost Explorer의 2026-08-01 재조회 결과, 7월 4~27일 `APN2-DataTransfer-Regional-Bytes` 사용 레코드는 **29,683.72GB / $296.83**였습니다. 프로모션 Credit `-$296.83`이 적용되어 순결제액은 거의 0이지만, 크레딧이 없었다면 발생할 사용 비용입니다.
-- Cross-AZ 송·수신 양쪽 과금 모델을 가정한 편도 상당량은 **14,841.86 billed GB(약 14.84TB-equivalent)**입니다. 실제 byte·패킷 측정값이 아니라 비용 원장의 GB 값을 2로 나눈 등가값입니다.
+- Cross-AZ 송·수신 양쪽 과금 모델을 가정한 편도 상당량은 **14,841.86 billed GB(약 14.84TB-equivalent)**입니다. 실제 byte·패킷 측정값이 아니라 비용 청구서의 GB 값을 2로 나눈 등가값입니다.
 - 7월 20~26일 7일에 22,295.89GB, 전체의 **75.1%**가 집중됐습니다. 최고일은 7월 22일 4,578.58GB / $45.79였습니다.
 - CloudWatch EC2 인터페이스 합계에서 `battlegrounds-game`은 Out **4,895.28GiB**, `battlegrounds-infra`는 In **5,227.56GiB**로 방향이 맞물렸고, `management-server`는 Out **5,173.35GiB** / In **5,334.27GiB**로 양방향 통신이 컸습니다.
 - 따라서 “32개 워커가 14,841.86 billed GB를 만들었다”는 결론은 증명되지 않습니다. 관리면 내부 이벤트 왕복과 게임→인프라 데이터면 전송이 함께 컸다는 것이 현재 증거가 허용하는 결론입니다.
@@ -26,15 +26,15 @@ Cost Explorer의 서비스 분해 결과, 총 29,683.72GB 중 **EC2 - Other가 2
 - [`airflow-validation.json`](raw/airflow-validation.json): DAG import·정상 실행·동일 날짜 재실행 검증
 - [`airflow-dag-run-2026-08-01.csv`](raw/airflow-dag-run-2026-08-01.csv): 실제 Airflow task instance 상태
 - [`airflow-bind-mount-failure.csv`](raw/airflow-bind-mount-failure.csv): archive root 삭제로 네 extract task가 재시도 상태가 된 실패 기록
-- [`reproduce.md`](reproduce.md): AWS·Git 원장 재조회와 환산 명령
+- [`reproduce.md`](reproduce.md): AWS·Git 청구서 재조회와 환산 명령
 - [`screenshots/README.md`](screenshots/README.md): 포트폴리오용 16:9 증거판과 Airflow raw DAG graph
 - [`aws-console/`](aws-console/): 로그인된 AWS Console에서 직접 캡처한 Cost Explorer·CloudWatch 화면
 
-전체 해석과 설계 변경은 [아키텍처 비용 회고](../../portfolio/architecture-cost-postmortem.md)에 있습니다.
+전체 해석과 설계 변경은 [아키텍처 비용 회고](../../architecture-cost-postmortem.md)에 있습니다.
 
 ## 출처와 재현 조건
 
-AWS 원장은 개인 식별자, 계정 ID, 인스턴스 ID와 Auto Scaling Group 랜덤 suffix를 제거했습니다. 숫자는 지우지 않았습니다.
+AWS 청구서은 개인 식별자, 계정 ID, 인스턴스 ID와 Auto Scaling Group 랜덤 suffix를 제거했습니다. 숫자는 지우지 않았습니다.
 
 Cost Explorer 조회 조건:
 
@@ -57,10 +57,10 @@ Metrics     NetworkOut·NetworkIn·NetworkPacketsOut·NetworkPacketsIn / Sum
 Dimension   AutoScalingGroupName
 기간        2026-07-04T00:00:00Z ~ 2026-07-28T00:00:00Z
 단위 환산   bytes / 1,073,741,824 = GiB
-원장 추출   2026-07-31~08-01 KST
+청구서 추출   2026-07-31~08-01 KST
 ```
 
-`bytes / packets`는 EC2 인터페이스의 방향성 진단값입니다. 애플리케이션 메시지 크기나 payload 크기가 아닙니다. CPU는 CloudWatch `Sum / SampleCount`, node-hour는 `GroupInServiceInstances Sum / 60`으로 계산했습니다. 부분 bucket의 단순 평균을 사용하지 않았지만 결제 원장의 인스턴스 시간과는 다를 수 있습니다.
+`bytes / packets`는 EC2 인터페이스의 방향성 진단값입니다. 애플리케이션 메시지 크기나 payload 크기가 아닙니다. CPU는 CloudWatch `Sum / SampleCount`, node-hour는 `GroupInServiceInstances Sum / 60`으로 계산했습니다. 부분 bucket의 단순 평균을 사용하지 않았지만 결제 청구서의 인스턴스 시간과는 다를 수 있습니다.
 
 ## AWS Console 원본 화면
 

@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 01](collection-contract.md)
+[← Kyro로 돌아가기](../README.md) · [← 01](collection-contract.md)
 
 # 잘라도 되지만 숨기면 안 됩니다
 
@@ -64,7 +64,7 @@ INVENTORY_RESOURCE_MAX_LIMIT     = 1000  # 명시적으로 요청해야 최대�
 
 같은 로직이 네 곳에 흩어지는 것을 보고 공통 모듈로 뽑았습니다. 그 과정은 [관련 문서](engineering-log.md#2-한도를-네-번-조인-새벽)에 커밋 단위로 있습니다.
 
-→ [`src/services/target/cluster-agent/providers/collection_limits.py`](../../src/services/target/cluster-agent/providers/collection_limits.py)
+→ [`src/services/target/cluster-agent/providers/collection_limits.py`](../src/services/target/cluster-agent/providers/collection_limits.py)
 
 | 함수 | 하는 일 |
 |---|---|
@@ -127,4 +127,4 @@ sequenceDiagram
 
 ---
 
-[← Kyro로 돌아가기](../../README.md) · [다음: 비밀번호를 빼고 관계만 보여주기 →](config-reference-api.md)
+[← Kyro로 돌아가기](../README.md) · [다음: 비밀번호를 빼고 관계만 보여주기 →](config-reference-api.md)

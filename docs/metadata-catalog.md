@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 03](config-reference-api.md)
+[← Kyro로 돌아가기](../README.md) · [← 03](config-reference-api.md)
 
 # 메타데이터 카탈로그와 정합성 검증
 
@@ -47,7 +47,7 @@ Kyro는 **수집하는 순간**의 완전성을 다뤘습니다. [수집 완전�
 
 계약을 payload에서 뽑아내고 해시를 계산하고 두 계약을 비교하는 부분은 여기 있습니다.
 
-→ [`src/domains/datacatalog/schema_contract.py`](../../src/domains/datacatalog/schema_contract.py)
+→ [`src/domains/datacatalog/schema_contract.py`](../src/domains/datacatalog/schema_contract.py)
 
 ### 실행 단위와 상태
 
@@ -207,7 +207,7 @@ erDiagram
     }
 ```
 
-→ 위 13개 테이블의 실제 정의: [`src/domains/datacatalog/models.py`](../../src/domains/datacatalog/models.py)
+→ 위 13개 테이블의 실제 정의: [`src/domains/datacatalog/models.py`](../src/domains/datacatalog/models.py)
 
 ### 유일 제약
 
@@ -269,8 +269,8 @@ flowchart LR
 
 검사 결과는 **통과·실패 모두 저장합니다.** 실패만 저장하면 "검사를 안 한 것"과 "검사했는데 통과한 것"을 구분할 수 없습니다. 01번 문서의 빈 목록 문제와 같은 구조입니다.
 
-→ SQL 파일을 읽어 실행하고 결과를 적재하는 코드: [`src/domains/datacatalog/checks.py`](../../src/domains/datacatalog/checks.py)
-→ 적재·정규화·상태 판정: [`src/domains/datacatalog/pipeline.py`](../../src/domains/datacatalog/pipeline.py)
+→ SQL 파일을 읽어 실행하고 결과를 적재하는 코드: [`src/domains/datacatalog/checks.py`](../src/domains/datacatalog/checks.py)
+→ 적재·정규화·상태 판정: [`src/domains/datacatalog/pipeline.py`](../src/domains/datacatalog/pipeline.py)
 
 ## 리니지
 
@@ -305,8 +305,8 @@ ops.quality_report                (derived)
 make catalog-verify
 ```
 
-→ 검증 스크립트 15개 항목: [`scripts/catalog_verify.py`](../../scripts/catalog_verify.py)
-→ 계약 추출·해시·비교 단위 테스트: [`tests/catalog/test_schema_contract.py`](../../tests/catalog/test_schema_contract.py)
+→ 검증 스크립트 15개 항목: [`scripts/catalog_verify.py`](../scripts/catalog_verify.py)
+→ 계약 추출·해시·비교 단위 테스트: [`tests/catalog/test_schema_contract.py`](../tests/catalog/test_schema_contract.py)
 
 ## 결과
 

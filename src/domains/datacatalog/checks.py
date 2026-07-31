@@ -119,7 +119,7 @@ def run_checks(
                 severity=severity,
                 finding=str(finding),
                 observed=_stringify(row, ("observed_type", "observed_value", "staleness_seconds",
-                                          "observation_count", "run_count", "duplicate_count",
+                                          "detail", "observation_count", "run_count", "duplicate_count",
                                           "hash_variants", "violation_count")),
                 expected=_stringify(row, ("declared_type", "expected_value",
                                           "freshness_sla_seconds")),
@@ -137,11 +137,13 @@ def _subject_key(row: Any) -> str:
     03 은 필드마다, 02 는 누락 필드마다, 08 은 리소스마다 위반을 낸다.
     이 값이 없으면 유일 제약이 자산 단위라 두 번째 위반부터 앞의 것을 덮어쓴다.
     """
-    for key in ("field_path", "resource_uid", "schema_version", "qualified_name"):
-        value = row.get(key)
-        if value is not None:
-            return str(value)[:256]
-    return "-"
+    parts = [
+        str(row[key])
+        for key in ("cluster_id", "observed_day", "upstream_asset_id", "downstream_asset_id",
+                    "field_path", "resource_uid", "schema_version", "detail", "qualified_name")
+        if row.get(key) is not None
+    ]
+    return "/".join(parts)[:256] if parts else "-"
 
 
 def _stringify(row: Any, keys: tuple[str, ...]) -> str | None:

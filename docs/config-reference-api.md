@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 02](collection-limits.md)
+[← Kyro로 돌아가기](../README.md) · [← 02](collection-limits.md)
 
 # Secret 값 대신 참조 관계만 반환하기
 
@@ -49,9 +49,9 @@ sequenceDiagram
 
 API는 기존 gateway에 연결되어 있고 세션 인증과 inventory 접근 검사를 거칩니다.
 
-- router: [`src/domains/inventory/router.py`](../../src/domains/inventory/router.py)
-- projection: [`src/domains/inventory/config_references.py`](../../src/domains/inventory/config_references.py)
-- response contract: [`src/packages/contracts/gateway/responses.py`](../../src/packages/contracts/gateway/responses.py)
+- router: [`src/domains/inventory/router.py`](../src/domains/inventory/router.py)
+- projection: [`src/domains/inventory/config_references.py`](../src/domains/inventory/config_references.py)
+- response contract: [`src/packages/contracts/gateway/responses.py`](../src/packages/contracts/gateway/responses.py)
 
 ## 실제 응답 계약
 
@@ -114,7 +114,7 @@ API는 기존 gateway에 연결되어 있고 세션 인증과 inventory 접근 �
 
 ## 16개 테스트가 막는 사고
 
-→ [`tests/test_config_references.py`](../../tests/test_config_references.py)
+→ [`tests/test_config_references.py`](../tests/test_config_references.py)
 
 | 막으려는 사고 | 검증 |
 |---|---|
@@ -158,4 +158,4 @@ initContainer 참조를 수집하지만 응답에는 app container와 구분하�
 
 ---
 
-[← Kyro로 돌아가기](../../README.md) · [다음: 메타데이터 카탈로그 →](metadata-catalog.md)
+[← Kyro로 돌아가기](../README.md) · [다음: 메타데이터 카탈로그 →](metadata-catalog.md)

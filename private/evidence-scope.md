@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 10](engineering-log.md)
+[← Kyro로 돌아가기](../README.md) · [← 10](../docs/engineering-log.md)
 
 # 근거의 귀속 범위
 
@@ -14,7 +14,7 @@ sandbox 네임스페이스의 워크로드가 죽었습니다. 리포트를 열�
 
 에이전트 정책은 로그 쿼리를 네임스페이스별로 여러 개 실행합니다. 결과가 한 번들로 합쳐지면서 어느 쿼리에서 왔는지가 사라졌습니다.
 
-이건 [관련 문서](collection-contract.md)의 빈 목록 문제보다 조용합니다. 빈 목록은 최소한 비어 있기라도 합니다. 여기서는 **근거가 있고, 개수도 맞고, 심각도도 높습니다.** 다만 다른 사건의 것입니다.
+이건 [관련 문서](../docs/collection-contract.md)의 빈 목록 문제보다 조용합니다. 빈 목록은 최소한 비어 있기라도 합니다. 여기서는 **근거가 있고, 개수도 맞고, 심각도도 높습니다.** 다만 다른 사건의 것입니다.
 
 ## 판단
 
@@ -88,7 +88,7 @@ RCA 시나리오 테스트는 "이 장애를 넣으면 이 원인이 나오는�
 - 근거 개수와 집계가 어긋나는 경로가 없어졌습니다
 - 귀속을 판단할 수 없는 데이터는 **버리지 않고 남긴다**는 기준이 코드에 있습니다
 
-→ [`src/services/ai/agent/pipeline/evidence_bundle.py`](../../src/services/ai/agent/pipeline/evidence_bundle.py)
+→ [`src/services/ai/agent/pipeline/evidence_bundle.py`](../src/services/ai/agent/pipeline/evidence_bundle.py)
 
 ## 이 작업이 증명하는 것
 
@@ -105,4 +105,4 @@ RCA 시나리오 테스트는 "이 장애를 넣으면 이 원인이 나오는�
 
 ---
 
-[← Kyro](../../README.md)
+[← Kyro](../README.md)

@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 08](tech-research.md)
+[← Kyro로 돌아가기](../README.md) · [← 08](tech-research.md)
 
 # 범위 판단
 
@@ -14,7 +14,7 @@
 
 AI가 운영 데이터를 조회하도록 내부 도구 계층을 만들었습니다. 클러스터 현황, 로그 근거, 배포 상태, 원인 판정 결과를 도구로 노출했습니다. 도구 75개, 약 6,300줄입니다.
 
-→ [`src/services/mcp/internal_control/`](../../src/services/mcp/internal_control/)
+→ [`src/services/mcp/internal_control/`](../src/services/mcp/internal_control/)
 
 만들면서 두 가지를 지켰습니다.
 

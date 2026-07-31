@@ -1,4 +1,4 @@
-[← Kyro로 돌아가기](../../README.md) · [← 07](catalog-api-mcp.md)
+[← Kyro로 돌아가기](../README.md) · [← 07](catalog-api-mcp.md)
 
 # 기술 리서치 — Modern Data Stack 선택 근거
 
