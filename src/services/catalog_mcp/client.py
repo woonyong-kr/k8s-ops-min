@@ -75,6 +75,7 @@ class CatalogApiClient:
         self._transport = transport
         self._base = base_url.rstrip("/")
         self._exchanger = exchanger
+        self._token: ExchangedToken | None = None
 
     def call(
         self, tool_name: str, arguments: dict[str, Any], *, session: Session
@@ -96,10 +97,13 @@ class CatalogApiClient:
             if arguments.get(arg_name) is not None
         }
 
-        try:
-            token = self._exchanger.exchange(session.subject_token)
-        except TokenExchangeError as exc:
-            raise UpstreamError(f"token_exchange_failed:{exc.reason}") from None
+        # 만료 전까지 재사용한다. 매 호출마다 교환하면 도구 200회가 STS 200회가 된다.
+        if self._token is None or self._token.is_expired():
+            try:
+                self._token = self._exchanger.exchange(session.subject_token)
+            except TokenExchangeError as exc:
+                raise UpstreamError(f"token_exchange_failed:{exc.reason}") from None
+        token = self._token
 
         status, body = self._transport.get_json(
             f"{self._base}{path}",

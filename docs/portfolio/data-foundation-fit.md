@@ -113,7 +113,7 @@ freshness·lineage·부분 실패 검사
 3. DAG의 source 중복 조회를 제거합니다.
 4. 같은 논리 날짜를 세 번 실행해 상태 행이 늘지 않는 이유를 설명합니다.
 5. schema drift SQL의 `FULL OUTER JOIN`과 `IS DISTINCT FROM` 선택을 설명합니다.
-6. catalog FastAPI router를 실행 앱에 연결하고 HTTP 테스트를 남긴다.
+6. catalog FastAPI router를 실행 앱에 연결하고 HTTP 테스트를 남긴다 — 완료(`app.py`, API 테스트 9종).
 7. 실행자 본인의 커밋으로 수정과 검증 과정을 남깁니다.
 
 이 조건을 통과한 뒤에야 “Airflow로 운영 데이터 카탈로그 정합성 재검사 파이프라인을 구현했다”는 문장을 추가합니다.

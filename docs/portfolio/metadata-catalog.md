@@ -192,6 +192,8 @@ erDiagram
     }
     quality_results {
         text        result_id PK
+        text        check_name
+        text        subject_key
         text        dag_run_id FK
         text        check_type
         text        asset_id FK

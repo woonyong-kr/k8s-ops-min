@@ -206,11 +206,17 @@ def _sanitize(value: Any) -> Any:
     return cleaned[:512]
 
 
-def bound_response(items: list[dict[str, Any]]) -> dict[str, Any]:
+def bound_response(
+    items: list[dict[str, Any]], *, upstream_cursor: str | None = None
+) -> dict[str, Any]:
     """응답을 제한하되 제한 사실을 남긴다.
 
     모델이 잘린 목록을 전체로 착각하면 "이슈가 3건뿐"이라고 답한다.
-    02번 문서의 규칙을 그대로 따른다.
+    수집 한도 문서의 규칙을 그대로 따른다.
+
+    커서는 상위가 준 것을 그대로 넘긴다. 여기서 정수를 지어내면 모델이 그걸
+    다시 넘겼을 때 상위 디코더가 거부한다. 숨기지 않는 것과 도달할 수 있게 하는
+    것은 다르고, 도달 수단을 중간에서 바꿔치기하면 후자가 깨진다.
     """
     original = len(items)
     marked = [mark_untrusted(i) for i in items[:MAX_ITEMS]]
@@ -222,9 +228,13 @@ def bound_response(items: list[dict[str, Any]]) -> dict[str, Any]:
         payload = {"items": marked, "original_count": original, "returned_count": len(marked)}
         encoded = json.dumps(payload, ensure_ascii=False)
 
-    payload["truncated"] = payload["returned_count"] < original
-    if payload["truncated"]:
-        payload["next_cursor"] = str(payload["returned_count"])
+    payload["truncated"] = payload["returned_count"] < original or upstream_cursor is not None
+    if upstream_cursor:
+        payload["next_cursor"] = upstream_cursor
+    elif payload["returned_count"] < original:
+        # 상위가 커서를 주지 않았는데 여기서 잘랐다면 나머지에 도달할 방법이 없다.
+        # 그 사실을 숨기면 모델은 부분을 전체로 읽는다.
+        payload["remainder_unreachable"] = True
     return payload
 
 

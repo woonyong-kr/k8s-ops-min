@@ -19,12 +19,13 @@ from dataclasses import dataclass, field
 from typing import Any, TextIO
 
 SESSION_CALL_BUDGET = 200
+BUDGET_WINDOW_SECONDS = 3600
 
 
 class BudgetExceeded(Exception):
     """세션 호출 예산 초과. HTTP 로 치면 429 다."""
 
-    retry_after_seconds = 3600
+    retry_after_seconds = BUDGET_WINDOW_SECONDS
 
 
 @dataclass
@@ -35,11 +36,22 @@ class Session:
     subject_token: str
     session_id: str = field(default_factory=lambda: f"mcp-{uuid.uuid4()}")
     call_budget: int = SESSION_CALL_BUDGET
+    window_seconds: int = BUDGET_WINDOW_SECONDS
     calls_made: int = 0
+    window_started: float = field(default_factory=time.time)
 
-    def charge(self) -> None:
+    def charge(self, *, now: float | None = None) -> None:
+        """창이 지나면 초기화한다.
+
+        창이 없으면 retry_after 를 돌려주고도 한 시간 뒤에 여전히 막는다.
+        거짓 안내를 하느니 창을 갖는 편이 낫다.
+        """
+        now = time.time() if now is None else now
+        if now - self.window_started >= self.window_seconds:
+            self.window_started = now
+            self.calls_made = 0
         if self.calls_made >= self.call_budget:
-            raise BudgetExceeded(f"session budget {self.call_budget} exhausted")
+            raise BudgetExceeded(f"session budget {self.call_budget}/{self.window_seconds}s exhausted")
         self.calls_made += 1
 
     @property

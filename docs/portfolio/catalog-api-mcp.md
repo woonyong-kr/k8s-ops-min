@@ -120,7 +120,7 @@ GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 ```mermaid
 flowchart LR
     U["사용자"] -->|"로그인"| APP["Agent 호스트"]
-    APP -->|"HTTP + 사용자 토큰"| MCP["catalog-mcp<br/>streamable HTTP"]
+    APP -->|"HTTP + 사용자 토큰"| MCP["catalog-mcp<br/>stdio JSON-RPC"]
     MCP -->|"RFC 8693 token exchange"| STS["인증 서버"]
     STS -->|"aud=catalog-api<br/>scope=catalog:read<br/>ttl=5m"| MCP
     MCP -->|"교환된 토큰"| API["카탈로그 API"]
@@ -128,7 +128,7 @@ flowchart LR
     MCP -.->|"자격증명 없음"| DB
 ```
 
-**stdio가 아니라 HTTP다.** stdio로 띄우면 사용자 신원 채널이 없어서 프로세스 환경의 정적 토큰을 쓰게 되고, 그러면 모든 세션이 하나의 서비스 계정으로 붕괴합니다. 그 상태에서도 "권한이 늘지 않았다"는 문장은 형식적으로 참이지만 **의미가 없습니다.**
+****지금은 stdio 로 만들었고, 주체는 프로세스 환경변수로 받습니다.** stdio 서버는 사용자 세션마다 새로 기동되므로 프로세스 하나가 곧 주체 하나입니다. 다만 이 방식은 기동 주체를 클라이언트가 정한다는 뜻이라, 여러 사용자가 한 프로세스를 공유하는 배치에서는 성립하지 않습니다. HTTP 전송으로 옮기면 요청마다 신원을 받을 수 있고 그때 이 제약이 사라집니다 — 아직 만들지 않았습니다.
 
 **토큰을 그대로 넘기지 않습니다.** 사용자 토큰을 받아 `aud=catalog-api`, `scope=catalog:read`, TTL 5분으로 교환한 뒤 그것으로 API를 호출합니다. 그대로 넘기면 LLM이 사람의 전체 권한 자격증명을 무인으로 들고 있게 됩니다. 형식적 권한이 같아도 실질 위험이 다릅니다.
 
@@ -210,8 +210,7 @@ flowchart LR
 |---|---|
 | `principal_sub` | 사람 주체 |
 | `session_id` | 에이전트 세션 |
-| `tool_name` | 호출 도구 |
-| `arguments_hash` | 인자 해시 (원문 아님) |
+| `tool` | 호출 도구 |
 | `result_count` / `result_bytes` | 반환 규모 |
 | `truncated` | 절단 여부 |
 | `correlation_id` | API 호출과 연결 |
@@ -259,6 +258,7 @@ make catalog-api         # 조회 API 기동
 | 실제 MCP 클라이언트 연동 | Claude Desktop 등에 붙여 본 적이 없습니다. 프로토콜은 테스트로만 확인했습니다 |
 | API 측 인가 | 카탈로그 API 는 `Authorization` 헤더를 받지만 검사하지 않습니다. MCP 가 올바른 토큰을 **보내는지**는 검증되지만, API 가 그 토큰으로 **권한을 판정하는지**는 아직 아닙니다 |
 | 감사 로그 보관 | stderr 로 구조화 출력만 합니다. 수집·보관 경로가 없습니다 |
+| HTTP 전송 | stdio 만 있습니다. 여러 주체가 한 프로세스를 공유하는 배치는 지원하지 않습니다 |
 
 ## 이 작업이 증명하는 것
 

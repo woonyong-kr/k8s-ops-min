@@ -106,7 +106,7 @@ def run_checks(
             finding = row.get("finding") or row.get("drift_type") or check_type
             subject_key = _subject_key(row)
             first_seen = _first_seen_dag_run(
-                conn, check_type, str(asset_id), subject_key, str(finding), dag_run_id
+                conn, check_type, name, str(asset_id), subject_key, str(finding), dag_run_id
             )
             _write_result(
                 conn,
@@ -119,7 +119,8 @@ def run_checks(
                 severity=severity,
                 finding=str(finding),
                 observed=_stringify(row, ("observed_type", "observed_value", "staleness_seconds",
-                                          "duplicate_count", "hash_variants", "violation_count")),
+                                          "observation_count", "run_count", "duplicate_count",
+                                          "hash_variants", "violation_count")),
                 expected=_stringify(row, ("declared_type", "expected_value",
                                           "freshness_sla_seconds")),
                 checked_at=checked_at,
@@ -154,6 +155,7 @@ def _stringify(row: Any, keys: tuple[str, ...]) -> str | None:
 def _first_seen_dag_run(
     conn: Connection,
     check_type: str,
+    check_name: str,
     asset_id: str,
     subject_key: str,
     finding: str,
@@ -169,13 +171,13 @@ def _first_seen_dag_run(
             """
             SELECT COALESCE(MIN(first_seen_dag_run_id), MIN(dag_run_id))
             FROM catalog_quality_results
-            WHERE check_type = :c AND status = 'failed'
+            WHERE check_type = :c AND check_name = :cn AND status = 'failed'
               AND asset_id = :a
               AND subject_key = :sk
               AND finding IS NOT DISTINCT FROM :f
             """
         ),
-        {"c": check_type, "a": asset_id, "sk": subject_key, "f": finding},
+        {"c": check_type, "cn": check_name, "a": asset_id, "sk": subject_key, "f": finding},
     ).scalar()
     return previous or dag_run_id
 

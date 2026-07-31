@@ -62,7 +62,18 @@ def test_큰_응답은_절단되고_절단_사실이_남는다():
     assert payload["returned_count"] <= MAX_ITEMS
     assert payload["original_count"] == 300
     assert payload["truncated"] is True
-    assert "next_cursor" in payload
+    # 상위 커서가 없으면 나머지에 도달할 수 없다. 그 사실을 명시한다.
+    assert payload["remainder_unreachable"] is True
+    assert "next_cursor" not in payload
+
+
+def test_상위_커서는_그대로_전달된다():
+    """커서를 지어내면 모델이 되넘겼을 때 상위 디코더가 거부한다."""
+    cursor = "eyJvZmZzZXQiOiA1MH0="
+    payload = bound_response([{"asset_id": "a"}], upstream_cursor=cursor)
+    assert payload["next_cursor"] == cursor
+    assert payload["truncated"] is True
+    assert "remainder_unreachable" not in payload
 
 
 def test_절단되지_않으면_표시가_붙지_않는다():

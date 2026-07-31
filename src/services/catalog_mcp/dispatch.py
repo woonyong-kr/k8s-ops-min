@@ -75,7 +75,11 @@ def call_tool(
     except UpstreamError as exc:
         raise fail(exc.code.split(":")[0]) from None
 
-    payload = bound_response(_items_from(body))
+    page = body.get("page") if isinstance(body.get("page"), dict) else {}
+    payload = bound_response(_items_from(body), upstream_cursor=page.get("next_cursor"))
+    # 상위가 아는 전체 규모를 버리지 않는다. 버리면 모델은 부분을 전체로 읽는다.
+    if page.get("total_estimated") is not None:
+        payload["total_estimated"] = page["total_estimated"]
     if isinstance(body.get("evidence"), dict):
         payload["evidence"] = body["evidence"]
 

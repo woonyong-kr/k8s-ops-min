@@ -25,9 +25,12 @@
 - [카탈로그 API와 읽기 전용 MCP](catalog-api-mcp.md)
 - [기술 선택 리서치](tech-research.md)
 
-이 절의 구현과 수치는 원본 팀 프로젝트의 개인 성과로 사용하지 않습니다. 재현 조건과 남은 한계를 검증하기 위한 별도 확장입니다.
+이 절의 구현과 수치는 **팀 프로젝트 성과와 섞어 세지 않습니다.** 프로젝트 종료 후 개인 작업이며, 승격 조건과 남은 한계는 [기여와 근거](source-and-ownership.md)에 있습니다.
 
 ## 지원 자료
 
 - [이력서 초안](../resume.md)
 - [Data Foundation 역량 대조](data-foundation-fit.md): 공개 성과표가 아니라 제출 전 공백을 확인하는 내부 점검표
+- [측정과 한계 — 어디까지 재봤고 어디서 먼저 무너지는가](load-and-design-limits.md)
+- [검사는 어디서 돌아야 하는가](where-checks-run.md)
+- [카탈로그 구현 계획과 진행 상태](catalog-implementation-plan.md)

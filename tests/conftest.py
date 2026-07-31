@@ -314,11 +314,14 @@ class SpyDb:
         return any(c[0] == name for c in self.calls)
 
 
+DEFAULT_CATALOG_DSN = "postgresql+psycopg://catalog@127.0.0.1:5433/catalog"
+
+
 @pytest.fixture(scope="session")
 def engine() -> Engine:
-    dsn = os.environ.get("CATALOG_DATABASE_URL")
-    if not dsn:
-        pytest.skip("CATALOG_DATABASE_URL 이 없어 DB 테스트를 건너뜁니다")
+    # 기본값을 둔다. 없으면 `make catalog-test` 가 조용히 12종을 건너뛰고
+    # README 의 "70 passed" 가 거짓이 된다. 다른 카탈로그 스크립트도 같은 기본값을 쓴다.
+    dsn = os.environ.get("CATALOG_DATABASE_URL", DEFAULT_CATALOG_DSN)
     engine = create_engine(dsn, future=True)
     try:
         with engine.connect() as connection:

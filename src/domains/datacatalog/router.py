@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import json
+from pathlib import Path as FsPath
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
@@ -232,7 +233,7 @@ def get_asset_lineage(conn: Conn, asset_id: Annotated[str, Path(max_length=256)]
     않으면 "이 관계가 언제 확인된 것인가"에 답할 수 없다.
     """
     sql = (
-        __import__("pathlib").Path(__file__).resolve().parents[3]
+        FsPath(__file__).resolve().parents[3]
         / "sql" / "quality" / "91_lineage_trace.sql"
     ).read_text(encoding="utf-8")
     rows = conn.execute(
@@ -291,7 +292,7 @@ def list_runs(
     total = conn.execute(
         text(
             "SELECT count(*) FROM catalog_dag_runs d "
-            + date_filter.replace("d.logical_date", "d.logical_date")
+            + date_filter
         ),
         {"d": logical_date},
     ).scalar_one()

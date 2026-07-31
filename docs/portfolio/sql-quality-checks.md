@@ -65,23 +65,23 @@ WITH windowed AS (
         s.name,
         s.enabled,
         COUNT(r.run_id) FILTER (
-            WHERE r.logical_date >= (:logical_date::date - INTERVAL '7 days')
+            WHERE r.logical_date >= (CAST(:logical_date AS date) - INTERVAL '7 days')
         )                                                                    AS runs_in_window,
         COUNT(*) FILTER (
             WHERE r.status IN ('SUCCESS','NO_DATA')
-              AND r.logical_date >= (:logical_date::date - INTERVAL '7 days')
+              AND r.logical_date >= (CAST(:logical_date AS date) - INTERVAL '7 days')
         )                                                                    AS healthy,
         COUNT(*) FILTER (
             WHERE r.status = 'TRUNCATED'
-              AND r.logical_date >= (:logical_date::date - INTERVAL '7 days')
+              AND r.logical_date >= (CAST(:logical_date AS date) - INTERVAL '7 days')
         )                                                                    AS truncated,
         COUNT(*) FILTER (
             WHERE r.status = 'FAILED'
-              AND r.logical_date >= (:logical_date::date - INTERVAL '7 days')
+              AND r.logical_date >= (CAST(:logical_date AS date) - INTERVAL '7 days')
         )                                                                    AS failed,
         MAX(r.logical_date)                                                  AS last_run_date
-    FROM data_sources AS s
-    LEFT JOIN collection_runs AS r ON r.source_id = s.source_id
+    FROM catalog_data_sources AS s
+    LEFT JOIN catalog_collection_runs AS r ON r.source_id = s.source_id
     GROUP BY s.source_id, s.name, s.enabled
 )
 SELECT
@@ -120,20 +120,20 @@ WHERE (enabled AND runs_in_window = 0)
 -- 원인 파악에 필요한 것은 위반 건수와 표본이지 전체 목록이 아니다.
 WITH required_fields AS (
     SELECT f.asset_id, f.field_path
-    FROM asset_fields AS f
-    JOIN data_assets  AS a
+    FROM catalog_asset_fields AS f
+    JOIN catalog_data_assets  AS a
       ON a.asset_id = f.asset_id
      AND a.current_schema_version = f.schema_version
     WHERE f.required
 ),
 violations AS (
     SELECT o.asset_id, rf.field_path, o.row_id
-    FROM observed_rows   AS o
+    FROM catalog_observed_rows   AS o
     JOIN required_fields AS rf ON rf.asset_id = o.asset_id
     WHERE o.run_id = :run_id
       AND NOT EXISTS (
           SELECT 1
-          FROM observed_fields AS f
+          FROM catalog_observed_fields AS f
           WHERE f.row_id     = o.row_id
             AND f.field_path = rf.field_path
       )
@@ -164,20 +164,20 @@ ORDER BY violation_count DESC;
 -- 타입을 판별하지 못하게 된 필드(가장 유력한 드리프트 신호)를 통과시킨다.
 WITH covered AS (
     SELECT DISTINCT asset_id
-    FROM observed_fields
+    FROM catalog_observed_fields
     WHERE run_id = :run_id
 ),
 declared AS (
     SELECT f.asset_id, f.field_path, f.data_type
-    FROM asset_fields AS f
-    JOIN data_assets  AS a
+    FROM catalog_asset_fields AS f
+    JOIN catalog_data_assets  AS a
       ON a.asset_id = f.asset_id
      AND a.current_schema_version = f.schema_version
     JOIN covered      AS c ON c.asset_id = f.asset_id
 ),
 observed AS (
     SELECT DISTINCT asset_id, field_path, data_type
-    FROM observed_fields
+    FROM catalog_observed_fields
     WHERE run_id = :run_id
 )
 SELECT
@@ -218,7 +218,7 @@ SELECT
     MAX(o.first_seen_at)                                AS last_changed_at,
     ARRAY_AGG(DISTINCT o.schema_hash)                   AS hashes,
     ARRAY_AGG(DISTINCT o.first_seen_run_id)             AS from_runs
-FROM schema_observations AS o
+FROM catalog_schema_observations AS o
 GROUP BY o.asset_id, o.schema_version
 HAVING COUNT(DISTINCT o.schema_hash) > 1;
 ```
@@ -247,10 +247,10 @@ HAVING COUNT(DISTINCT o.schema_hash) > 1;
 WITH last_seen AS (
     SELECT asset_id, MAX(observed_at) AS last_observed_at
     FROM (
-        SELECT asset_id, observed_at FROM observed_rows
+        SELECT asset_id, observed_at FROM catalog_observed_rows
         WHERE observed_at <= :logical_ts
         UNION ALL
-        SELECT asset_id, observed_at FROM normalized_evidence
+        SELECT asset_id, observed_at FROM catalog_normalized_evidence
         WHERE observed_at <= :logical_ts
     ) AS all_observations
     GROUP BY asset_id
@@ -262,7 +262,7 @@ SELECT
     l.last_observed_at,
     EXTRACT(EPOCH FROM (:logical_ts - l.last_observed_at))::bigint AS staleness_seconds,
     CASE WHEN l.last_observed_at IS NULL THEN 'NEVER_OBSERVED' ELSE 'STALE' END AS finding
-FROM data_assets AS a
+FROM catalog_data_assets AS a
 LEFT JOIN last_seen AS l ON l.asset_id = a.asset_id
 WHERE l.last_observed_at IS NULL
    OR EXTRACT(EPOCH FROM (:logical_ts - l.last_observed_at)) > a.freshness_sla_seconds;
@@ -283,26 +283,26 @@ WHERE l.last_observed_at IS NULL
 -- 3번을 위해 lineage_edges.run_id를 collection_runs에 조인한다.
 -- run_id를 저장만 하고 조인하지 않으면 "언제 확인된 관계인가"에 답할 수 없다.
 SELECT a.asset_id, a.qualified_name, 'NO_UPSTREAM' AS finding, NULL::text AS detail
-FROM data_assets AS a
+FROM catalog_data_assets AS a
 WHERE a.asset_type IN ('normalized', 'derived')
   AND NOT EXISTS (
-      SELECT 1 FROM lineage_edges e WHERE e.downstream_asset_id = a.asset_id
+      SELECT 1 FROM catalog_lineage_edges e WHERE e.downstream_asset_id = a.asset_id
   )
 
 UNION ALL
 
 SELECT e.downstream_asset_id, NULL, 'DANGLING_EDGE', e.upstream_asset_id
-FROM lineage_edges AS e
+FROM catalog_lineage_edges AS e
 WHERE NOT EXISTS (
-    SELECT 1 FROM data_assets a WHERE a.asset_id = e.upstream_asset_id
+    SELECT 1 FROM catalog_data_assets a WHERE a.asset_id = e.upstream_asset_id
 )
 
 UNION ALL
 
 SELECT e.downstream_asset_id, NULL, 'STALE_EDGE',
        'confirmed_at=' || r.finished_at::text
-FROM lineage_edges  AS e
-JOIN collection_runs AS r ON r.run_id = e.run_id
+FROM catalog_lineage_edges  AS e
+JOIN catalog_collection_runs AS r ON r.run_id = e.run_id
 WHERE r.finished_at < (:logical_ts - INTERVAL '7 days');
 ```
 
@@ -327,40 +327,40 @@ SELECT
     d.logical_date,
     d.status,
     CASE
-        WHEN EXISTS (SELECT 1 FROM collection_runs c
+        WHEN EXISTS (SELECT 1 FROM catalog_collection_runs c
                      WHERE c.dag_run_id = d.dag_run_id
                        AND c.status IN ('FAILED','TRUNCATED'))
              AND d.status = 'SUCCESS'
             THEN 'SOURCE_FAILED_BUT_RUN_SUCCESS'
         WHEN d.status = 'SUCCESS' AND NOT EXISTS (
-                SELECT 1 FROM quality_results q WHERE q.dag_run_id = d.dag_run_id)
+                SELECT 1 FROM catalog_quality_results q WHERE q.dag_run_id = d.dag_run_id)
             THEN 'SUCCESS_WITHOUT_ANY_CHECK'
         WHEN d.finished_at IS NULL
             THEN 'TERMINAL_WITHOUT_FINISH'
         WHEN d.status = 'SUCCESS' AND NOT EXISTS (
-                SELECT 1 FROM raw_snapshots s
-                JOIN collection_runs c ON c.run_id = s.run_id
+                SELECT 1 FROM catalog_raw_snapshots s
+                JOIN catalog_collection_runs c ON c.run_id = s.run_id
                 WHERE c.dag_run_id = d.dag_run_id)
             THEN 'SUCCESS_WITHOUT_SNAPSHOT'
         ELSE 'SUCCESS_WITH_NEW_ERRORS'
     END AS finding
-FROM dag_runs AS d
+FROM catalog_dag_runs AS d
 WHERE d.logical_date = :logical_date
   AND d.status IN ('SUCCESS','PARTIAL')
   AND (
         (d.status = 'SUCCESS' AND EXISTS (
-            SELECT 1 FROM collection_runs c
+            SELECT 1 FROM catalog_collection_runs c
             WHERE c.dag_run_id = d.dag_run_id
               AND c.status IN ('FAILED','TRUNCATED')))
      OR (d.status = 'SUCCESS' AND NOT EXISTS (
-            SELECT 1 FROM quality_results q WHERE q.dag_run_id = d.dag_run_id))
+            SELECT 1 FROM catalog_quality_results q WHERE q.dag_run_id = d.dag_run_id))
      OR d.finished_at IS NULL
      OR (d.status = 'SUCCESS' AND NOT EXISTS (
-            SELECT 1 FROM raw_snapshots s
-            JOIN collection_runs c ON c.run_id = s.run_id
+            SELECT 1 FROM catalog_raw_snapshots s
+            JOIN catalog_collection_runs c ON c.run_id = s.run_id
             WHERE c.dag_run_id = d.dag_run_id))
      OR (d.status = 'SUCCESS' AND EXISTS (
-            SELECT 1 FROM quality_results q
+            SELECT 1 FROM catalog_quality_results q
             WHERE q.dag_run_id = d.dag_run_id
               AND q.status   = 'failed'
               AND q.severity = 'error'
@@ -375,29 +375,37 @@ WHERE d.logical_date = :logical_date
 → [`sql/quality/08_duplicate_candidates.sql`](../../sql/quality/08_duplicate_candidates.sql)
 
 ```sql
--- 같은 대상을 같은 관측 시각으로 두 번 적재한 경우를 찾는다.
+-- 같은 대상이 서로 다른 실행에서 다시 적재된 경우를 찾는다.
 --
--- 기간 조건을 WHERE에 두면 안 된다. GROUP BY 이전에 행이 걸러져서,
+-- 처음에는 (cluster_id, source_id, resource_uid, observed_at) 로 묶고
+-- COUNT(*) > 1 을 봤다. 그런데 그 네 컬럼은 uq_catalog_normalized_evidence 의
+-- 유일 키다. 제약이 이미 막고 있는 것을 검사가 다시 세고 있었던 것이라,
+-- 이 질의는 어떤 데이터에서도 0행이었다. 잡는 것 없이 시간만 썼다.
+--
+-- 유일 제약이 막지 못하는 중복은 observed_at 이 미세하게 다른 재관측이다.
+-- 재시도나 backfill 이 원천 타임스탬프를 다시 계산하면 정확히 그 모양이 된다.
+-- 그래서 시각을 날짜 단위로 뭉개고, 같은 날짜를 서로 다른 run 이 적재한 것만 남긴다.
+-- 날짜로 뭉개지 않고 그냥 시각만 빼면, 매일 관측되는 정상 리소스가 전부 걸린다.
+-- 오래 살아 있는 리소스는 실행 수만큼 행이 있는 것이 정상이기 때문이다.
+--
+-- 기간 조건은 여전히 HAVING 에 둔다. WHERE 에 두면 GROUP BY 이전에 행이 걸러져서
 -- 원본은 5일 전이고 복제본만 어제 들어온 쌍이 "1건짜리 그룹"으로 보인다.
--- 재시도와 backfill이 만드는 중복이 정확히 그 모양이라,
--- 이 검사가 잡아야 할 유일한 실제 사례를 못 잡게 된다.
---
--- 그룹을 먼저 만들고 HAVING에서 최근 유입 여부를 본다.
 SELECT
     cluster_id,
     source_id,
     resource_uid,
-    observed_at,
-    COUNT(*)                   AS duplicate_count,
-    MIN(ingested_at)           AS first_ingested_at,
+    DATE_TRUNC('day', observed_at) AS observed_day,
+    COUNT(*)                   AS observation_count,
+    COUNT(DISTINCT run_id)     AS run_count,
+    MIN(observed_at)           AS first_observed_at,
+    MAX(observed_at)           AS last_observed_at,
     MAX(ingested_at)           AS last_ingested_at,
     ARRAY_AGG(DISTINCT run_id) AS from_runs
-FROM normalized_evidence
+FROM catalog_normalized_evidence
 GROUP BY cluster_id, source_id, resource_uid, DATE_TRUNC('day', observed_at)
 HAVING COUNT(DISTINCT run_id) > 1
    AND MAX(ingested_at) >= (:logical_ts - INTERVAL '2 days')
-   AND MAX(ingested_at) >= (:logical_ts - INTERVAL '2 days')
-ORDER BY duplicate_count DESC;
+ORDER BY observation_count DESC;
 ```
 
 `normalized_evidence`에 유일 제약이 있어 정상 경로에서는 중복이 생기지 않습니다. 이 검사는 **제약이 빠진 채 배포됐거나 수동 적재가 있었던 경우를 잡는 안전망**입니다.
@@ -426,8 +434,11 @@ ORDER BY duplicate_count DESC;
 -- 소비자는 그걸 false로 읽는다. 가장 불완전한 상태가 완전으로 보고된다.
 --
 -- 조회 범위를 반드시 좁힌다. 리소스 상태를 읽는 경로를 염두에 두고 만들었다.
--- 다만 현재 소비자가 없다. 조회 API 는 91 만 사용한다.
 -- WHERE 없이 전체 이력을 정렬하면 데이터가 쌓일수록 응답이 선형으로 느려진다.
+--
+-- 소비자가 없다. 조회 API는 91만 사용하고 이 질의는 검증 스크립트와 벤치마크에서만 돈다.
+-- 리소스별 최신 상태를 적재 시점에 유지하는 상태 테이블로 옮기거나 조회 API에 연결하기
+-- 전까지는 읽는 쪽이 없는 질의다. 측정 근거는 docs/portfolio/load-and-design-limits.md 에 있다.
 WITH ranked AS (
     SELECT
         e.evidence_id,
@@ -440,7 +451,7 @@ WITH ranked AS (
             PARTITION BY e.cluster_id, e.source_id, e.resource_uid
             ORDER BY e.observed_at DESC, e.evidence_id DESC
         ) AS rn
-    FROM normalized_evidence AS e
+    FROM catalog_normalized_evidence AS e
     WHERE e.cluster_id  = :cluster_id
       AND e.observed_at >= (:logical_ts - INTERVAL '7 days')
 )
@@ -479,7 +490,7 @@ WITH RECURSIVE upstream AS (
         l.run_id,
         1 AS depth,
         ARRAY[l.downstream_asset_id, l.upstream_asset_id] AS path
-    FROM lineage_edges AS l
+    FROM catalog_lineage_edges AS l
     WHERE l.downstream_asset_id = :asset_id
 
     UNION ALL
@@ -487,7 +498,7 @@ WITH RECURSIVE upstream AS (
     SELECT
         u.origin, l.upstream_asset_id, l.transformation, l.run_id,
         u.depth + 1, u.path || l.upstream_asset_id
-    FROM lineage_edges AS l
+    FROM catalog_lineage_edges AS l
     JOIN upstream      AS u ON u.ancestor = l.downstream_asset_id
     WHERE NOT l.upstream_asset_id = ANY(u.path)
       AND u.depth < 10
@@ -503,8 +514,8 @@ SELECT DISTINCT ON (u.origin, u.ancestor)
      OR c.finished_at < (:logical_ts - INTERVAL '7 days')) AS edge_stale,
     (a.asset_id IS NULL)                                   AS ancestor_missing
 FROM upstream             AS u
-LEFT JOIN collection_runs AS c ON c.run_id   = u.run_id
-LEFT JOIN data_assets     AS a ON a.asset_id = u.ancestor
+LEFT JOIN catalog_collection_runs AS c ON c.run_id   = u.run_id
+LEFT JOIN catalog_data_assets     AS a ON a.asset_id = u.ancestor
 ORDER BY u.origin, u.ancestor, u.depth, c.finished_at DESC NULLS LAST, u.run_id DESC;
 ```
 
@@ -514,7 +525,7 @@ ORDER BY u.origin, u.ancestor, u.depth, c.finished_at DESC NULLS LAST, u.run_id 
 
 ## 측정
 
-관측 데이터를 쌓아 두고 인덱스 유무로 나눠 쟀습니다. `make catalog-bench` 로 재현합니다.
+관측 데이터를 쌓아 두고 인덱스 유무로 나눠 쟀습니다. **합성 데이터입니다** — 분포와 카디널리티가 실제와 다르므로 [측정과 한계](load-and-design-limits.md)의 고지를 함께 읽어야 합니다. `make catalog-bench` 로 재현합니다.
 
 적재 규모는 `observed_fields` 603,618행 · `observed_rows` 120,762행 · `normalized_evidence` 60,762행입니다. 각 질의를 7회 실행한 중앙값입니다.
 
