@@ -27,21 +27,35 @@ flowchart TD
 
 ## JD 대조
 
-| JD | 현재 근거 | 평가 |
-|---|---|---|
-| Python 데이터 처리·스크립트 | 네 provider의 수집·정규화·축약 로직, 공통 한도 모듈 | 직접 충족 |
-| SQL 조회·조인·집계 | PostgreSQL schema·migration·repository 경험은 있으나 복잡한 분석 SQL의 직접 기여 근거는 제한적 | 기본 충족, 보강 필요 |
-| FastAPI·Flask API | ConfigMap·Secret 참조 API, node alias read/write API | 직접 충족 |
-| Git 협업·PR·리뷰 | 팀 저장소의 기능·테스트·리뷰 후 경계 보강 이력 | 직접 충족 |
-| 진행 공유·문서화 | provider 계약 문서와 코드 변경을 같은 커밋에서 갱신 | 직접 충족 |
-| 데이터 수집·적재 파이프라인 | 네 운영 시스템 수집과 정규화는 직접, 범용 업무 데이터 ETL은 없음 | 강한 인접 경험 |
-| Metadata Repository 정합성 | source·namespace·time·coverage metadata는 직접, 정식 카탈로그는 후속 확장 | 인접 경험 |
-| API/MCP | FastAPI는 직접 완성, 내부 MCP 75개와 권한 경계 구현은 있으나 최종 사용자 경로 검증 없음 | API 충족, MCP 구현 경험 |
-| AWS·컨테이너 | Docker·Helm·AWS EKS 팀 배포와 담당 수집 경로 설정 | 경험 있음 |
-| Airflow | 종료 후 확장 코드이며 원본 프로젝트 이력 없음 | 현재 미충족 |
-| 데이터 카탈로그·lineage | 종료 후 확장 코드이며 원본 프로젝트 이력 없음 | 현재 미충족 |
+평가는 적지 않습니다. 요건별로 무엇이 어디 있고 어떻게 확인하는지만 놓습니다.
 
-우대요건까지 모두 충족했다고 쓰는 것이 목표가 아니다. **필수요건을 직접 코드로 증명하고, 우대요건의 공백은 알고 있으며 실제 후속 작업으로 메우는 중이라는 상태**가 현재의 정확한 포지션이다.
+### 필수 요건
+
+| JD | 근거 | 확인 | 범위 |
+|---|---|---|---|
+| Python 데이터 처리·스크립트 | `cluster-agent/providers/`, `datacatalog/pipeline.py` | `make catalog-run` | 팀·개인 |
+| SQL 조회·조인·집계 | `sql/quality/01~08, 90, 91` — 재귀 CTE, 윈도 함수, FULL OUTER JOIN | `make catalog-sql` | 개인 |
+| FastAPI·Flask API | `inventory/config_references.py`, `datacatalog/router.py` (7개 엔드포인트) | `pytest tests/test_config_references.py` | 팀·개인 |
+| LLM·AI Agent 개념 | `ai/agent/pipeline/evidence_bundle.py`, `services/catalog_mcp/` | `make catalog-mcp` | 팀·개인 |
+| Git 협업·리뷰 | 리뷰 지적 39분 뒤 경계 조건 보강 커밋 | [엔지니어링 로그](10-engineering-log.md#4-리뷰-40분-뒤) | 팀 |
+| 진행 공유·문서화 | 계약 변경과 문서를 같은 커밋에서 갱신 | [엔지니어링 로그](10-engineering-log.md) | 팀 |
+
+### 우대 요건
+
+| JD | 근거 | 확인 | 범위 |
+|---|---|---|---|
+| 파이프라인·수집·API 프로젝트 | 수집기 4종 + 배치 + 조회 API | `make catalog-verify` → 15/15 | 팀·개인 |
+| Airflow | `dags/catalog_reconciliation_daily.py` — 부분 실패 보존, 멱등 재실행 | `make demo-fail-source` | 개인 |
+| 메타데이터·데이터 카탈로그 설계 | `datacatalog/models.py` 13개 테이블, 계약 이력 분리 | `make demo-drift` | 개인 |
+| MCP 서버 개발 | `services/catalog_mcp/server.py` — 읽기 전용 도구 6종, 응답 경계 | `pytest tests/catalog/test_mcp_boundary.py` | 개인 |
+| Docker·컨테이너 | `docker-compose.catalog.yml` — PostgreSQL·MinIO·Airflow | `make catalog-up` | 개인 |
+| AWS·클라우드 | EKS 배포와 담당 수집 경로 설정, 청구 원장 분석 | [비용 회고](13-architecture-cost-postmortem.md) | 팀 |
+
+### 범위에 대한 주석
+
+Airflow·카탈로그·MCP는 **팀 프로젝트 기간이 아니라 종료 후 개인 작업**으로 구현했습니다. 팀 협업 맥락에서 운영해 본 경험은 아닙니다. 그 대신 로컬에서 전부 재현되도록 만들었고, 확인 명령을 위 표에 적었습니다.
+
+무엇을 만들었고 무엇이 남았는지는 [카탈로그 구현 계획과 진행 상태](12a-catalog-implementation-plan.md)에 있습니다.
 
 ## 정식 카탈로그와 다른 점
 
