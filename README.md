@@ -38,57 +38,63 @@ flowchart LR
 
 ## 만든 것
 
-### 운영 데이터 수집·정규화
-`Python` `수집 계약` — 팀
+### 운영 데이터 수집 파이프라인 · 팀
 
-- 원천 **4종**(Kubernetes API / Prometheus / Loki / Tempo) 수집기 개발 및 공통 구조 정규화
-- 수집 결과 **3-state** 완전성 계약 설계 — 빈 응답 **5가지** 원인을 사유 코드로 구분
-- provider **4종**에 흩어진 응답 한도 로직을 공통 모듈 **1개**로 추출 (개수 · 직렬화 바이트 이중 상한)
-- 장애 근거 로그 네임스페이스 귀속 필터 및 집계 재계산 — 근거 **1,180줄 → 240줄**, 번들 **66.8KB → 13.3KB**
+- Kubernetes API / Prometheus / Loki / Tempo 4개 원천 수집기 개발 및 공통 evidence 구조 정규화
+- 수집 결과 3-state 완전성 계약 설계 (completed / partial / unavailable + 사유 코드)
+- 빈 응답 5가지 원인 구분 (부재 / 권한 없음 / 타임아웃 / 상한 절단 / 원천 무응답)
+- provider 4종 공통 응답 한도 모듈 추출 (개수 + 직렬화 바이트 이중 상한, 그룹별 예산 배분)
+- 잘림 시 원본 개수와 사유 코드 동반 반환
+- 장애 근거 로그 네임스페이스 귀속 필터 및 집계 재계산 (근거 1,180줄 → 240줄, 66.8KB → 13.3KB)
+- 노드 지표 수집기(node-collector) 개발
 
 → [수집 완전성 계약](docs/portfolio/01-collection-contract.md) · [수집 한도 설계](docs/portfolio/02-collection-limits.md) · [근거의 귀속 범위](docs/portfolio/11-evidence-scope.md)
 
-### 메타데이터 카탈로그 모델링
-`데이터 모델링` `스키마 이력` — 개인
+### 배치 파이프라인 및 재처리 · 개인
 
-- PostgreSQL **13개 테이블** 설계 (자산 / 필드 계약 / 스키마 관측 이력 / 리니지 / 실행 이력 / 품질 결과)
-- 유일 제약 **8종**으로 멱등 적재 보장
-- 등록 계약과 관측 이력 분리 — 버전을 올리지 않은 스키마 변경까지 검출
-- 리니지 역추적 (정규화 행 → S3 원본) 및 **7일** 초과 간선 검출
-
-→ [메타데이터 카탈로그](docs/portfolio/04-metadata-catalog.md) · 확인 `make demo-drift`
-
-### 데이터 품질 검증 SQL
-`SQL` `PostgreSQL` — 개인
-
-- 검사 SQL **8본** + 조회 SQL **2본** (재귀 CTE / 윈도 함수 / FULL OUTER JOIN / IS DISTINCT FROM)
-- 검사 유형 **6종** — 소스 커버리지 / 필수 필드 / 스키마 드리프트 / 최신성 / 리니지 단절 / 실행 정합성
-- 관측 **60만 행** 기준 인덱스 설계 — 검사 전체 **424.5ms → 150.0ms**, 드리프트 검사 **110.9ms → 2.5ms**
-- 오탐 검증 포함 **15항목** 자동 검증, 단위 테스트 **24종**
-
-→ [검사 SQL 열 개](docs/portfolio/06-sql-quality-checks.md) · 확인 `make catalog-sql` `make catalog-bench`
-
-### 배치 파이프라인
-`Airflow` `멱등 재실행` — 개인
-
-- 소스별 독립 수집·재시도 — **1개** 실패 시 나머지 **3개** 적재 + `PARTIAL` 기록
-- 재수집 대상 **4개 → 1개**
-- 같은 논리 날짜 **5회** 재실행에 적재 행 수 불변
-- backfill 시 원천 재조회 없이 보관본 재생, 입력을 수집 결과 소비로 분리
+- Airflow DAG 소스별 독립 수집 / 재시도 / 부분 실패 보존 (1개 실패 시 나머지 3개 적재 + PARTIAL 기록)
+- 실행 단위를 DAG 실행과 소스별 수집으로 분리 (부분 실패를 스키마에서 표현 가능하게)
+- 멱등 재실행 (같은 논리 날짜 5회 반복에 적재 행 수 불변)
+- backfill 시 원천 재조회 없이 보관 원본 재생 (과거 날짜에 현재 값이 적재되는 문제 차단)
+- 입력을 수집 결과 소비로 분리 (CollectedSource / FixtureSource 어댑터)
+- 재수집 범위 4개 소스 → 실패한 1개
+- 고장 주입 시연 3종 (소스 실패 / 스키마 드리프트 / 중복 적재)
 
 → [배치 설계](docs/portfolio/05-airflow-pipeline.md) · [검사는 어디서 돌아야 하는가](docs/portfolio/15-where-checks-run.md) · 확인 `make demo-fail-source`
 
-### 조회 API·MCP 서버
-`FastAPI` `MCP` — 팀 · 개인
+### 메타데이터 카탈로그 설계 · 개인
 
-- FastAPI 엔드포인트 **7종** / 커서 페이지네이션 / 모든 응답에 마지막 실행 상태 부착
-- ConfigMap·Secret 참조 조회 API **681줄** — allowlist projection, 경계 조건 **16종**
-- MCP 읽기 전용 도구 **6종** — 응답 상한 **50건 · 64KB**, 절단 사실과 원본 개수 반환
-- Gateway API 상한값 상수 **91줄** 단일 출처 (단독 작성)
+- PostgreSQL 13개 테이블 메타데이터 모델 설계
+  (자산 / 필드 계약 / 스키마 관측 이력 / 리니지 / 실행 이력 / 품질 결과 / 원본 스냅샷)
+- 등록 계약과 관측 이력 분리 (버전을 올리지 않은 스키마 변경까지 검출)
+- 유일 제약 8종으로 멱등 적재 보장 (재시도 · backfill 중복 차단)
+- 리니지 간선에 확인 시각 저장, 정규화 행 → S3 원본 역추적
+- 실시간 3-state와 배치 4-state 상태 어휘 매핑 정의
+- 외부 데이터 카탈로그 도구 미도입 결정 (자산 6종 규모에서 운영 비용이 이득을 초과)
+
+→ [메타데이터 카탈로그](docs/portfolio/04-metadata-catalog.md) · [기술 리서치](docs/portfolio/08-tech-research.md) · 확인 `make demo-drift`
+
+### 데이터 품질 검증 · 개인
+
+- 정합성 검사 SQL 8본 + 조회 SQL 2본 (재귀 CTE / 윈도 함수 / FULL OUTER JOIN / IS DISTINCT FROM)
+- 검사 6종 (소스 커버리지 / 필수 필드 누락 / 스키마 드리프트 / 최신성 SLA / 리니지 단절 / 실행 정합성)
+- 통과 · 실패 결과 모두 적재 (검사하지 않은 것과 검사해서 통과한 것을 구분)
+- 관측 60만 행 기준 검사 질의 인덱스 설계 (검사 전체 424.5ms → 150.0ms, 드리프트 110.9ms → 2.5ms)
+- 오탐 검증 포함 15항목 자동 검증 (정상 데이터에서 모든 검사 0행 확인)
+- 카탈로그 계층 단위 테스트 24종
+
+→ [검사 SQL 열 개](docs/portfolio/06-sql-quality-checks.md) · 확인 `make catalog-sql` `make catalog-bench`
+
+### 조회 API 및 MCP · 팀 + 개인
+
+- FastAPI 카탈로그 조회 엔드포인트 7종 / 커서 페이지네이션 / 모든 응답에 마지막 실행 상태 부착
+- ConfigMap · Secret 참조 조회 API (allowlist projection / 카나리 검증 / 경계 조건 16종)
+- MCP 읽기 전용 도구 6종 (응답 상한 50건 · 64KB / 절단 사실 · 원본 개수 · 다음 커서 반환)
+- MCP 인자 스키마 검증 및 신뢰할 수 없는 입력 표시 (경계 테스트 9종)
+- Gateway API 상한값 상수 단일 출처 (91줄, 단독 작성)
+- 자연어 → SQL 생성 기능 제외 결정 (생성 질의의 정확성 검증 수단 부재)
 
 → [조회 API와 MCP](docs/portfolio/07-catalog-api-mcp.md) · [설정 참조 조회 API](docs/portfolio/03-config-reference-api.md) · 확인 `make catalog-mcp`
-
----
 
 ---
 
