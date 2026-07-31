@@ -112,7 +112,14 @@ def run_once(
     fail_sources: frozenset[str],
     fail_downstream: bool,
     today: str,
+    only_sources: frozenset[str] = frozenset(),
 ) -> dict[str, object]:
+    """only_sources 를 주면 그 소스만 다시 수집한다.
+
+    부분 실패를 소스 단위로 기록해 둔 이유가 이것이다. 실패한 소스만 다시 돌려도
+    상태 확정이 성립하려면, 상태를 outcomes 가 아니라 DB 의 collection_runs 에서
+    다시 읽어야 한다. resolve_dag_run_status 가 그렇게 되어 있다.
+    """
     engine = create_engine(dsn, future=True)
     fixture_root = ROOT / "fixtures" / "catalog" / fixture
     archive_root = ROOT / ".catalog-archive"
@@ -125,12 +132,13 @@ def run_once(
         dag_run_id = pipeline.open_dag_run(conn, logical_date, now)
 
         # 1. extract — 소스별 독립. 하나가 실패해도 나머지는 진행한다.
+        targets = tuple(s for s in SOURCES if not only_sources or s in only_sources)
         outcomes = [
             pipeline.extract_source(
                 source, logical_date, fixture_root, archive_root,
                 today=today, fail_sources=fail_sources,
             )
-            for source in SOURCES
+            for source in targets
         ]
         pipeline.upsert_collection_runs(conn, dag_run_id, logical_date, outcomes, now)
 
@@ -174,6 +182,7 @@ def main() -> int:
     parser.add_argument("--fixture", default="normal", choices=("normal", "drift"))
     parser.add_argument("--fail", default="", help="강제 실패시킬 소스 (쉼표 구분)")
     parser.add_argument("--fail-downstream", action="store_true")
+    parser.add_argument("--only", default="", help="이 소스만 다시 수집 (쉼표 구분)")
     parser.add_argument("--today", default=datetime.now(UTC).date().isoformat())
     args = parser.parse_args()
 
@@ -184,6 +193,7 @@ def main() -> int:
         frozenset(s for s in args.fail.split(",") if s),
         args.fail_downstream,
         args.today,
+        frozenset(s for s in args.only.split(",") if s),
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0

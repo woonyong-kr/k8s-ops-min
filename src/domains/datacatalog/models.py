@@ -338,6 +338,16 @@ class CatalogNormalizedEvidenceRecord(Base):
             name="uq_catalog_normalized_evidence",
         ),
         Index("ix_catalog_normalized_evidence_lookup", "cluster_id", "observed_at"),
+        # 08 중복 적재 검사용 커버링 인덱스. 그룹 키 3종 + run_id 로 정렬을 없애고,
+        # INCLUDE 로 힙 접근을 없앤다. 없으면 같은 질의가 외부 정렬로 떨어진다.
+        Index(
+            "ix_catalog_normalized_evidence_dup",
+            "cluster_id",
+            "source_id",
+            "resource_uid",
+            "run_id",
+            postgresql_include=("observed_at", "ingested_at"),
+        ),
         Index("ix_catalog_normalized_evidence_asset", "asset_id", "observed_at"),
     )
 

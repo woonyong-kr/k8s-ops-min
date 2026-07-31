@@ -6,7 +6,7 @@ SHELL := bash
 # 임의의 파이썬으로 검증하려면 `make test PY=/path/to/python`처럼 덩어쓴다.
 PY ?= .venv/bin/python
 
-.PHONY: help sync lint format test \
+.PHONY: help sync lint format test demo-fail-source demo-drift demo-duplicate \
         catalog-up catalog-down catalog-schema catalog-seed catalog-run \
         catalog-verify catalog-sql catalog-mcp catalog-test \
         controller-check benchmark-event-bus benchmark-event-bus-compare \
@@ -77,3 +77,17 @@ portfolio-verify: ## 공개 문서 링크·수치·식별자·기여 경계 검�
 
 clean: ## 캐시 삭제
 	find src tests scripts dags benchmarks -type d -name __pycache__ -prune -exec rm -rf -- {} +
+
+# 고장 시연 -------------------------------------------------------------------
+
+demo-fail-source: ## 소스 1개를 끊고 배치 실행 → PARTIAL 기록, 나머지 적재
+	PYTHONPATH=src $(PY) scripts/catalog_demo.py fail-source
+
+demo-drift: ## 원천 필드 타입 변경 → 스키마 드리프트 검출
+	PYTHONPATH=src $(PY) scripts/catalog_demo.py drift
+
+demo-duplicate: ## 같은 관측을 다시 적재 → 중복 적재 후보 검출
+	PYTHONPATH=src $(PY) scripts/catalog_demo.py duplicate
+
+catalog-bench: ## 검사 SQL 실행시간을 인덱스 유무로 비교
+	PYTHONPATH=src $(PY) scripts/catalog_bench.py
