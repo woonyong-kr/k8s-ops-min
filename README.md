@@ -1,4 +1,4 @@
-# Kyro — 운영 데이터 수집·정규화와 메타데이터 카탈로그 정합성 검증
+# Kyro
 
 쿠버네티스에 익숙하지 않은 사용자가 GitOps 기반으로 장애를 스스로 복구할 수 있게 돕는 서비스입니다. 장애가 나면 운영 데이터를 모아 규칙으로 원인을 판정하고, 수정안을 Draft PR로 올린 뒤, 실제로 복구됐는지 확인합니다.
 
@@ -9,6 +9,8 @@
 ---
 
 ## 담당 범위
+
+5인 팀 프로젝트이고 아래는 제가 설계하고 구현한 것입니다. 원천 수집기처럼 팀이 먼저 만든 코드 위에서 작업한 부분이 있어, 무엇을 이어받고 무엇을 새로 만들었는지는 파일 단위 blame 과 함께 [기여와 근거](docs/source-and-ownership.md)에 적었습니다.
 
 ```mermaid
 flowchart LR
@@ -38,7 +40,7 @@ flowchart LR
 
 ## 만든 것
 
-### 운영 데이터 수집 파이프라인 · 팀
+### 운영 데이터 수집 파이프라인
 
 - Kubernetes API / Prometheus / Loki / Tempo 4개 원천 수집기 개발 및 공통 evidence 구조 정규화
 - 수집 결과 3-state 완전성 계약 설계 (completed / partial / unavailable + 사유 코드)
@@ -50,7 +52,7 @@ flowchart LR
 
 → [수집 완전성 계약](docs/collection-contract.md) · [수집 한도 설계](docs/collection-limits.md) · [근거의 적용 범위](docs/source-and-ownership.md)
 
-### 배치 파이프라인 및 재처리 · 개인
+### 배치 파이프라인 및 재처리
 
 - Airflow DAG 소스별 독립 수집 / 재시도 / 부분 실패 보존 (1개 실패 시 나머지 3개 적재 + PARTIAL 기록)
 - 실행 단위를 DAG 실행과 소스별 수집으로 분리 (부분 실패를 스키마에서 표현 가능하게)
@@ -62,7 +64,7 @@ flowchart LR
 
 → [배치 설계](docs/airflow-pipeline.md) · [검사는 어디서 돌아야 하는가](docs/where-checks-run.md) · 확인 `make demo-fail-source`
 
-### 메타데이터 카탈로그 설계 · 개인
+### 메타데이터 카탈로그 설계
 
 - PostgreSQL 13개 테이블 메타데이터 모델 설계
   (자산 / 필드 계약 / 스키마 관측 이력 / 리니지 / 실행 이력 / 품질 결과 / 원본 스냅샷)
@@ -74,7 +76,7 @@ flowchart LR
 
 → [메타데이터 카탈로그](docs/metadata-catalog.md) · [기술 리서치](docs/tech-research.md) · 확인 `make demo-drift`
 
-### 데이터 품질 검증 · 개인
+### 데이터 품질 검증
 
 - 정합성 검사 SQL 8본 + 조회 SQL 2본 (재귀 CTE / 윈도 함수 / FULL OUTER JOIN / IS DISTINCT FROM)
 - 검사 8종 (소스 커버리지 / 필수 필드 누락 / 스키마 드리프트 / 버전 미갱신 변경 / 최신성 SLA / 리니지 단절 / 실행 정합성 / 중복 적재 후보) + 조회 질의 2종
@@ -86,7 +88,7 @@ flowchart LR
 
 → [검사 SQL 열 개](docs/sql-quality-checks.md) · [측정과 한계](docs/load-and-design-limits.md) · 확인 `make catalog-sql` `make catalog-bench`
 
-### 조회 API 및 MCP · 팀 + 개인
+### 조회 API 및 MCP
 
 - FastAPI 카탈로그 조회 엔드포인트 7종 작성 / 커서 페이지네이션 / 모든 응답에 마지막 실행 상태 부착 (앱 배선 `app.py` · API 테스트 9종 포함)
 - ConfigMap · Secret 참조 조회 API (allowlist projection / 카나리 검증 / 경계 조건 16종)
@@ -139,31 +141,31 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 
 ## 문서
 
-하나만 고른다면 [검사 SQL 열 개를 어떻게 설계했고 무엇을 잘못 만들었다가 고쳤나](docs/sql-quality-checks.md)입니다.
+하나만 고른다면 [검사 SQL 열 개](docs/sql-quality-checks.md)입니다. 질의마다 왜 그 모양인지와, 아무것도 못 잡던 검사를 찾아 고친 기록이 있습니다.
 
 **만든 것**
 
-- [원천이 빈 목록을 돌려줄 때, 없는 것인지 못 가져온 것인지 구분하기](docs/collection-contract.md)
-- [응답이 한도를 넘을 때 무엇부터 버리고, 버렸다는 사실을 어떻게 남기나](docs/collection-limits.md)
-- [Secret 값을 보여주지 않으면서 "이 설정을 누가 쓰는가"에 답하기](docs/config-reference-api.md)
-- [테이블 13개를 등록·실행 이력·관측으로 나눈 이유와 유일 제약 11종](docs/metadata-catalog.md)
-- [네 원천 중 하나만 실패했을 때 나머지를 살리면서 실패를 숨기지 않기](docs/airflow-pipeline.md)
-- [모델에게 카탈로그를 열어주되 권한과 응답 크기를 묶어 두기](docs/catalog-api-mcp.md)
+- [수집 완전성 계약 — 빈 목록 5가지 원인 구분](docs/collection-contract.md)
+- [응답 한도 설계 — 개수·바이트 이중 상한, 절단 사유 동반 반환](docs/collection-limits.md)
+- [설정 참조 조회 API — Secret 값 비노출, 참조 관계만 반환](docs/config-reference-api.md)
+- [메타데이터 카탈로그 — 테이블 13종, 유일 제약 11종, 계약과 관측 분리](docs/metadata-catalog.md)
+- [배치 파이프라인 — 소스별 독립 수집과 부분 실패 보존](docs/airflow-pipeline.md)
+- [조회 API 와 MCP — 응답 경계, 권한 축소 전달, 감사 로그](docs/catalog-api-mcp.md)
 
 **검증한 것**
 
-- [검사 SQL 열 개의 설계 근거와, 아무것도 못 잡던 검사를 찾아 고친 기록](docs/sql-quality-checks.md)
-- [관측 470만 행까지 재본 결과와 어느 질의가 먼저 무너지는가](docs/load-and-design-limits.md)
-- [7월 AWS 청구서를 다시 열어 문서 수치와 맞춰 본 기록](docs/evidence/aws-bill-2026-07/README.md)
+- [검사 SQL 열 개 — 질의별 설계 근거와 폐기·수정 기록](docs/sql-quality-checks.md)
+- [부하 측정과 한계 — 관측 470만 행, 병목 질의와 개선안](docs/load-and-design-limits.md)
+- [AWS 청구서 대조 — 7월 청구 내역과 문서 수치 확인](docs/evidence/aws-bill-2026-07/README.md)
 
 **안 만든 것**
 
-- [OpenMetadata·DataHub 를 검토하고 쓰지 않기로 한 근거](docs/tech-research.md)
-- [만들었다가 걷어낸 것과, 결론이 먼저였던 판단을 남긴 기록](docs/scope-decisions.md)
-- [배치에 있으면 안 되는 검사를 가려낸 기준](docs/where-checks-run.md)
+- [기술 리서치 — OpenMetadata·DataHub 미도입 근거](docs/tech-research.md)
+- [범위 판단 — 만들었다가 걷어낸 것](docs/scope-decisions.md)
+- [검사 실행 위치 — 배치에 두면 안 되는 검사](docs/where-checks-run.md)
 
 **바뀐 판단**
 
-- [처음 생각과 달라진 지점들](docs/engineering-log.md)
-- [Deployment 를 47개로 나눈 대가가 청구서에 어떻게 찍혔나](docs/architecture-cost-postmortem.md)
-- [어디까지가 제 몫이고 어디부터 팀 코드인가](docs/source-and-ownership.md)
+- [엔지니어링 로그 — 처음 생각과 달라진 지점](docs/engineering-log.md)
+- [아키텍처 비용 회고 — Deployment 47개 분할의 대가](docs/architecture-cost-postmortem.md)
+- [기여와 근거 — 팀 코드와 개인 작업의 경계](docs/source-and-ownership.md)
