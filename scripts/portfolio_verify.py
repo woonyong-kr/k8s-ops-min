@@ -9,7 +9,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_DOCS = (
     ROOT / "README.md",
-    ROOT / "docs" / "resume.md",
     *(ROOT / "docs").glob("*.md"),
     *(ROOT / "docs" / "evidence" / "network-cost").glob("*.md"),
 )
