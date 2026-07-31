@@ -15,7 +15,7 @@
 --
 -- 소비자가 없다. 조회 API는 91만 사용하고 이 질의는 검증 스크립트와 벤치마크에서만 돈다.
 -- 리소스별 최신 상태를 적재 시점에 유지하는 상태 테이블로 옮기거나 조회 API에 연결하기
--- 전까지는 읽는 쪽이 없는 질의다. 측정 근거는 docs/portfolio/load-and-design-limits.md 에 있다.
+-- 전까지는 읽는 쪽이 없는 질의다. 측정 근거는 docs/load-and-design-limits.md 에 있다.
 WITH ranked AS (
     SELECT
         e.evidence_id,

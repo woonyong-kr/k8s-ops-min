@@ -2,7 +2,7 @@
 
 # SQL 정합성 질의
 
-> **⑥ 자료 목록 관리** · 프로젝트 종료 후 개인 작업
+> **자료 목록 관리** · 프로젝트 종료 후 개인 작업
 
 정합성 검사는 "이 조건에 걸리는 행이 있는가"라는 질문입니다. 검사 기준을 Python이 아니라 SQL에 둔 이유는 두 가지입니다.
 
@@ -438,7 +438,7 @@ ORDER BY observation_count DESC;
 --
 -- 소비자가 없다. 조회 API는 91만 사용하고 이 질의는 검증 스크립트와 벤치마크에서만 돈다.
 -- 리소스별 최신 상태를 적재 시점에 유지하는 상태 테이블로 옮기거나 조회 API에 연결하기
--- 전까지는 읽는 쪽이 없는 질의다. 측정 근거는 docs/portfolio/load-and-design-limits.md 에 있다.
+-- 전까지는 읽는 쪽이 없는 질의다. 측정 근거는 docs/load-and-design-limits.md 에 있다.
 WITH ranked AS (
     SELECT
         e.evidence_id,
@@ -559,7 +559,7 @@ ORDER BY u.origin, u.ancestor, u.depth, c.finished_at DESC NULLS LAST, u.run_id 
 make catalog-sql
 ```
 
-검사 8종은 결과를 `quality_results`에 적재합니다. **위반 0건이어도 통과 결과를 남깁니다.** 검사하지 않은 것과 검사해서 통과한 것을 구분하기 위해서입니다. [관련 문서](collection-contract.md)의 원칙과 같습니다.
+검사 8종은 결과를 `quality_results`에 적재합니다. **위반 0건이어도 통과 결과를 남깁니다.** 검사하지 않은 것과 검사해서 통과한 것을 구분하기 위해서입니다. [수집 완전성 계약](collection-contract.md)의 원칙과 같습니다.
 
 ## 검증
 

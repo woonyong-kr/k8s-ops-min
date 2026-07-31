@@ -4,7 +4,7 @@
 질문이다. 답은 이미 카탈로그 API 가 갖고 있고, 필요한 것은 질문과
 엔드포인트를 잇는 얇은 계층이다.
 
-설계 근거: docs/portfolio/catalog-api-mcp.md
+설계 근거: docs/catalog-api-mcp.md
 
 세 가지를 지킨다.
 

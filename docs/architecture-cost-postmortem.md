@@ -1,6 +1,10 @@
-# management·target Deployment 47개 이후, 29.68TB 청구 사용량을 뜯어봤습니다
+[← Kyro로 돌아가기](../README.md) · [문서 목록](README.md)
 
-초기에는 장애 분석 단계를 작은 워커로 나누면 책임, 재시도, 장애 격리가 명확해진다고 판단했습니다. 논리적 경계로는 맞았지만, 그 경계를 거의 그대로 Kubernetes Deployment와 NATS 왕복으로 옮겼습니다. Git과 AWS 청구서을 대조하자 코드 구조가 실행 비용으로 바뀌는 지점이 보였습니다.
+# 아키텍처 비용 회고
+
+**이 문서가 답하는 질문** — 서비스를 47개로 쪼갠 결정이 AWS 청구서에 얼마로 나타났는가.
+
+초기에는 장애 분석 단계를 작은 워커로 나누면 책임, 재시도, 장애 격리가 명확해진다고 판단했습니다. 논리적 경계로는 맞았지만, 그 경계를 거의 그대로 Kubernetes Deployment와 NATS 왕복으로 옮겼습니다. Git과 AWS 청구서를 대조하자 코드 구조가 실행 비용으로 바뀌는 지점이 보였습니다.
 
 이 회고는 개인 기여를 주장하는 문서가 아닙니다. 원본은 5인 팀 아키텍처이고, 통합 controller 는 프로젝트가 끝난 뒤 개인 작업으로 확장한 것입니다. 어디까지가 제 몫인지는 [기여와 근거](source-and-ownership.md)에 있습니다.
 
@@ -18,7 +22,7 @@ incident.detected
   → recovery.verification.updated
 ```
 
-모든 이벤트는 다음 공통 응답를 공유합니다.
+모든 이벤트는 다음 공통 필드를 공유합니다.
 
 ```text
 event_id          중복 처리 방지의 식별자
@@ -58,7 +62,9 @@ Git 각 날짜의 마지막 revision에서 `deploy/management/**`·`deploy/targe
 
 CloudTrail에서는 7월 4일 기존 management 1개와 target 2개를 만들고, 7월 18일 management/game/demo 3개로 교체한 기록을 확인했습니다. 교체 시점에는 기존과 신규 클러스터가 잠시 겹쳤습니다.
 
-## 3. AWS 청구서은 무엇을 보여줬나
+## 3. AWS 청구서는 무엇을 보여줬나
+
+먼저 밝혀 둘 것이 있습니다. **같은 AWS 계정에서 팀의 다른 프로젝트(게임 서버 `battlegrounds-*` 노드그룹)가 함께 돌았습니다.** 아래 노드그룹별 수치에 그 트래픽이 섞여 있어, 29.68TB 전부를 이 시스템 탓으로 돌릴 수 없습니다.
 
 2026-08-01 Cost Explorer를 다시 조회한 결과입니다.
 
@@ -171,4 +177,5 @@ game→infra는 프로세스 통합으로 해결할 문제가 아닙니다. 다�
 
 이 실험은 같은 프로세스 안의 논리 단계를 NATS로 왕복시킬 이유가 있는지 판단하는 microbenchmark입니다. PostgreSQL, handler, 외부 API, Kubernetes CNI, Cross-AZ는 포함하지 않았습니다. 그래서 “전체 시스템이 82K events/s를 처리한다” 또는 “AWS 비용이 96.74% 줄었다”고 쓰면 안 됩니다.
 
-재현 코드는 [`benchmarks/event_bus_transport.py`](../benchmarks/event_bus_transport.py)에 있으며, 청구서는 [증거 묶음](evidence/network-cost/README.md)에 있습니다.
+재현 코드는 [`benchmarks/event_bus_transport.py`](../benchmarks/event_bus_transport.py)에 있으며, 원본 자료는 [증거 묶음](evidence/network-cost/README.md)에 있습니다.
+

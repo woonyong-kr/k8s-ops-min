@@ -107,7 +107,7 @@
 | 2 | 배치가 원천을 중복 조회하는지 확인하고 수정과 테스트를 남김 | 완료 — 입력을 `CollectedSource`/`FixtureSource` 어댑터로 분리, 테스트 9종 |
 | 3 | 같은 논리 날짜 재실행·일부 소스 실패·downstream 실패의 결과를 SQL로 설명 | 완료 — `make catalog-verify` 15항목 |
 | 4 | 등록 스키마와 관측 스키마의 양방향 차이를 직접 설명 | 완료 — `03_schema_drift.sql` FULL OUTER JOIN |
-| 5 | 카탈로그 조회 router 를 앱에 연결하고 API 테스트 추가 | 완료 — `app.py` 에서 `dependency_overrides` 로 접속을 주입하고 실제 DB 로 API 테스트 9종 |
+| 5 | 카탈로그 조회 router 를 앱에 연결하고 API 테스트 추가 | 완료 — `app.py` 에서 `dependency_overrides` 로 접속을 주입하고 실제 DB 로 API 테스트 10종 |
 | 6 | 판단과 수정 과정이 변경 이력에 남음 | 완료 — [엔지니어링 로그](engineering-log.md)와 커밋 메시지 |
 
 여섯 조건을 모두 통과했습니다. 다만 통과가 곧 운영은 아닙니다 — 실제 사용자가 이 API 를 호출한 적이 없고, 인가는 MCP 가 올바른 토큰을 보내는 데까지만 검증되어 있습니다. API 가 그 토큰으로 권한을 판정하는 경로는 아직 없습니다.
