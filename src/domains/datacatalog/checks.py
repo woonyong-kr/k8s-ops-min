@@ -120,6 +120,7 @@ def run_checks(
                 expected=_stringify(row, ("declared_type", "expected_value",
                                           "freshness_sla_seconds")),
                 checked_at=checked_at,
+                first_seen=first_seen,
             )
             findings.append(dict(row))
 

@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -47,15 +48,22 @@ def scalar(sql: str, **params: object) -> object:
 
 
 def reset() -> None:
-    from packages.storage.base import Base
     import domains.datacatalog.models  # noqa: F401
+    from packages.storage.base import Base
 
     tables = [t for n, t in Base.metadata.tables.items() if n.startswith("catalog_")]
     Base.metadata.drop_all(engine, tables=tables)
     Base.metadata.create_all(engine, tables=tables)
     archive = ROOT / ".catalog-archive"
-    if archive.exists():
-        subprocess.run(["rm", "-rf", str(archive)], check=False)
+    # Airflow와 bind mount로 공유하는 root inode를 지우면 실행 중인
+    # container는 삭제된 mount를 계속 보게 된다. root는 유지하고
+    # 검증이 만든 날짜별 산출물만 비운다.
+    archive.mkdir(parents=True, exist_ok=True)
+    for child in archive.iterdir():
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
 
 
 def main() -> int:

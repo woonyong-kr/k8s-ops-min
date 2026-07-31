@@ -39,7 +39,7 @@ def test_필드_추가와_삭제를_양방향으로_잡는다():
     """한쪽만 보면 등록에 없는데 실제로 생긴 필드를 놓친다."""
     declared = {"a": "string", "b": "integer"}
     observed = {"a": "string", "c": "integer"}
-    kinds = {k: t for _, t, _, _ in [] } or {f: t for f, t, _, _ in contract_diff(declared, observed)}
+    kinds = {field: drift for field, drift, _, _ in contract_diff(declared, observed)}
     assert kinds["b"] == "MISSING_FIELD"
     assert kinds["c"] == "UNDECLARED_FIELD"
 

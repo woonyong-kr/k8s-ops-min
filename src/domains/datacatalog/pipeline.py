@@ -104,6 +104,48 @@ def _digest(payloads: list[dict[str, Any]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def load_archived_outcomes(conn: Connection, dag_run_id: str) -> list[ExtractOutcome]:
+    """Load task outputs from the raw archive instead of querying sources again.
+
+    Airflow mapped extract tasks persist status and archive raw payloads. Downstream
+    normalization must consume that exact snapshot. Calling ``extract_source`` again
+    would silently turn one logical run into two source reads and could mix time windows.
+    """
+    rows = conn.execute(
+        text(
+            """
+            SELECT DISTINCT ON (cr.source_id)
+                   cr.source_id, cr.status, rs.s3_uri, rs.content_hash
+            FROM catalog_collection_runs AS cr
+            LEFT JOIN catalog_raw_snapshots AS rs ON rs.run_id = cr.run_id
+            WHERE cr.dag_run_id = :dag_run_id
+            ORDER BY cr.source_id, rs.created_at DESC NULLS LAST
+            """
+        ),
+        {"dag_run_id": dag_run_id},
+    ).mappings()
+
+    outcomes: list[ExtractOutcome] = []
+    for row in rows:
+        uri = row["s3_uri"]
+        payloads: list[dict[str, Any]] = []
+        if uri:
+            if not str(uri).startswith("file://"):
+                raise ValueError(f"unsupported archive URI: {uri}")
+            path = Path(str(uri).removeprefix("file://"))
+            payloads = json.loads(path.read_text(encoding="utf-8"))
+        outcomes.append(
+            ExtractOutcome(
+                source_id=str(row["source_id"]),
+                status=str(row["status"]),
+                payloads=payloads,
+                s3_uri=str(uri) if uri else None,
+                content_hash=str(row["content_hash"]) if row["content_hash"] else None,
+            )
+        )
+    return outcomes
+
+
 # 2. archive --------------------------------------------------------------
 
 
