@@ -51,16 +51,17 @@ flowchart LR
 
 [상세](docs/portfolio/06-sql-quality-checks.md) · 확인 `make demo-duplicate`
 
-### Airflow 일일 배치
+### 정합성 검사 배치
 `Airflow` `멱등 재실행` — 개인
 
-**소스 하나가 실패해도 나머지는 적재하고, 다음 날 실패한 소스만 다시 돌립니다.**
+**한 번의 수집만으로는 판정할 수 없는 검사를 누적 데이터 위에서 돌립니다.** 소스 하나가 실패해도 나머지는 적재하고, 실패한 소스만 다시 돌립니다.
 
 - 문제 — `trigger_rule` 을 이름만 보고 골랐는데 실제 뜻이 "상류에 실패가 없으면"이라, 소스 하나만 실패해도 아무것도 저장되지 않았습니다
 - 해결 — `all_done` 으로 바꾸고 "최소 하나 성공" 조건을 task 본문에서 직접 확인
 - 결과 — 재수집 대상 **4개 → 1개** · 같은 날짜 5회 재실행에 적재 행 수 불변
+- 남은 것 — 검사 8종 중 배치가 꼭 필요한 것은 누적 스캔이 필요한 2종입니다. 나머지는 수집 시점이나 기존 스케줄러로 옮겨야 합니다
 
-[상세](docs/portfolio/05-airflow-pipeline.md) · 확인 `make demo-fail-source`
+[상세](docs/portfolio/05-airflow-pipeline.md) · [검사는 어디서 돌아야 하는가](docs/portfolio/15-where-checks-run.md) · 확인 `make demo-fail-source`
 
 ### 메타데이터 테이블 13개
 `카탈로그 설계` `스키마 드리프트` — 개인
@@ -212,5 +213,6 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 | [근거의 귀속 범위](docs/portfolio/11-evidence-scope.md) | 로그를 무엇으로 걸렀나 |
 | [카탈로그 구현 계획과 진행 상태](docs/portfolio/12a-catalog-implementation-plan.md) | 무엇이 완료·부분·계획인가 |
 | [AWS 청구 원장 재확인](docs/evidence/aws-bill-2026-07/) | 7월 청구서 콘솔 캡처와 대조 |
+| [검사는 어디서 돌아야 하는가](docs/portfolio/15-where-checks-run.md) | 무엇만 배치여야 하는지와 이동 계획 |
 
 크래프톤 정글 SW-AI Lab 22주 과정을 수료했습니다.
