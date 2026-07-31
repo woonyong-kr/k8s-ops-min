@@ -204,5 +204,7 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 | [범위 판단](docs/portfolio/09-scope-decisions.md) | 만들었지만 걷어낸 것 |
 | [엔지니어링 로그](docs/portfolio/10-engineering-log.md) | 판단이 바뀐 지점 |
 | [근거의 귀속 범위](docs/portfolio/11-evidence-scope.md) | 로그를 무엇으로 걸렀나 |
+| [카탈로그 구현 계획과 진행 상태](docs/portfolio/12a-catalog-implementation-plan.md) | 무엇이 완료·부분·계획인가 |
+| [AWS 청구 원장 재확인](docs/evidence/aws-bill-2026-07/) | 7월 청구서 콘솔 캡처와 대조 |
 
 크래프톤 정글 SW-AI Lab 22주 과정을 수료했습니다.
