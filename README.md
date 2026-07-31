@@ -145,27 +145,27 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 
 **만든 것**
 
-- [수집 완전성 계약 — 빈 목록 5가지 원인 구분](docs/collection-contract.md)
-- [응답 한도 설계 — 개수·바이트 이중 상한, 절단 사유 동반 반환](docs/collection-limits.md)
-- [설정 참조 조회 API — Secret 값 비노출, 참조 관계만 반환](docs/config-reference-api.md)
-- [메타데이터 카탈로그 — 테이블 13종, 유일 제약 11종, 계약과 관측 분리](docs/metadata-catalog.md)
-- [배치 파이프라인 — 소스별 독립 수집과 부분 실패 보존](docs/airflow-pipeline.md)
-- [조회 API 와 MCP — 응답 경계, 권한 축소 전달, 감사 로그](docs/catalog-api-mcp.md)
+- [빈 목록 5가지 원인 구분과 3-state 수집 완전성 계약](docs/collection-contract.md)
+- [개수·바이트 이중 상한과 절단 사유 동반 반환](docs/collection-limits.md)
+- [Secret 값 비노출 참조 관계 조회 API](docs/config-reference-api.md)
+- [테이블 13종 메타데이터 모델과 등록 계약·관측 이력 분리](docs/metadata-catalog.md)
+- [소스별 독립 수집과 부분 실패 보존 배치 파이프라인](docs/airflow-pipeline.md)
+- [응답 경계·권한 축소 전달·감사 로그를 갖춘 조회 API 와 MCP](docs/catalog-api-mcp.md)
 
 **검증한 것**
 
-- [검사 SQL 열 개 — 질의별 설계 근거와 폐기·수정 기록](docs/sql-quality-checks.md)
-- [부하 측정과 한계 — 관측 470만 행, 병목 질의와 개선안](docs/load-and-design-limits.md)
-- [AWS 청구서 대조 — 7월 청구 내역과 문서 수치 확인](docs/evidence/aws-bill-2026-07/README.md)
+- [정합성 검사 질의 10본의 설계 근거와 폐기·수정 기록](docs/sql-quality-checks.md)
+- [관측 470만 행 부하 측정과 병목 질의 개선안 검증](docs/load-and-design-limits.md)
+- [7월 AWS 청구 내역과 문서 수치 대조](docs/evidence/aws-bill-2026-07/README.md)
 
 **안 만든 것**
 
-- [기술 리서치 — OpenMetadata·DataHub 미도입 근거](docs/tech-research.md)
-- [범위 판단 — 만들었다가 걷어낸 것](docs/scope-decisions.md)
-- [검사 실행 위치 — 배치에 두면 안 되는 검사](docs/where-checks-run.md)
+- [OpenMetadata·DataHub 미도입 근거와 자체 카탈로그와의 구분](docs/tech-research.md)
+- [만들었다가 걷어낸 것과 결론이 먼저였던 판단](docs/scope-decisions.md)
+- [배치에 두면 안 되는 검사를 가려낸 기준](docs/where-checks-run.md)
 
 **바뀐 판단**
 
-- [엔지니어링 로그 — 처음 생각과 달라진 지점](docs/engineering-log.md)
-- [아키텍처 비용 회고 — Deployment 47개 분할의 대가](docs/architecture-cost-postmortem.md)
-- [기여와 근거 — 팀 코드와 개인 작업의 경계](docs/source-and-ownership.md)
+- [처음 생각과 달라진 지점](docs/engineering-log.md)
+- [Deployment 47개 분할이 청구서에 남긴 대가](docs/architecture-cost-postmortem.md)
+- [파일 단위 blame 으로 확인한 팀 코드와 개인 작업의 경계](docs/source-and-ownership.md)
