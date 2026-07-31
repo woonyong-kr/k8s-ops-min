@@ -1,0 +1,69 @@
+# RCA 원인 룰 카탈로그 — 매치메이킹/로비 입장 실패 계열.
+# 트리거: 대상 클러스터 Alertmanager 의 표준 애플리케이션 SLI 실패율 알림.
+# 판별: 표준 SLI 알림과 동일 식별자·시간 범위의 구조화 거절 이벤트로
+# "로비 처리 용량 포화 / 게임 룸 부족 / 룸 디렉터리 장애"를 구별한다.
+rules:
+  - id: "matchmaking_join_failure"
+    symptoms: ["Matchmaking join failure", "admission_failure", "DemoGameJoinStorm"]
+    required_sources: ["metrics"]
+    candidates:
+      - candidate_id: "lobby_capacity_saturation"
+        title: "로비 처리 용량 부족"
+        description: >-
+          입장 요청이 사건 대상 워크로드의 처리 한도를 넘어 거절되고 있을
+          가능성이 있습니다. 표준 SLI와 구조화된 용량 거절 로그가 동일
+          워크로드·시간 범위에서 일치할 때 이 원인을 확정하며, replicas
+          축소 변경은 인과관계와 복구 목표를 보강하는 변경 근거로 사용합니다.
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "metadata:change_context"
+        checks:
+          - "사건 대상 로그의 구조화 거절 reason과 SLI 식별자 일치 확인"
+          - "표준 입장 실패율 SLI의 급등 시점 확인"
+          - "동일 워크로드의 최근 spec.replicas 축소 변경 여부 확인"
+        signals:
+          - id: "standard_sli_alert_identity_verified"
+            any_of:
+              - fact: "standard_sli_alert_identity=verified"
+          - id: "capacity_rejection_identity_verified"
+            any_of:
+              - fact: "structured_rejection_identity=verified:reason=rate_limited"
+              - fact: "structured_rejection_identity=verified:reason=capacity_exhausted"
+              - fact: "structured_rejection_identity=verified:reason=over_capacity"
+              - fact: "structured_rejection_identity=verified:reason=lobby_capacity_exceeded"
+      - candidate_id: "no_room_capacity"
+        title: "입장 가능한 게임 룸 부족"
+        description: >-
+          실행 중이면서 입장 잠금이 아닌 게임 룸이 없어 매치메이킹이
+          거절됐을 가능성이 있습니다. 룸 정원이 가득 찼거나 joinLocked
+          상태일 때 발생합니다.
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "사건 대상의 구조화 거절 로그 reason=no_room 확인"
+          - "룸별 players/maxPlayers 와 joinLocked 상태 확인"
+          - "게임 룸 replicas 수와 실행 상태 확인"
+        signals:
+          - id: "no_room_identity_verified"
+            any_of:
+              - fact: "structured_rejection_identity=verified:reason=no_room"
+              - fact: "structured_rejection_identity=verified:reason=join_locked"
+      - candidate_id: "room_directory_unavailable"
+        title: "룸 디렉터리(오케스트레이터) 응답 실패"
+        description: >-
+          로비가 룸 목록을 조회하는 room-orchestrator 가 응답하지 않아
+          매치메이킹이 거절됐을 가능성이 있습니다.
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "사건 대상의 구조화 거절 reason과 SLI 식별자 일치 확인"
+          - "room-orchestrator 파드 Ready 상태와 재시작 확인"
+          - "사건 대상 → 오케스트레이터 네트워크 경로 확인"
+        signals:
+          - id: "directory_unavailable_identity_verified"
+            any_of:
+              - fact: "structured_rejection_identity=verified:reason=directory_unavailable"
+              - fact: "structured_rejection_identity=verified:reason=room_registry_unavailable"

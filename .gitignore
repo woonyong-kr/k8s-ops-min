@@ -1,0 +1,49 @@
+.DS_Store
+.env*
+.env.local-test
+*.local.bru
+docs/api/.certs/
+.data/
+.idea/
+.vscode/
+.venv/
+output/
+tmp/
+.aws-up.*/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.import_linter_cache/
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+*.py[cod]
+dist/
+build/
+*.egg-info/
+
+# build/deps artifacts (never commit)
+node_modules/
+.vite/
+*.tsbuildinfo
+dashboard/test-results/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Local AI assistant artifacts
+.claude/
+.codex/
+.playwright-cli/
+CODE_REVIEW_REPORT.md
+DEV_BRANCH_STATUS.md
+.e2e-tmp-*.py
+report_*.json
+bugreport-*.zip
+*.zip
+
+# Local recovery and comparison artifacts
+_to_delete/
+
+# 카탈로그 로컬 산출물
+.catalog-archive/

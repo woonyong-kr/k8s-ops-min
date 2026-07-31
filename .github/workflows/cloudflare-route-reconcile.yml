@@ -1,0 +1,61 @@
+name: Cloudflare Route Reconcile
+
+run-name: Cloudflare route reconcile / ${{ github.event_name == 'schedule' && 'scheduled-preflight' || inputs.dry_run && 'dry-run' || 'apply' }}
+
+"on":
+  schedule:
+    - cron: "17 0 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Read and plan only; do not mutate Cloudflare.
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-k8s-route-reconcile
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Reconcile k8s.woonyong.org to the canonical console
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: development
+    steps:
+      - name: Mask Cloudflare inputs
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+        run: |
+          printf '::add-mask::%s\n' "$CLOUDFLARE_API_TOKEN"
+          printf '::add-mask::%s\n' "$CLOUDFLARE_ACCOUNT_ID"
+          printf '::add-mask::%s\n' "$CLOUDFLARE_TUNNEL_ID"
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Reconcile Tunnel ingress and DNS
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_TUNNEL_ID: ${{ secrets.CLOUDFLARE_TUNNEL_ID }}
+          DRY_RUN: ${{ github.event_name == 'schedule' || inputs.dry_run }}
+        run: |
+          python -m scripts.cloudflare.reconcile_tunnel_route \
+            --account-id "$CLOUDFLARE_ACCOUNT_ID" \
+            --tunnel-id "$CLOUDFLARE_TUNNEL_ID" \
+            --hostname "k8s.woonyong.org" \
+            --origin-service "http://console-dev.management.svc.cluster.local:80" \
+            --dry-run "$DRY_RUN"

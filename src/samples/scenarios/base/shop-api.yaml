@@ -1,0 +1,96 @@
+# baseline: 주문 API 역할. prometheus-example-app이 http_requests_total 등
+# 실제 Prometheus metric을 /metrics로 노출해서 target Prometheus의
+# kubernetes-pods annotation scrape 대상이 된다(비평탄 시계열 확보).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-api
+  namespace: sandbox
+  labels:
+    app: shop-api
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shop-api
+  template:
+    metadata:
+      labels:
+        app: shop-api
+        scenario: baseline
+        app.kubernetes.io/part-of: shop-demo
+      annotations:
+        # prometheus-community chart 기본 kubernetes-pods job이 이 annotation을 스크랩한다
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8080"
+    spec:
+      containers:
+        - name: shop-api
+          image: quay.io/brancz/prometheus-example-app:v0.5.0
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-api
+  namespace: sandbox
+  labels:
+    app: shop-api
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  selector:
+    app: shop-api
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http
+---
+# 부하가 늘면 replica가 늘어나는 실제 운영 패턴 재현용 HPA.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: shop-api
+  namespace: sandbox
+  labels:
+    app: shop-api
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: shop-api
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

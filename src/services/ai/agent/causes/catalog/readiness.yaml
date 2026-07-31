@@ -1,0 +1,229 @@
+# RCA 원인 룰 카탈로그 — Probe / Service endpoint readiness 계열
+#
+# 근거 자료:
+# - rca_ai_safepr_platform_data_catalog.xlsx / Incident Evidence Bundles
+# - Google Sheet gid=104 RCA rule 후보 목록
+#
+# 주의:
+# - required_sources 는 evidence bundle complete 판단용이라 source 단위로 둔다.
+# - expected_evidence 는 v1 source:name key를 사용해 후보가 실제로 필요한 근거 묶음을
+#   더 구체적으로 표시한다.
+rules:
+  - id: "probe_failure"
+    symptoms:
+      - "Probe failure"
+      - "ProbeFailed"
+      - "ReadinessProbeFailed"
+      - "LivenessProbeFailed"
+      - "StartupProbeFailed"
+      - "PodNotReady"
+      - "Readiness probe response failure"
+      - "Liveness probe response failure"
+      - "Startup probe response failure"
+      - "Probe response failure"
+      - "Pod readiness failure"
+    required_sources: ["kubernetes", "metrics", "logs", "metadata"]
+    candidates:
+      - candidate_id: "probe_path_wrong"
+        title: "Probe path 설정 오류"
+        description: "readiness/liveness/startup probe path가 애플리케이션의 실제 health endpoint와 맞지 않을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "Pod event에 readiness/liveness/startup probe 실패 메시지가 있는지 확인"
+          - "metadata workload snapshot의 probe path와 애플리케이션 로그의 실제 health route를 비교"
+          - "probe 실패가 새 image 또는 config 변경 이후 시작됐는지 확인"
+        signals:
+          - id: "probe_path_failure_signal"
+            any_of:
+              - event_pattern: "statuscode: 404"
+              - event_pattern: "http probe failed with statuscode 404"
+              - log_pattern: "404"
+              - log_pattern: "not found"
+      - candidate_id: "probe_port_wrong"
+        title: "Probe port 설정 오류"
+        description: "probe가 호출하는 port가 컨테이너가 실제로 listen하는 port와 맞지 않을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "probe port와 container ports, service targetPort를 비교"
+          - "event/log에 connection refused 또는 dial tcp 실패가 있는지 확인"
+          - "최근 port 또는 service targetPort 변경 여부를 확인"
+        signals:
+          - id: "probe_port_failure_signal"
+            any_of:
+              - event_pattern: "connection refused"
+              - event_pattern: "dial tcp"
+              - log_pattern: "connection refused"
+      - candidate_id: "timeout_too_short"
+        title: "Probe timeout 과소 설정"
+        description: "애플리케이션 응답 시간보다 probe timeout이 짧아 정상 컨테이너가 Unhealthy로 판정됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "probe timeoutSeconds와 실제 request latency 또는 startup latency를 비교"
+          - "CPU throttling, memory pressure로 health endpoint가 늦어졌는지 확인"
+          - "timeout 완화가 실제 장애를 숨기는 변경인지 검토"
+        signals:
+          - id: "probe_timeout_signal"
+            any_of:
+              - event_pattern: "timeout"
+              - event_pattern: "context deadline exceeded"
+              - log_pattern: "timeout"
+      - candidate_id: "startup_window_too_short"
+        title: "Startup probe window 과소 설정"
+        description: "애플리케이션 초기화 시간이 startup probe 허용 시간보다 길어 기동 중 반복 재시작됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "startupProbe failureThreshold/periodSeconds와 실제 기동 로그 시간을 비교"
+          - "초기 migration, cache warmup, dependency 연결 시간이 probe window를 초과하는지 확인"
+          - "liveness 완화가 아니라 startupProbe 조정이 맞는지 확인"
+        signals:
+          - id: "startup_probe_window_signal"
+            any_of:
+              - event_pattern: "startup probe"
+              - log_pattern: "starting"
+              - log_pattern: "initializing"
+              - log_pattern: "migration"
+      - candidate_id: "app_real_health_failure"
+        title: "애플리케이션 실제 health 실패"
+        description: "probe 설정이 아니라 애플리케이션이 실제로 health check를 통과하지 못하는 상태일 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "traces:related_traces"
+        checks:
+          - "health endpoint 내부 오류, dependency failure, 5xx 로그가 있는지 확인"
+          - "trace에서 health route 또는 dependency span error가 있는지 확인"
+          - "probe 설정 변경 대신 app/config/dependency 원인을 우선 검토"
+        signals:
+          - id: "app_health_failure_signal"
+            any_of:
+              - log_pattern: "health check failed"
+              - log_pattern: "unhealthy"
+              - log_pattern: "500"
+              - log_pattern: "dependency"
+      - candidate_id: "handoff_authority_stalled"
+        title: "핸드오프 권위 전환 정지"
+        description: "배포 Candidate가 준비됐지만 권위 승격·Gateway 검증·rollback 중 하나가 멈춰 실제 health endpoint가 503을 반환하는 상태입니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "현재 Pod의 opsia.dev/game-role=candidate 라벨과 Ready=False를 함께 확인"
+          - "Gateway route endpoint/epoch와 Candidate handoff status의 endpoint/epoch를 비교"
+          - "stale verification 또는 post-cutover rollback 실패가 있는지 확인"
+          - "단순 restart나 probe 완화 전에 권위 owner와 live session 수를 확인"
+        signals:
+          - id: "handoff_candidate_authority_signal"
+            any_of:
+              - fact: "pod_label:opsia.dev/game-role=candidate"
+              - log_pattern: "post_cutover_verification_failed"
+              - log_pattern: "rollback_old_authority_not_promoted"
+              - log_pattern: "verification_stale"
+          - id: "handoff_readiness_blocked_signal"
+            any_of:
+              - event_pattern: "statuscode: 503"
+              - log_pattern: "handoff-waiting"
+              - log_pattern: "candidate_not_public"
+
+  - id: "service_no_ready_endpoints"
+    symptoms:
+      - "Service has no ready endpoints"
+      - "ServiceEndpointsEmpty"
+    required_sources: ["kubernetes", "metadata"]
+    candidates:
+      - candidate_id: "selector_label_mismatch"
+        title: "Service selector와 Pod label 불일치"
+        description: "Service selector가 현재 Pod labels와 맞지 않아 ready endpoint가 비어 있을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:service_selector_matches"
+          - "metadata:endpoint_slice_ready_endpoints"
+        checks:
+          - "Service.spec.selector와 Pod template/current Pod labels를 비교"
+          - "metadata service_selector_matches의 match_status가 no_matching_pods인지 확인"
+          - "최근 label 또는 selector 변경 이후 발생했는지 확인"
+        signals:
+          - id: "selector_mismatch_signal"
+            any_of:
+              - event_pattern: "no endpoints"
+              - log_pattern: "no endpoints"
+              - log_pattern: "selector"
+      - candidate_id: "pods_not_ready"
+        title: "Pod Ready=False로 endpoint 제외"
+        description: "Service selector는 Pod를 찾지만 Pod가 Ready가 아니어서 EndpointSlice ready endpoint에 포함되지 않았을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:endpoint_slice_ready_endpoints"
+        checks:
+          - "Pod status.conditions Ready=False와 EndpointSlice ready_endpoint_count를 비교"
+          - "readiness probe 실패 이벤트와 app log를 확인"
+          - "Service 자체가 아니라 backend Pod readiness 문제인지 확인"
+        signals:
+          - id: "pods_not_ready_signal"
+            any_of:
+              - fact: "event_reason=Unhealthy"
+              - event_pattern: "readiness"
+              - event_pattern: "probe"
+      - candidate_id: "rollout_unavailable"
+        title: "Rollout 중 available replica 부족"
+        description: "신규 ReplicaSet rollout 이후 available/ready replica가 부족해 Service 뒤 endpoint가 비어 있을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "Deployment unavailableReplicas, updatedReplicas, availableReplicas를 비교"
+          - "신규 ReplicaSet Pod에서만 readiness 실패가 발생하는지 확인"
+          - "rollout 실패와 endpoint 공백 시간이 겹치는지 확인"
+        signals:
+          - id: "rollout_unavailable_signal"
+            any_of:
+              - event_pattern: "unavailable"
+              - event_pattern: "progress deadline"
+              - log_pattern: "unavailable"
+      - candidate_id: "wrong_service_port"
+        title: "Service port 또는 targetPort 설정 오류"
+        description: "Service port/targetPort가 backend Pod의 실제 container port와 맞지 않아 트래픽이 실패할 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:service_selector_matches"
+        checks:
+          - "Service.spec.ports[].targetPort와 container ports를 비교"
+          - "ingress/controller log에 upstream connection refused 또는 bad gateway가 있는지 확인"
+          - "최근 Service port 변경 여부를 확인"
+        signals:
+          - id: "wrong_service_port_signal"
+            any_of:
+              - log_pattern: "connection refused"
+              - log_pattern: "bad gateway"
+              - event_pattern: "connection refused"
+      - candidate_id: "endpoint_slice_delay"
+        title: "EndpointSlice 반영 지연"
+        description: "Pod readiness와 Service selector는 정상이나 EndpointSlice controller 반영이 지연되어 일시적으로 ready endpoint가 비어 있을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:endpoint_slice_ready_endpoints"
+        checks:
+          - "Pod Ready=True인데 EndpointSlice ready_endpoint_count가 0인지 확인"
+          - "동일 Service의 EndpointSlice 생성/갱신 시각과 event를 비교"
+          - "controller 지연인지 selector/Pod readiness 문제인지 분리"
+        signals:
+          - id: "endpoint_slice_delay_signal"
+            any_of:
+              - event_pattern: "endpoints"
+              - event_pattern: "endpoint"
+              - log_pattern: "endpoint"

@@ -1,0 +1,15 @@
+kind: Service
+spec:
+  ports:
+  - name: http
+    port: 8083
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: session-gateway
+metadata:
+  name: session-gateway
+  labels:
+    app: session-gateway
+  namespace: sandbox
+apiVersion: v1

@@ -1,0 +1,67 @@
+kind: Deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: session-gateway
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    spec:
+      containers:
+      - env:
+        - name: SESSION_ROOM_ENDPOINTS
+          value: room-0=http://game-room-0:8001,room-1=http://game-room-1:8001,room-2=http://game-room-2:8001,room-3=http://game-room-3:8001,room-4=http://game-room-4:8001
+        - name: ADMISSION_GATEWAY_URL
+          value: http://login-gateway-api:8081
+        - name: REQUIRE_ADMISSION_GATEWAY
+          value: 'true'
+        - name: SESSION_GATEWAY_SHARED_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: shared-secret
+              name: demo-game-session-gateway
+        - name: REQUIRE_CONTROL_TOKEN
+          value: 'true'
+        - name: OPS_CONTROL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: demo-game-control
+        name: session-gateway
+        image: ghcr.io/jungle-303-04/demo-game/session-gateway:276977d3628e8cc5c7ce8c362add3b4111c7883e
+        ports:
+        - name: http
+          containerPort: 8083
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+            scheme: HTTP
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+          successThreshold: 1
+          initialDelaySeconds: 2
+        imagePullPolicy: Always
+    metadata:
+      labels:
+        app: session-gateway
+        app.kubernetes.io/part-of: demo-game
+metadata:
+  name: session-gateway
+  labels:
+    app: session-gateway
+    app.kubernetes.io/part-of: demo-game
+  namespace: sandbox
+apiVersion: apps/v1

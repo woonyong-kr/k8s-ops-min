@@ -1,0 +1,241 @@
+:root {
+  --motion-instant: 120ms;
+  --motion-quick: 180ms;
+  --motion-pop: 340ms;
+  --motion-ai: 300ms;
+  --motion-dock: 240ms;
+  --motion-layout: 320ms;
+  --motion-camera: 420ms;
+  --motion-value: 500ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.2, 0.5, 1);
+  --ease-pop: cubic-bezier(0.34, 1.4, 0.5, 1);
+  --stagger-node: 70ms;
+  --stagger-pod: 32ms;
+  --stagger-row: 18ms;
+  --stagger-max: 520ms;
+}
+
+@keyframes motion-pod-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes motion-node-land {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes motion-ghost-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+
+  50% {
+    opacity: 0.75;
+  }
+}
+
+@keyframes motion-rail-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+@keyframes motion-detail-enter {
+  from {
+    opacity: 0;
+    transform: translateX(3rem);
+  }
+}
+
+@keyframes motion-detail-exit {
+  to {
+    opacity: 0;
+    transform: translateX(3rem);
+  }
+}
+
+@keyframes motion-wizard-stage-enter {
+  from {
+    opacity: 0;
+    transform: translateX(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.motion-pod-pop {
+  animation: motion-pod-pop var(--motion-pop) var(--ease-pop) backwards;
+}
+
+.motion-node-land {
+  animation: motion-node-land var(--motion-layout) var(--ease-spring) backwards;
+}
+
+.motion-ghost-breathe {
+  animation: motion-ghost-breathe 1.6s var(--ease-in-out) infinite;
+}
+
+.motion-rail-flow {
+  animation: motion-rail-flow 1.2s linear infinite;
+  stroke-dasharray: 3 3;
+}
+
+.motion-detail-workspace {
+  animation: motion-detail-enter var(--motion-layout) var(--ease-spring) backwards;
+}
+
+.motion-detail-workspace[data-closing="true"] {
+  animation: motion-detail-exit var(--motion-layout) var(--ease-spring) forwards;
+}
+
+.motion-wizard-stage {
+  animation: motion-wizard-stage-enter var(--motion-layout) var(--ease-spring) backwards;
+}
+
+.motion-live-preview {
+  transition:
+    border-color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out);
+}
+
+.motion-live-preview[data-complete="true"] {
+  border-color: color-mix(in oklch, var(--color-status-healthy) 45%, var(--color-border));
+  background-color: color-mix(in oklch, var(--color-status-healthy) 5%, var(--color-background));
+}
+
+.motion-live-preview-value {
+  opacity: 0.68;
+  transform: translateX(0);
+  transition:
+    color var(--motion-quick) var(--ease-out),
+    background-color var(--motion-quick) var(--ease-out),
+    border-color var(--motion-quick) var(--ease-out),
+    opacity var(--motion-quick) var(--ease-out),
+    transform var(--motion-quick) var(--ease-spring);
+}
+
+.motion-live-preview-value[data-complete="true"] {
+  opacity: 1;
+  transform: translateX(0.125rem);
+}
+
+.motion-ai-panel {
+  --ai-width: 420px;
+  width: 0;
+  transition: width var(--motion-ai) var(--ease-spring);
+}
+
+.motion-ai-panel[data-resizing="true"] {
+  transition: none;
+  will-change: width;
+}
+
+.motion-ai-panel[data-width="360"] { --ai-width: 360px; }
+.motion-ai-panel[data-width="380"] { --ai-width: 380px; }
+.motion-ai-panel[data-width="400"] { --ai-width: 400px; }
+.motion-ai-panel[data-width="420"] { --ai-width: 420px; }
+.motion-ai-panel[data-width="440"] { --ai-width: 440px; }
+.motion-ai-panel[data-width="460"] { --ai-width: 460px; }
+.motion-ai-panel[data-width="480"] { --ai-width: 480px; }
+.motion-ai-panel[data-width="500"] { --ai-width: 500px; }
+.motion-ai-panel[data-width="520"] { --ai-width: 520px; }
+.motion-ai-panel[data-width="540"] { --ai-width: 540px; }
+.motion-ai-panel[data-width="560"] { --ai-width: 560px; }
+.motion-ai-panel[data-width="580"] { --ai-width: 580px; }
+.motion-ai-panel[data-width="600"] { --ai-width: 600px; }
+.motion-ai-panel[data-width="620"] { --ai-width: 620px; }
+.motion-ai-panel[data-width="640"] { --ai-width: 640px; }
+
+.motion-ai-panel[data-open="true"] {
+  width: var(--ai-width, 420px);
+}
+
+.motion-ai-panel > [data-slot="ai-assistant-inner"] {
+  width: var(--ai-width, 420px);
+}
+
+.motion-bottom-dock {
+  --dock-height: 280px;
+  height: var(--dock-height);
+  transition: height var(--motion-dock) var(--ease-spring);
+}
+
+.motion-bottom-dock[data-resizing="true"] {
+  transition: none;
+  will-change: height;
+}
+
+.motion-bottom-dock[data-height="160"] { --dock-height: 160px; }
+.motion-bottom-dock[data-height="180"] { --dock-height: 180px; }
+.motion-bottom-dock[data-height="200"] { --dock-height: 200px; }
+.motion-bottom-dock[data-height="220"] { --dock-height: 220px; }
+.motion-bottom-dock[data-height="240"] { --dock-height: 240px; }
+.motion-bottom-dock[data-height="260"] { --dock-height: 260px; }
+.motion-bottom-dock[data-height="280"] { --dock-height: 280px; }
+.motion-bottom-dock[data-height="300"] { --dock-height: 300px; }
+.motion-bottom-dock[data-height="320"] { --dock-height: 320px; }
+.motion-bottom-dock[data-height="340"] { --dock-height: 340px; }
+.motion-bottom-dock[data-height="360"] { --dock-height: 360px; }
+.motion-bottom-dock[data-height="380"] { --dock-height: 380px; }
+.motion-bottom-dock[data-height="400"] { --dock-height: 400px; }
+.motion-bottom-dock[data-height="420"] { --dock-height: 420px; }
+.motion-bottom-dock[data-height="440"] { --dock-height: 440px; }
+.motion-bottom-dock[data-height="460"] { --dock-height: 460px; }
+.motion-bottom-dock[data-height="480"] { --dock-height: 480px; }
+.motion-bottom-dock[data-height="500"] { --dock-height: 500px; }
+.motion-bottom-dock[data-height="520"] { --dock-height: 520px; }
+
+.motion-bottom-dock[data-collapsed="true"] {
+  height: 40px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+
+  .motion-ghost-breathe,
+  .motion-rail-flow,
+  .motion-detail-workspace {
+    animation: none !important;
+  }
+
+  .motion-wizard-stage,
+  .motion-live-preview,
+  .motion-live-preview-value {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

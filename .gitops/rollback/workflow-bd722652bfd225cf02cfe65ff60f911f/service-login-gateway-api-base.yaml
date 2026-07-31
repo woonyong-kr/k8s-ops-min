@@ -1,0 +1,16 @@
+kind: Service
+spec:
+  ports:
+  - name: http
+    port: 8081
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: api-server
+  publishNotReadyAddresses: true
+metadata:
+  name: login-gateway-api
+  labels:
+    app: api-server
+  namespace: sandbox
+apiVersion: v1

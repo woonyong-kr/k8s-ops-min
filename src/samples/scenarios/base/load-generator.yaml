@@ -1,0 +1,73 @@
+# baseline: 상시 트래픽 생성기. 분(minute)에 따라 burst 크기를 바꿔
+# 요청률/CPU가 물결치는 실제 서비스 트래픽 모양을 만든다.
+# 가끔 404·오류 경로도 때려 access log가 200만 나오지 않게 한다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-loadgen
+  namespace: sandbox
+  labels:
+    app: shop-loadgen
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: shop-loadgen
+  template:
+    metadata:
+      labels:
+        app: shop-loadgen
+        scenario: baseline
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: loadgen
+          image: curlimages/curl:8.10.1
+          env:
+            - name: LOAD_FACTOR
+              value: "1"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              traffic_loop() {
+                n=0
+                while true; do
+                  n=$((n+1))
+                  m=$(date +%M); m=$((10#${m}))
+                  # 분에 따라 1~10 요청/초 물결 패턴
+                  burst=$(( (m % 10) + 1 ))
+                  j=0
+                  while [ ${j} -lt ${burst} ]; do
+                    j=$((j+1))
+                    curl -s -o /dev/null --max-time 2 "http://shop-frontend.sandbox.svc/" || true
+                    curl -s -o /dev/null --max-time 2 "http://shop-api.sandbox.svc:8080/" || true
+                  done
+                  # 주기적으로 404/오류 경로 — 현실적인 error rate 재현
+                  if [ $(( n % 13 )) -eq 0 ]; then
+                    curl -s -o /dev/null --max-time 2 "http://shop-frontend.sandbox.svc/missing-page" || true
+                    curl -s -o /dev/null --max-time 2 "http://shop-api.sandbox.svc:8080/err" || true
+                  fi
+                  sleep 1
+                done
+              }
+
+              factor="${LOAD_FACTOR:-1}"
+              echo "loadgen started: shop-frontend + shop-api traffic, workers=${factor}"
+              worker=0
+              while [ "${worker}" -lt "${factor}" ]; do
+                worker=$((worker+1))
+                traffic_loop &
+              done
+              wait
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi

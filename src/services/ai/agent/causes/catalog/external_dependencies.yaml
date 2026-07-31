@@ -1,0 +1,150 @@
+# RCA 원인 룰 카탈로그 — Redis / Kafka / external API dependency 계열
+#
+# 근거 자료:
+# - rca_ai_safepr_platform_data_catalog.xlsx / Incident Evidence Bundles
+# - Google Sheet gid=104 RCA rule 후보 목록
+rules:
+  - id: "redis_unavailable"
+    symptoms: ["Redis unavailable"]
+    required_sources: ["metrics", "logs", "traces"]
+    candidates:
+      - candidate_id: "redis_dependency_unavailable"
+        title: "Redis 의존성 장애"
+        description: "Redis endpoint 장애, 연결 거부, timeout으로 애플리케이션 요청이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "traces:related_traces"
+        checks:
+          - "Redis exporter metric 또는 dependency span error 확인"
+          - "로그에 redis connection refused, timeout, readonly 오류가 있는지 확인"
+          - "Kubernetes Service/Endpoint가 내부 Redis를 가리키는 경우 endpoint 상태도 확인"
+        signals:
+          - id: "redis_failure_signal"
+            any_of:
+              - log_pattern: "redis"
+              - log_pattern: "connection refused"
+              - log_pattern: "read only"
+              - log_pattern: "timeout"
+
+  - id: "kafka_consumer_lag"
+    symptoms: ["Kafka consumer lag"]
+    required_sources: ["metrics", "logs"]
+    candidates:
+      - candidate_id: "consumer_lag_backlog"
+        title: "Kafka consumer lag backlog"
+        description: "consumer 처리량이 부족하거나 broker/partition 문제가 있어 queue backlog가 증가했을 가능성이 있습니다."
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "consumer group lag metric 증가 확인"
+          - "consumer error, rebalance, commit failure 로그 확인"
+          - "scale out, resource 조정, partition 문제 중 어느 쪽인지 분리"
+        signals:
+          - id: "kafka_lag_signal"
+            any_of:
+              - log_pattern: "consumer lag"
+              - log_pattern: "rebalance"
+              - log_pattern: "commit failed"
+              - log_pattern: "kafka"
+
+  - id: "external_api_timeout"
+    symptoms: ["External API timeout"]
+    required_sources: ["metrics", "logs", "traces"]
+    candidates:
+      - candidate_id: "external_api_timeout"
+        title: "외부 API timeout"
+        description: "외부 HTTP/API 의존성이 느리거나 응답하지 않아 애플리케이션 요청이 timeout됐을 가능성이 있습니다."
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "traces:related_traces"
+        checks:
+          - "trace에서 external API span duration과 status 확인"
+          - "로그에 upstream timeout, deadline exceeded, gateway timeout 확인"
+          - "retry/timeout 설정 변경이 장애를 숨기지 않는지 검토"
+        signals:
+          - id: "external_api_timeout_signal"
+            any_of:
+              - log_pattern: "upstream timeout"
+              - log_pattern: "deadline exceeded"
+              - log_pattern: "gateway timeout"
+              - log_pattern: "504"
+
+  - id: "queue_dependency_failure"
+    symptoms:
+      - "DB/cache/queue dependency failure"
+      - "Queue backlog"
+    required_sources: ["metrics", "logs", "traces", "metadata"]
+    candidates:
+      - candidate_id: "dependency_down"
+        title: "외부 의존성 down"
+        description: "DB, cache, queue 같은 외부 의존성 자체가 down되어 애플리케이션이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "traces:related_traces"
+        checks:
+          - "dependency exporter up/down metric 확인"
+          - "trace에서 dependency span error 또는 timeout 확인"
+          - "여러 workload에서 같은 dependency 오류가 동시에 발생했는지 확인"
+        signals:
+          - id: "dependency_down_signal"
+            any_of:
+              - log_pattern: "connection refused"
+              - log_pattern: "unavailable"
+              - log_pattern: "timeout"
+      - candidate_id: "connection_pool_exhausted"
+        title: "Connection pool 고갈"
+        description: "DB/cache connection pool이 고갈되어 요청이 대기하거나 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "traces:related_traces"
+        checks:
+          - "pool active/idle/waiting metric 또는 pool timeout log 확인"
+          - "요청량 증가와 pool 설정을 비교"
+          - "pool 확장, timeout 조정, scale out 중 적절한 조치 판단"
+        signals:
+          - id: "connection_pool_exhausted_signal"
+            any_of:
+              - log_pattern: "connection pool"
+              - log_pattern: "pool exhausted"
+              - log_pattern: "too many connections"
+      - candidate_id: "wrong_endpoint_config"
+        title: "잘못된 dependency endpoint 설정"
+        description: "환경변수 또는 ConfigMap/Secret reference의 endpoint 값이 잘못되어 의존성 연결이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "logs:related_logs"
+          - "traces:related_traces"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "로그에 unknown host, no such host, invalid endpoint가 있는지 확인"
+          - "metadata snapshot의 env/config reference를 확인"
+          - "Secret 값은 보지 않고 reference/key 존재 여부만 확인"
+        signals:
+          - id: "wrong_endpoint_config_signal"
+            any_of:
+              - log_pattern: "unknown host"
+              - log_pattern: "no such host"
+              - log_pattern: "invalid endpoint"
+      - candidate_id: "credential_rotation_issue"
+        title: "Credential rotation 후 인증 실패"
+        description: "Secret/credential 교체 이후 애플리케이션이 새 값을 읽지 못하거나 인증에 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "logs:related_logs"
+          - "traces:related_traces"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "로그에 authentication failed, invalid credentials, permission denied가 있는지 확인"
+          - "Secret reference와 rollout/restart 시점을 비교"
+          - "credential 값 자체는 수집하지 않고 key/ref만 사용"
+        signals:
+          - id: "credential_rotation_signal"
+            any_of:
+              - log_pattern: "authentication failed"
+              - log_pattern: "invalid credentials"
+              - log_pattern: "permission denied"

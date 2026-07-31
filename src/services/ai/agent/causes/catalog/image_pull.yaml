@@ -1,0 +1,90 @@
+# RCA 원인 룰 카탈로그 — ImagePullBackOff 계열 (구 causes/image_pull.py)
+# signals: 후보 판별 신호(causes/signals.py) — 이벤트 메시지의 pull 실패 사유로 구별한다.
+rules:
+  - id: "image_pull_backoff"
+    symptoms: ["ImagePullBackOff", "ErrImagePull"]
+    required_sources: ["kubernetes"]
+    candidates:
+      - candidate_id: "wrong_image_tag"
+        title: "잘못된 이미지 태그"
+        description: "존재하지 않는 이미지 태그 또는 digest로 인해 image pull이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+        checks:
+          - "container image field와 image tag/digest가 registry에 존재하는지 확인"
+          - "events.reason/message에 manifest unknown 또는 not found가 있는지 확인"
+          - "최근 image tag/name 변경 이후 ImagePullBackOff가 시작됐는지 확인"
+        signals:
+          - id: "registry_manifest_missing"
+            any_of:
+              - event_pattern: "manifest unknown"
+              - event_pattern: "not found"
+              - event_pattern: "manifest invalid"
+      - candidate_id: "missing_image_pull_secret"
+        title: "이미지 pull Secret 누락"
+        description: "Private registry 인증 Secret 누락 또는 잘못된 참조로 image pull이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "imagePullSecrets 참조가 같은 namespace에 존재하는지 확인"
+          - "events.reason/message에 unauthorized 또는 authentication required 확인"
+          - "Secret 생성/권한 변경이 누락됐는지 확인"
+        signals:
+          - id: "registry_auth_denied"
+            any_of:
+              - event_pattern: "unauthorized"
+              - event_pattern: "authentication required"
+              - event_pattern: "pull access denied"
+      - candidate_id: "registry_unavailable"
+        title: "이미지 registry 장애"
+        description: "Registry 또는 registry 앞단 LB 장애로 image pull이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+        checks:
+          - "registry API/status 또는 registry/LB availability metric 확인"
+          - "여러 workload에서 같은 registry pull 실패가 발생하는지 확인"
+          - "events.reason/message에 timeout, connection refused, 5xx 확인"
+        signals:
+          # metadata 없이도 완결 가능한 유일한 후보였어서, 신호 없이는 항상 1.0 으로
+          # 선택되던 후보 — registry 장애 정황(이벤트)의 관측을 완결 조건으로 요구한다.
+          - id: "registry_unreachable"
+            any_of:
+              - event_pattern: "timeout"
+              - event_pattern: "connection refused"
+              - event_pattern: "no route to host"
+              - event_pattern: "503"
+
+      - candidate_id: "registry_rate_limited"
+        title: "Registry rate limit"
+        description: "Registry 요청 제한 또는 quota 초과로 image pull이 거부됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+        checks:
+          - "event message에 Too Many Requests, 429, toomanyrequests, rate limit 문구가 있는지 확인"
+          - "동일 registry를 사용하는 여러 Pod에서 pull 제한이 반복되는지 확인"
+          - "registry 인증/캐시 정책 또는 pull 빈도 제한을 확인"
+        signals:
+          - id: "registry_rate_limit_signal"
+            any_of:
+              - event_pattern: "Too Many Requests"
+              - event_pattern: "toomanyrequests"
+              - event_pattern: "rate limit"
+              - event_pattern: "429"
+
+      - candidate_id: "image_platform_mismatch"
+        title: "이미지 플랫폼 불일치"
+        description: "노드 아키텍처와 이미지 manifest/platform이 맞지 않아 image pull이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+        checks:
+          - "event message에 no matching manifest 또는 platform/architecture 불일치 문구가 있는지 확인"
+          - "node architecture와 image manifest supported platform을 비교"
+          - "multi-arch image build/push 누락 여부를 확인"
+        signals:
+          - id: "image_platform_mismatch_signal"
+            any_of:
+              - event_pattern: "no matching manifest"
+              - event_pattern: "no match for platform"
+              - event_pattern: "platform"
+              - event_pattern: "architecture"

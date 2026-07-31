@@ -1,0 +1,70 @@
+# RCA 원인 룰 카탈로그 — HPA/autoscaling 계열
+# 근거:
+# - rca_ai_safepr_platform_data_catalog.xlsx / Incident Evidence Bundles
+# - Kubernetes HPA 상태 조건(ScalingActive, AbleToScale, ScalingLimited)
+# - Prometheus/Kubernetes event/log 기반 autoscaling 장애 진단 패턴
+rules:
+  - id: "hpa_scaling_failed"
+    symptoms:
+      - "HPA scaling failed"
+      - "FailedGetResourceMetric"
+      - "FailedComputeMetricsReplicas"
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "metrics_server_unavailable"
+        title: "HPA metrics 수집 불가"
+        description: "metrics-server 또는 custom metrics adapter가 값을 제공하지 못해 HPA가 replica 계산에 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "HPA condition에 FailedGetResourceMetric 또는 FailedComputeMetricsReplicas가 있는지 확인"
+          - "metrics-server/custom metrics adapter availability와 error log 확인"
+          - "대상 workload의 CPU/memory/custom metric query가 비어 있는지 확인"
+        signals:
+          - id: "hpa_metrics_unavailable_signal"
+            any_of:
+              - event_pattern: "FailedGetResourceMetric"
+              - event_pattern: "FailedComputeMetricsReplicas"
+              - event_pattern: "unable to get metrics"
+              - log_pattern: "unable to get metrics"
+              - log_pattern: "metrics api not available"
+
+      - candidate_id: "missing_resource_requests"
+        title: "resource request 누락"
+        description: "container resource requests가 없어 CPU/memory utilization 기반 HPA 계산이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "target container에 resources.requests.cpu 또는 memory가 선언되어 있는지 확인"
+          - "HPA event에 missing request 또는 did not receive metrics for targeted pods가 있는지 확인"
+          - "최근 manifest에서 resource request가 제거됐는지 확인"
+        signals:
+          - id: "missing_resource_request_signal"
+            any_of:
+              - event_pattern: "missing request"
+              - event_pattern: "missing request for cpu"
+              - event_pattern: "missing request for memory"
+              - log_pattern: "missing request"
+
+      - candidate_id: "max_replica_limit_reached"
+        title: "HPA 최대 replica 한계 도달"
+        description: "트래픽 또는 latency 증가 상황에서 HPA가 maxReplicas에 막혀 추가 확장하지 못했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "HPA.status.currentReplicas가 spec.maxReplicas와 같은지 확인"
+          - "ScalingLimited=True condition 또는 desiredReplicas > maxReplicas 정황 확인"
+          - "동시간대 latency, 5xx, queue depth 증가 여부 확인"
+        signals:
+          - id: "hpa_scaling_limited_signal"
+            any_of:
+              - event_pattern: "ScalingLimited"
+              - event_pattern: "max replicas"
+              - event_pattern: "the desired replica count is more than the maximum replica count"
+              - log_pattern: "ScalingLimited"

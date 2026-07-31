@@ -1,0 +1,75 @@
+image:
+  repository: ghcr.io/opsia/opsia
+  tag: ""
+  pullPolicy: IfNotPresent
+
+controller:
+  replicas: 1
+  resources: {}
+
+console:
+  image:
+    repository: ghcr.io/opsia/opsia-console
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources: {}
+
+postgresql:
+  image: postgres:17-alpine
+  auth:
+    database: opsia
+    username: opsia
+    password: ""
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+  resources: {}
+
+agent:
+  clusterId: opsia-self
+  token: ""
+  # 비우면 현재 release의 console Service 루트(/live/agent proxy)를 사용한다.
+  realtimeGatewayUrl: ""
+  resources: {}
+
+initialAdmin:
+  email: admin@opsia.local
+  password: ""
+
+llm:
+  provider: ""
+  apiKey: ""
+  model: ""
+
+scm:
+  provider: github
+  repository: ""
+  baseBranch: main
+  credentialVersion: ""
+  github:
+    apiBase: ""
+    tokenSecretName: ""
+    tokenSecretKey: token
+
+service:
+  type: ClusterIP
+  port: 80
+
+access:
+  mode: auto
+  externalUrl: ""
+  host: ""
+  nodePort: 30080
+  loadBalancer:
+    annotations: {}
+    tlsTermination: disabled
+  ingress:
+    className: ""
+    annotations: {}
+    tls:
+      enabled: false
+      secretName: ""
+
+nameOverride: ""
+fullnameOverride: ""

@@ -1,0 +1,54 @@
+# fault: oom — 실제 메모리 누수가 컨테이너 limit을 넘어 OOMKilled.
+# 앱은 Opsia나 복구 annotation을 알지 못한다. 재시작하면 프로세스 메모리가
+# 초기화돼 잠시 정상화되지만 누수가 계속되어 수십 초 뒤 다시 OOM 난다.
+# 기대 증상: lastState.terminated.reason=OOMKilled, exitCode 137,
+# 이후 CrashLoopBackOff 반복, memory usage가 limit(64Mi)에 붙는 시계열.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: report-generator
+  namespace: sandbox
+  labels:
+    app: report-generator
+    scenario: oom
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: report-generator
+  template:
+    metadata:
+      labels:
+        app: report-generator
+        scenario: oom
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: report-generator
+          image: python:3.13-alpine
+          command:
+            - python
+            - -c
+            - |
+              import json
+              import time
+
+              chunks = []
+              while True:
+                  chunks.append(bytearray(1024 * 1024))
+                  if len(chunks) % 10 == 0:
+                      print(json.dumps({
+                          "level": "info",
+                          "service": "report-generator",
+                          "action": "monthly sales cache growth",
+                          "allocated_mib": len(chunks),
+                      }), flush=True)
+                  time.sleep(0.5)
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

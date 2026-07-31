@@ -1,0 +1,33 @@
+{{- if eq (include "opsia.accessMode" . | trim) "ingress" }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "opsia.fullname" . }}
+  labels:
+    {{- include "opsia.labels" . | nindent 4 }}
+  {{- with .Values.access.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.access.ingress.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.access.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.access.host | quote }}
+      secretName: {{ .Values.access.ingress.tls.secretName | quote }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.access.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "opsia.fullname" . }}
+                port:
+                  name: http
+{{- end }}

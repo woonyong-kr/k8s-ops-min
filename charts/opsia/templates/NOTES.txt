@@ -1,0 +1,41 @@
+{{- $mode := include "opsia.accessMode" . | trim -}}
+{{- $externalUrl := include "opsia.externalUrl" . | trim -}}
+Opsia is installed with access mode: {{ $mode }}
+
+{{- if eq $mode "portforward" }}
+Open a local connection:
+  kubectl -n {{ .Release.Namespace }} port-forward service/{{ include "opsia.fullname" . }} 8080:{{ .Values.service.port }}
+  http://127.0.0.1:8080
+
+Agent enrollment is limited to the self cluster only while no external URL is configured.
+The self-cluster server address is {{ include "opsia.internalUrl" . | trim }}.
+To connect another cluster, expose Opsia with ingress or a load balancer and set access.externalUrl.
+{{- else if eq $mode "loadbalancer" }}
+Wait for the load balancer address:
+  kubectl get service {{ include "opsia.fullname" . }} -n {{ .Release.Namespace }} --watch
+{{- if $externalUrl }}
+Open {{ $externalUrl }}
+{{- if eq .Values.access.loadBalancer.tlsTermination "external" }}
+The external TLS termination must terminate HTTPS before forwarding plain HTTP to service port {{ .Values.service.port }}.
+{{- end }}
+{{- else }}
+Set access.externalUrl to the reachable http(s) URL before enrolling another cluster.
+{{- end }}
+{{- else if eq $mode "ingress" }}
+Open {{ $externalUrl }}
+{{- else if eq $mode "nodeport" }}
+Find a node address and open port {{ .Values.access.nodePort }}:
+  kubectl get nodes -o wide
+{{- if $externalUrl }}
+Configured external URL: {{ $externalUrl }}
+{{- else }}
+Set access.externalUrl before enrolling another cluster.
+{{- end }}
+{{- end }}
+
+Initial administrator email:
+  kubectl -n {{ .Release.Namespace }} get secret {{ include "opsia.fullname" . }}-bootstrap -o jsonpath='{.data.AUTH_EMAIL}' | base64 -d; echo
+Initial administrator password:
+  kubectl -n {{ .Release.Namespace }} get secret {{ include "opsia.fullname" . }}-bootstrap -o jsonpath='{.data.AUTH_PASSWORD}' | base64 -d; echo
+
+DEV_AUTH_BYPASS is fixed to 0 in this profile.

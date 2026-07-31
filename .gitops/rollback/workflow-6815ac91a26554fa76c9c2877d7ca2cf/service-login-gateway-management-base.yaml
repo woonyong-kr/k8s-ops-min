@@ -1,0 +1,19 @@
+kind: Service
+spec:
+  ports:
+  - name: registry
+    port: 8082
+    protocol: TCP
+    targetPort: registry
+  - name: console
+    port: 8085
+    protocol: TCP
+    targetPort: console
+  selector:
+    app: management-server
+metadata:
+  name: login-gateway-management
+  labels:
+    app: management-server
+  namespace: sandbox
+apiVersion: v1

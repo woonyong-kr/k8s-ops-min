@@ -1,0 +1,129 @@
+# RCA 원인 룰 카탈로그 — Storage / Volume 계열
+# 근거:
+# - rca_ai_safepr_platform_data_catalog.xlsx / Incident Evidence Bundles
+# - Kubernetes FailedMount/FailedAttachVolume/PVC Pending event 패턴
+# - CSI driver, StorageClass, volume topology 관련 운영 장애 패턴
+rules:
+  - id: "volume_mount_failed"
+    symptoms:
+      - "FailedMount"
+      - "VolumeMountFailed"
+      - "MountVolume.SetUp failed"
+    required_sources: ["kubernetes", "logs", "metadata"]
+    candidates:
+      - candidate_id: "pvc_not_bound"
+        title: "PVC 바인딩 실패"
+        description: "Pod가 참조하는 PVC가 Bound 상태가 아니어서 volume mount가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "Pod event에 unbound immediate PersistentVolumeClaims 또는 PVC Pending 정황이 있는지 확인"
+          - "PVC.status.phase, StorageClass, PV availability를 확인"
+          - "최근 volumeClaimTemplates 또는 PVC manifest 변경 여부 확인"
+        signals:
+          - id: "pvc_unbound_mount_signal"
+            any_of:
+              - event_pattern: "unbound immediate PersistentVolumeClaims"
+              - event_pattern: "persistentvolumeclaim"
+              - event_pattern: "PVC Pending"
+              - event_pattern: "not bound"
+
+      - candidate_id: "csi_driver_unavailable"
+        title: "CSI driver 장애"
+        description: "CSI controller/node plugin이 응답하지 않아 volume setup 또는 attach가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metrics:telemetry_metrics"
+        checks:
+          - "CSI controller/node daemonset pod 상태와 restart 여부 확인"
+          - "kubelet event/log에서 CSI timeout, driver not found, mount failed 확인"
+          - "CSI sidecar metric 또는 storage provisioner error 증가 확인"
+        signals:
+          - id: "csi_driver_failure_signal"
+            any_of:
+              - event_pattern: "CSI"
+              - event_pattern: "csi driver"
+              - event_pattern: "driver name"
+              - log_pattern: "csi"
+              - log_pattern: "driver not found"
+
+      - candidate_id: "volume_attach_timeout"
+        title: "Volume attach timeout"
+        description: "스토리지 backend 또는 cloud volume attach 지연으로 Pod volume attach가 timeout됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+        checks:
+          - "event에 AttachVolume.Attach failed, timed out waiting for volume attach 확인"
+          - "VolumeAttachment object 상태와 attach controller log 확인"
+          - "동일 zone/node의 attach 지연이 반복되는지 확인"
+        signals:
+          - id: "volume_attach_timeout_signal"
+            any_of:
+              - event_pattern: "AttachVolume.Attach failed"
+              - event_pattern: "timed out waiting for the condition"
+              - event_pattern: "timeout expired waiting for volumes"
+              - log_pattern: "volume attach"
+
+      - candidate_id: "storage_class_mismatch"
+        title: "StorageClass 또는 topology 불일치"
+        description: "StorageClass, volumeBindingMode, zone/topology 조건이 맞지 않아 volume provisioning 또는 mount가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "PVC.spec.storageClassName과 실제 StorageClass 존재 여부 확인"
+          - "StorageClass volumeBindingMode와 Pod scheduling zone/topology 조건 비교"
+          - "event에 no matching volumes, topology mismatch, storageclass not found 확인"
+        signals:
+          - id: "storage_class_mismatch_signal"
+            any_of:
+              - event_pattern: "storageclass"
+              - event_pattern: "no matching volumes"
+              - event_pattern: "topology"
+              - event_pattern: "zone"
+
+  - id: "volume_attach_failed"
+    symptoms:
+      - "FailedAttachVolume"
+      - "VolumeAttachFailed"
+    required_sources: ["kubernetes", "logs", "metadata"]
+    candidates:
+      - candidate_id: "volume_multi_attach_conflict"
+        title: "Volume multi-attach 충돌"
+        description: "ReadWriteOnce volume이 다른 노드/Pod에 이미 attach되어 새 Pod attach가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "event에 Multi-Attach error 또는 volume is already exclusively attached 문구 확인"
+          - "동일 PVC를 참조하는 Pod가 다른 node에 남아 있는지 확인"
+          - "StatefulSet/Deployment rollout 중 old Pod 정리가 지연됐는지 확인"
+        signals:
+          - id: "volume_multi_attach_signal"
+            any_of:
+              - event_pattern: "Multi-Attach"
+              - event_pattern: "already exclusively attached"
+              - event_pattern: "attached to a different node"
+
+      - candidate_id: "volume_attachment_orphaned"
+        title: "VolumeAttachment 잔여 객체 문제"
+        description: "이전 node의 VolumeAttachment 또는 cloud attachment가 정리되지 않아 새 attach가 막혔을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+        checks:
+          - "VolumeAttachment object의 attached=false 또는 deletionTimestamp 잔여 여부 확인"
+          - "attach/detach controller log에서 detach 지연 또는 finalizer 정체 확인"
+          - "node drain/termination 직후 발생했는지 확인"
+        signals:
+          - id: "volume_attachment_orphan_signal"
+            any_of:
+              - event_pattern: "VolumeAttachment"
+              - event_pattern: "detach"
+              - log_pattern: "volumeattachment"
+              - log_pattern: "finalizer"

@@ -1,0 +1,17 @@
+kind: Service
+spec:
+  ports:
+  - name: http
+    port: 8001
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: game-server
+    opsia.dev/fleet: live
+metadata:
+  name: game-room-metrics
+  labels:
+    app: game-server
+    opsia.dev/fleet: live
+  namespace: sandbox
+apiVersion: v1

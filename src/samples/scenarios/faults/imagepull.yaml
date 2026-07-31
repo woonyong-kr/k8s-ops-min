@@ -1,0 +1,34 @@
+# fault: imagepull — 존재하지 않는 이미지 태그로 배포된 상황(오타/미배포 태그).
+# 기대 증상: ErrImagePull → ImagePullBackOff, Failed/BackOff 이벤트,
+# pod는 계속 Pending-ContainerCreating 계열에서 Ready 미달.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: search-indexer
+  namespace: sandbox
+  labels:
+    app: search-indexer
+    scenario: imagepull
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: search-indexer
+  template:
+    metadata:
+      labels:
+        app: search-indexer
+        scenario: imagepull
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: search-indexer
+          image: ghcr.io/shop-demo/search-indexer:v2.4.1
+          resources:
+            requests:
+              cpu: 25m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi

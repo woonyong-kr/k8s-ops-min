@@ -1,0 +1,42 @@
+{{- include "opsia.validateAccess" . -}}
+{{- $accessMode := include "opsia.accessMode" . | trim -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opsia.fullname" . }}
+  labels:
+    {{- include "opsia.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+  {{- if and (eq $accessMode "loadbalancer") .Values.access.loadBalancer.annotations }}
+  annotations:
+    {{- toYaml .Values.access.loadBalancer.annotations | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ include "opsia.serviceType" . | trim }}
+  selector:
+    {{- include "opsia.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: console
+      {{- if eq $accessMode "nodeport" }}
+      nodePort: {{ .Values.access.nodePort }}
+      {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "opsia.fullname" . }}-metrics
+  labels:
+    {{- include "opsia.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "opsia.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+  ports:
+    - name: metrics
+      port: 9090
+      targetPort: http

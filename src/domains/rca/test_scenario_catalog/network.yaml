@@ -1,0 +1,153 @@
+scenarios:
+  - scenario_id: "ingress.upstream-empty"
+    version: 1
+    title: "Ingress upstream endpoint 없음"
+    description: "selector가 일치하지 않는 테스트 Service를 만들어 upstream 502/503을 재현합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "빈 Service endpoint는 Pod 관련 Event를 만들지 않으며 현재 matcher는 Service/EndpointSlice 상태를 읽지 못합니다."
+    detector_work_needed:
+      - "Service와 EndpointSlice의 ready endpoint 수 observation"
+      - "테스트 요청을 보내 실제 upstream 502/503을 확인하는 probe"
+    expected:
+      root_cause: "upstream_unavailable"
+      symptom: "Ingress 502/503"
+    evidence_sources: ["kubernetes", "metrics", "logs"]
+    safety: &sandbox_safety
+      namespace: "sandbox"
+      cleanup_required: true
+      ttl_seconds: 300
+      management_cluster_allowed: false
+      resource_name_prefix: "rca-test-"
+      max_concurrent_runs: 1
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-ingress-upstream"
+        fault_mode: "upstream_empty"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      event_message_any: ["no endpoints", "upstream", "connection refused"]
+      external_status_any: ["502", "503"]
+    cleanup: &manifest_delete_cleanup
+      adapter: "kubernetes.manifest_delete"
+      params: {propagation_policy: "Foreground"}
+
+  - scenario_id: "ingress.readiness"
+    version: 1
+    title: "백엔드 readiness 실패"
+    description: "실패하는 readiness probe로 Ready endpoint가 없는 백엔드를 재현합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "Kubernetes readiness 이벤트가 먼저 관측돼도 run-scoped Loki 로그와 Prometheus metric 인입이 늦으면 required evidence가 비어 RCA가 blocked됩니다. provider ingestion race 검증 전에는 READY가 아닙니다."
+    detector_work_needed:
+      - "readiness run-scoped logs/metrics empty-result bounded retry/backoff"
+      - "빈 provider 결과를 evidence로 세지 않는 완료 조건"
+      - "backend_readiness_failure까지 evidence → RCA completed E2E 검증"
+    expected:
+      root_cause: "backend_readiness_failure"
+      symptom: "Ingress 502/503"
+    evidence_sources: ["kubernetes", "metrics", "logs"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-ingress-readiness"
+        fault_mode: "readiness_probe_failure"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      event_reasons: ["Unhealthy"]
+      event_message_any: ["Readiness probe failed"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "app.http-5xx"
+    version: 1
+    title: "애플리케이션 5xx 급증"
+    description: "테스트 앱의 의도된 error endpoint를 호출해 실제 5xx 로그와 응답을 만듭니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "현재 fixture는 5xx 서버만 만들고 요청을 보내지 않으며 matcher도 log/external status predicate를 평가하지 않습니다."
+    detector_work_needed:
+      - "run-scoped HTTP traffic generator"
+      - "HTTP status 또는 5xx log observation matcher"
+    expected:
+      root_cause: "application_5xx_spike"
+      symptom: "Ingress 502/503"
+    evidence_sources: ["kubernetes", "metrics", "logs"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-app-http-5xx"
+        fault_mode: "http_5xx"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 60
+      poll_seconds: 2
+      log_message_any: ["upstream_status\":500", "intentional_error_endpoint"]
+      external_status_any: ["500", "502", "503", "504"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "network.dns"
+    version: 1
+    title: "Service DNS 해석 실패"
+    description: "존재하지 않는 테스트 Service 이름 조회 실패를 재현합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "CoreDNS와 애플리케이션 DNS 실패 로그를 incident symptom으로 여는 연결이 없습니다."
+    detector_work_needed:
+      - "DNS lookup failure symptom derivation"
+      - "CoreDNS 응답과 workload 로그 correlation"
+    expected:
+      root_cause: "service_dns_resolution_failure"
+      symptom: "DNS lookup failed"
+    evidence_sources: ["kubernetes", "metrics", "logs", "metadata"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-network-dns"
+        fault_mode: "dns_failure"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 60
+      poll_seconds: 2
+      log_message_any: ["no such host", "name resolution", "DNS lookup failed"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "network.timeout"
+    version: 1
+    title: "네트워크 경로 timeout"
+    description: "응답하지 않는 sandbox endpoint 호출로 연결 timeout을 재현합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "timeout 로그와 trace를 Connection timeout incident로 여는 감지기가 없습니다."
+    detector_work_needed:
+      - "network timeout symptom derivation"
+      - "로그와 trace span의 endpoint correlation"
+    expected:
+      root_cause: "network_path_timeout"
+      symptom: "Connection timeout"
+    evidence_sources: ["kubernetes", "metrics", "logs", "traces", "metadata"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-network-timeout"
+        fault_mode: "network_timeout"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      event_message_any: ["timeout", "deadline exceeded"]
+      log_message_any: ["timeout", "deadline exceeded"]
+    cleanup: *manifest_delete_cleanup

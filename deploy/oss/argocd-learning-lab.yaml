@@ -1,0 +1,333 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-example-apps
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  annotations:
+    learning.opsia.dev/purpose: public-demo-repository
+type: Opaque
+stringData:
+  name: argocd-example-apps
+  project: learning-lab
+  type: git
+  url: https://github.com/argoproj/argocd-example-apps.git
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: learning-lab
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+spec:
+  description: Safe Argo CD learning lab backed by the official public example repository
+  sourceRepos:
+    - https://github.com/argoproj/argocd-example-apps.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: argocd-demo-*
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  orphanedResources:
+    warn: true
+  roles:
+    - name: viewer
+      description: Example project-scoped read-only role
+      policies:
+        - p, proj:learning-lab:viewer, applications, get, learning-lab/*, allow
+  syncWindows:
+    - kind: allow
+      schedule: "* * * * *"
+      duration: 1h
+      applications:
+        - "*"
+      manualSync: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 01-manual-plain-yaml
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: manual-sync
+spec:
+  project: learning-lab
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: guestbook
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-demo-manual
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 02-auto-helm
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: helm
+spec:
+  project: learning-lab
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: helm-guestbook
+    helm:
+      releaseName: learning-helm
+      valueFiles:
+        - values-production.yaml
+      parameters:
+        - name: service.type
+          value: ClusterIP
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-demo-helm
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+  revisionHistoryLimit: 5
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 03-auto-kustomize
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: kustomize
+spec:
+  project: learning-lab
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: kustomize-guestbook
+    kustomize:
+      namePrefix: learning-
+      commonLabels:
+        learning.opsia.dev/managed-by: argocd
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-demo-kustomize
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 04-auto-jsonnet
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: jsonnet
+spec:
+  project: learning-lab
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: jsonnet-guestbook
+    directory:
+      jsonnet:
+        extVars:
+          - name: service
+            value: learning-jsonnet
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-demo-jsonnet
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 05-pre-post-hooks
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: hooks
+spec:
+  project: learning-lab
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: pre-post-sync
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-demo-hooks
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 06-sync-waves
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: sync-waves
+spec:
+  project: learning-lab
+  source:
+    repoURL: https://github.com/argoproj/argocd-example-apps.git
+    targetRevision: HEAD
+    path: sync-waves
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-demo-waves
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 07-multi-source-helm
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: multi-source
+spec:
+  project: learning-lab
+  sources:
+    - repoURL: https://github.com/argoproj/argocd-example-apps.git
+      targetRevision: HEAD
+      path: helm-guestbook
+      helm:
+        releaseName: learning-multi-source
+        valueFiles:
+          - $values/helm-guestbook/values-production.yaml
+    - repoURL: https://github.com/argoproj/argocd-example-apps.git
+      targetRevision: HEAD
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd-demo-multi-source
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  revisionHistoryLimit: 5
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: 08-list-generator
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: applicationset
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - list:
+        elements:
+          - environment: dev
+            path: lightweight/app-a
+          - environment: stage
+            path: lightweight/app-b
+  template:
+    metadata:
+      name: '08-appset-{{.environment}}'
+      labels:
+        learning.opsia.dev/lab: argocd
+        learning.opsia.dev/environment: '{{.environment}}'
+    spec:
+      project: learning-lab
+      source:
+        repoURL: https://github.com/argoproj/argocd-example-apps.git
+        targetRevision: HEAD
+        path: '{{.path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'argocd-demo-appset-{{.environment}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: 09-git-directory-generator
+  namespace: argocd
+  labels:
+    learning.opsia.dev/lab: argocd
+    learning.opsia.dev/topic: git-generator
+spec:
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+    - git:
+        repoURL: https://github.com/argoproj/argocd-example-apps.git
+        revision: HEAD
+        directories:
+          - path: lightweight/app-*
+  template:
+    metadata:
+      name: '09-git-{{.path.basename}}'
+      labels:
+        learning.opsia.dev/lab: argocd
+        learning.opsia.dev/topic: git-generator-child
+    spec:
+      project: learning-lab
+      source:
+        repoURL: https://github.com/argoproj/argocd-example-apps.git
+        targetRevision: HEAD
+        path: '{{.path.path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'argocd-demo-git-{{.path.basename}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

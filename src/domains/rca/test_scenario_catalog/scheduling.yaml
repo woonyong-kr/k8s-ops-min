@@ -1,0 +1,126 @@
+scenarios:
+  - scenario_id: "schedule.cpu"
+    version: 1
+    title: "CPU 부족 스케줄링 실패"
+    description: "클러스터보다 큰 CPU request를 가진 테스트 Pod로 FailedScheduling을 만듭니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "현재 시나리오는 Kubernetes evidence만 요청하지만 insufficient_cpu 후보는 실제 metrics evidence도 요구하므로 RCA가 blocked됩니다. run-scoped Prometheus 계약 검증 전에는 READY가 아닙니다."
+    detector_work_needed:
+      - "test Pod CPU request와 node allocatable을 조회하는 run-scoped PromQL"
+      - "빈 Prometheus 결과를 근거로 승격하지 않는 수집 완료 조건"
+      - "insufficient_cpu까지 evidence → RCA completed E2E 검증"
+    expected:
+      root_cause: "insufficient_cpu"
+      symptom: "FailedScheduling"
+    evidence_sources: ["kubernetes"]
+    safety: &sandbox_safety
+      namespace: "sandbox"
+      cleanup_required: true
+      ttl_seconds: 300
+      management_cluster_allowed: false
+      resource_name_prefix: "rca-test-"
+      max_concurrent_runs: 1
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-schedule-cpu"
+        fault_mode: "insufficient_cpu"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      event_reasons: ["FailedScheduling"]
+      event_message_any: ["Insufficient cpu"]
+    cleanup: &manifest_delete_cleanup
+      adapter: "kubernetes.manifest_delete"
+      params: {propagation_policy: "Foreground"}
+
+  - scenario_id: "schedule.memory"
+    version: 1
+    title: "Memory 부족 스케줄링 실패"
+    description: "클러스터보다 큰 memory request를 가진 테스트 Pod로 FailedScheduling을 만듭니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "현재 시나리오는 Kubernetes evidence만 요청하지만 insufficient_memory 후보는 실제 metrics evidence도 요구하므로 RCA가 blocked됩니다. run-scoped Prometheus 계약 검증 전에는 READY가 아닙니다."
+    detector_work_needed:
+      - "test Pod memory request와 node allocatable을 조회하는 run-scoped PromQL"
+      - "빈 Prometheus 결과를 근거로 승격하지 않는 수집 완료 조건"
+      - "insufficient_memory까지 evidence → RCA completed E2E 검증"
+    expected:
+      root_cause: "insufficient_memory"
+      symptom: "FailedScheduling"
+    evidence_sources: ["kubernetes"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-schedule-memory"
+        fault_mode: "insufficient_memory"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      event_reasons: ["FailedScheduling"]
+      event_message_any: ["Insufficient memory"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "schedule.affinity"
+    version: 1
+    title: "Node affinity 불일치"
+    description: "존재하지 않는 node label affinity를 요구해 실제 FailedScheduling을 만듭니다."
+    execution: "real"
+    availability: "verification_pending"
+    availability_reason: "실제 evidence 수집부터 RCA, recovery plan, cleanup까지 live 완주가 아직 검증되지 않았습니다."
+    verification_work_needed:
+      - "격리 target cluster에서 affinity FailedScheduling 실제 이벤트 변형 검증"
+      - "node_affinity_or_taint_mismatch RCA 및 recovery plan live 완주 증적"
+    expected:
+      root_cause: "node_affinity_or_taint_mismatch"
+      symptom: "FailedScheduling"
+    evidence_sources: ["kubernetes"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-schedule-affinity"
+        fault_mode: "affinity_mismatch"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      event_reasons: ["FailedScheduling"]
+      event_message_any: ["affinity", "didn't match"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "schedule.pvc"
+    version: 1
+    title: "PVC 바인딩 대기"
+    description: "바인딩되지 않는 테스트 PVC를 mount해 Pending/FailedScheduling을 재현합니다."
+    execution: "real"
+    availability: "fixture_required"
+    availability_reason: "클러스터 StorageClass 구성에 영향받지 않는 격리된 PVC fixture가 필요합니다."
+    fixture_requirements:
+      - "sandbox 전용 미바인딩 StorageClass 또는 PVC"
+      - "cleanup 시 PVC를 복구하는 adapter"
+    expected:
+      root_cause: "pvc_pending"
+      symptom: "FailedScheduling"
+    evidence_sources: ["kubernetes"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-schedule-pvc"
+        fault_mode: "pvc_pending"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 120
+      poll_seconds: 2
+      event_reasons: ["FailedScheduling"]
+      event_message_any: ["persistentvolumeclaim", "unbound"]
+    cleanup: *manifest_delete_cleanup

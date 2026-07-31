@@ -1,0 +1,26 @@
+# 실제 GitHub 사용자 또는 팀 이름이 확정되면 아래 예시 handle을 교체한다.
+# 주석 처리된 줄은 GitHub가 무시하므로, 팀 handle 확정 전까지 안전하다.
+#
+# 예시:
+# * @org/platform-lead
+# /services/gateway/api-gateway/ @org/gateway-auth
+# /services/target-cluster-agent/ @org/target-telemetry
+#
+# 권장 담당 영역:
+# /packages/config/                         @org/platform-integration
+# /packages/contracts/                      @org/platform-integration
+# /packages/events/                         @org/platform-integration
+# /packages/runtime/                        @org/platform-integration
+# /packages/storage/                        @org/platform-integration
+# /.github/                                 @org/platform-integration
+# /deploy/                                  @org/platform-integration
+# /scripts/                                 @org/platform-integration
+# /services/gateway/api-gateway/                    @org/gateway-auth
+# /services/gitops-sync-worker/             @org/gitops-command
+# /services/command-worker/                 @org/gitops-command
+# /services/rca-worker/                     @org/rca-safe-pr
+# /services/audit-timeline-service/         @org/rca-safe-pr
+# /services/target-cluster-agent/           @org/target-telemetry
+# /services/node-collector/                 @org/target-telemetry
+# /docs/team/                               @org/platform-integration
+# /docs/events.md                           @org/platform-integration

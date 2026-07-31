@@ -1,0 +1,56 @@
+# Values for the Grafana Tempo Helm chart.
+# Tempo stores traces that OpenTelemetry Collector forwards through OTLP.
+
+fullnameOverride: tempo
+replicas: 1
+
+tempo:
+  # Keep the local MVP quiet and self-contained.
+  reportingEnabled: false
+  # The target Agent persists RCA evidence outside Tempo, so the in-cluster
+  # backend only needs a bounded recent trace window. This limits local block
+  # storage and compaction work; query time bounds are enforced independently
+  # by the Agent policy.
+  retention: 6h
+
+  # tempo chart 1.24.4 defaults this to 1024 MiB. That default was larger than
+  # our former 512 MiB container limit and caused the single-binary process to
+  # be OOMKilled whenever it cut/flushed its 30-minute head block.
+  memBallastSizeMbs: 0
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  # Cut smaller head blocks so WAL replay/flush work cannot accumulate for the
+  # chart default 30-minute interval in this memory-bounded single binary.
+  ingester:
+    trace_idle_period: 10s
+    max_block_duration: 5m
+
+  # One Cluster Agent issues one bounded TraceQL search at a time. Constrain
+  # Tempo's internal fan-out as a second line of defense against search spikes.
+  querier:
+    max_concurrent_queries: 4
+  queryFrontend:
+    search:
+      concurrent_jobs: 32
+
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      wal:
+        path: /var/tempo/wal
+
+service:
+  type: ClusterIP
+
+persistence:
+  enabled: true
+  size: 5Gi

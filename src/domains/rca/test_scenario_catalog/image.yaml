@@ -1,0 +1,93 @@
+scenarios:
+  - scenario_id: "image.wrong-tag"
+    version: 1
+    title: "존재하지 않는 이미지 태그"
+    description: "안전한 pause 저장소의 run별 미존재 tag를 사용해 실제 ImagePullBackOff를 만듭니다."
+    execution: "real"
+    availability: "ready"
+    expected:
+      root_cause: "wrong_image_tag"
+      symptom: "ImagePullBackOff"
+    evidence_sources: ["kubernetes"]
+    safety: &sandbox_safety
+      namespace: "sandbox"
+      cleanup_required: true
+      ttl_seconds: 300
+      management_cluster_allowed: false
+      resource_name_prefix: "rca-test-"
+      max_concurrent_runs: 1
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-image-wrong-tag"
+        fault_mode: "wrong_image_tag"
+        image_repository: "registry.k8s.io/pause"
+        image_tag_strategy: "missing_run_suffix"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      pod_waiting_reasons: ["ErrImagePull", "ImagePullBackOff"]
+      event_message_any: ["manifest unknown", "not found"]
+    cleanup: &manifest_delete_cleanup
+      adapter: "kubernetes.manifest_delete"
+      params: {propagation_policy: "Foreground"}
+
+  - scenario_id: "image.registry-down"
+    version: 1
+    title: "이미지 registry 연결 실패"
+    description: "도달 불가능한 테스트 registry endpoint로 실제 pull 연결 실패를 만듭니다."
+    execution: "real"
+    availability: "verification_pending"
+    availability_reason: "실제 evidence 수집부터 RCA, recovery plan, cleanup까지 live 완주가 아직 검증되지 않았습니다."
+    verification_work_needed:
+      - "격리 target cluster에서 registry 연결 실패의 실제 이벤트 변형 검증"
+      - "registry_unavailable RCA 및 recovery plan live 완주 증적"
+    expected:
+      root_cause: "registry_unavailable"
+      symptom: "ImagePullBackOff"
+    evidence_sources: ["kubernetes"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-image-registry-down"
+        fault_mode: "registry_unavailable"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      pod_waiting_reasons: ["ErrImagePull", "ImagePullBackOff"]
+      event_message_any: ["connection refused", "no route to host", "timeout"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "image.auth"
+    version: 1
+    title: "Private registry 인증 실패"
+    description: "테스트 private registry에서 잘못된 imagePullSecret 인증을 재현합니다."
+    execution: "real"
+    availability: "fixture_required"
+    availability_reason: "인증 거부 응답을 안정적으로 내는 전용 private registry fixture가 필요합니다."
+    fixture_requirements:
+      - "sandbox 전용 private registry"
+      - "만료 또는 잘못된 imagePullSecret"
+    expected:
+      root_cause: "missing_image_pull_secret"
+      symptom: "ImagePullBackOff"
+    evidence_sources: ["kubernetes"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-image-auth"
+        fault_mode: "registry_auth_denied"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      pod_waiting_reasons: ["ErrImagePull", "ImagePullBackOff"]
+      event_message_any: ["unauthorized", "authentication required", "pull access denied"]
+    cleanup: *manifest_delete_cleanup

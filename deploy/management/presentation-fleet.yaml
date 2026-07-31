@@ -1,0 +1,199 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: presentation-fleet-seed
+  namespace: management
+  labels:
+    app: presentation-fleet-seed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: presentation-fleet-seed
+  template:
+    metadata:
+      labels:
+        app: presentation-fleet-seed
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: heartbeat
+          image: postgres:17-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -ec
+          args:
+            - |
+              export PGHOST=postgresql
+              export PGPASSWORD="${POSTGRES_PASSWORD}"
+              while true; do
+                psql --username "${POSTGRES_USER}" --dbname "${POSTGRES_DB}" --set ON_ERROR_STOP=1 <<'SQL'
+              INSERT INTO cluster_registrations (
+                workspace_id, cluster_id, name, environment, status, settings
+              )
+              VALUES
+                (
+                  'default',
+                  'apn2-match-prod',
+                  'AP-Northeast Match',
+                  'production',
+                  'registered',
+                  '{"cluster_role":"display_only","data_origin":"synthetic","presentation_seed":true,"cloud_provider":"eks","region":"ap-northeast-2"}'::jsonb
+                ),
+                (
+                  'default',
+                  'apn2-analytics-prod',
+                  'Live Analytics',
+                  'production',
+                  'registered',
+                  '{"cluster_role":"display_only","data_origin":"synthetic","presentation_seed":true,"cloud_provider":"eks","region":"ap-northeast-2"}'::jsonb
+                )
+              ON CONFLICT (workspace_id, cluster_id) DO UPDATE
+              SET
+                name = EXCLUDED.name,
+                environment = EXCLUDED.environment,
+                status = EXCLUDED.status,
+                settings = EXCLUDED.settings,
+                updated_at = now();
+
+              INSERT INTO resource_assignments (
+                resource_assignment_id,
+                organization_id,
+                group_id,
+                resource_type,
+                resource_id,
+                status
+              )
+              VALUES
+                (
+                  'resource-assignment-presentation-match',
+                  'default',
+                  'default-operations',
+                  'cluster',
+                  'apn2-match-prod',
+                  'active'
+                ),
+                (
+                  'resource-assignment-presentation-analytics',
+                  'default',
+                  'default-operations',
+                  'cluster',
+                  'apn2-analytics-prod',
+                  'active'
+                )
+              ON CONFLICT (organization_id, resource_type, resource_id) DO UPDATE
+              SET
+                group_id = EXCLUDED.group_id,
+                status = EXCLUDED.status,
+                updated_at = now();
+
+              INSERT INTO member_resource_roles (
+                resource_assignment_id, user_id, role, status
+              )
+              SELECT
+                assignment.resource_assignment_id,
+                member.user_id,
+                'cluster_steward',
+                'active'
+              FROM resource_assignments AS assignment
+              JOIN organization_members AS member
+                ON member.organization_id = assignment.organization_id
+               AND member.status = 'active'
+              WHERE assignment.organization_id = 'default'
+                AND assignment.resource_type = 'cluster'
+                AND assignment.resource_id IN (
+                  'apn2-match-prod',
+                  'apn2-analytics-prod'
+                )
+              ON CONFLICT (resource_assignment_id, user_id) DO UPDATE
+              SET
+                role = EXCLUDED.role,
+                status = EXCLUDED.status,
+                updated_at = now();
+
+              INSERT INTO cluster_agent_status (
+                workspace_id,
+                cluster_id,
+                agent_id,
+                status,
+                capabilities,
+                details,
+                last_seen_at
+              )
+              VALUES
+                (
+                  'default',
+                  'apn2-match-prod',
+                  'presentation-match-heartbeat',
+                  'connected',
+                  '[]'::jsonb,
+                  '{"presentation_seed":true,"heartbeat_source":"presentation-fleet-seed"}'::jsonb,
+                  now()
+                ),
+                (
+                  'default',
+                  'apn2-analytics-prod',
+                  'presentation-analytics-heartbeat',
+                  'connected',
+                  '[]'::jsonb,
+                  '{"presentation_seed":true,"heartbeat_source":"presentation-fleet-seed"}'::jsonb,
+                  now()
+                )
+              ON CONFLICT (workspace_id, cluster_id, agent_id) DO UPDATE
+              SET
+                status = EXCLUDED.status,
+                capabilities = EXCLUDED.capabilities,
+                details = EXCLUDED.details,
+                last_seen_at = now(),
+                updated_at = now();
+
+              DELETE FROM cluster_usage_samples
+              WHERE snapshot_id IN (
+                'presentation-match-current',
+                'presentation-analytics-current'
+              );
+
+              INSERT INTO cluster_usage_samples (
+                snapshot_id, workspace_id, cluster_id, sampled_at, usage
+              )
+              VALUES
+                (
+                  'presentation-match-current',
+                  'default',
+                  'apn2-match-prod',
+                  now(),
+                  '{"node_total":3,"node_ready":3,"pod_total":42,"pod_running":42,"pod_pending":0,"pod_failed":0,"restart_total":0,"cpu_pct":38.6,"mem_pct":54.2,"metrics_metadata":{"source":"presentation_seed","completeness":"synthetic"}}'::jsonb
+                ),
+                (
+                  'presentation-analytics-current',
+                  'default',
+                  'apn2-analytics-prod',
+                  now(),
+                  '{"node_total":4,"node_ready":4,"pod_total":27,"pod_running":27,"pod_pending":0,"pod_failed":0,"restart_total":0,"cpu_pct":22.4,"mem_pct":47.8,"metrics_metadata":{"source":"presentation_seed","completeness":"synthetic"}}'::jsonb
+                );
+              SQL
+                sleep 30
+              done
+          envFrom:
+            - secretRef:
+                name: postgresql-secret
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

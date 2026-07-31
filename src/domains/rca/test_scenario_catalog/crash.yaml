@@ -1,0 +1,156 @@
+scenarios:
+  - scenario_id: "crash.oom"
+    version: 1
+    title: "OOMKilled"
+    description: "메모리 limit를 넘는 테스트 컨테이너를 실행해 실제 OOMKilled 상태를 관측합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "현재 fixture의 tail /dev/zero는 메모리를 결정적으로 할당하지 않고, Pod OOMKilling 이벤트도 보장되지 않아 관측 완료가 불가능합니다."
+    detector_work_needed:
+      - "memory limit 안에서 결정적으로 메모리를 할당하는 전용 fixture image"
+      - "OOMKilled terminated reason만으로 완료할 수 있는 observation 조건"
+    expected:
+      root_cause: "oom_killed"
+      symptom: "CrashLoopBackOff"
+    evidence_sources: ["kubernetes"]
+    safety: &sandbox_safety
+      namespace: "sandbox"
+      cleanup_required: true
+      ttl_seconds: 300
+      management_cluster_allowed: false
+      resource_name_prefix: "rca-test-"
+      max_concurrent_runs: 1
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-crash-oom"
+        fault_mode: "oom_killed"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 120
+      poll_seconds: 2
+      pod_waiting_reasons: ["CrashLoopBackOff"]
+      pod_terminated_reasons: ["OOMKilled"]
+      event_reasons: ["OOMKilling"]
+    cleanup: &manifest_delete_cleanup
+      adapter: "kubernetes.manifest_delete"
+      params: {propagation_policy: "Foreground"}
+
+  - scenario_id: "crash.config-env"
+    version: 1
+    title: "설정 또는 환경변수 오류"
+    description: "필수 환경변수가 없는 테스트 앱을 실행해 설정 오류 CrashLoop을 만듭니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "CrashLoop 관측 직후 run-scoped Loki 로그와 Prometheus metric이 아직 비어 있으면 required evidence가 누락되어 RCA가 blocked될 수 있습니다. 빈 provider 결과 재시도와 실제 metric 계약 검증 전에는 READY가 아닙니다."
+    detector_work_needed:
+      - "run-scoped Loki empty-result bounded retry/backoff"
+      - "실제 Prometheus sample을 포함하는 CrashLoop metric 수집 계약"
+      - "config_env_error까지 evidence → RCA completed E2E 검증"
+    expected:
+      root_cause: "config_env_error"
+      symptom: "CrashLoopBackOff"
+    evidence_sources: ["kubernetes", "logs"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-crash-config-env"
+        fault_mode: "config_env_error"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      pod_waiting_reasons: ["CrashLoopBackOff"]
+      log_message_any: ["environment variable", "not set", "invalid configuration"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "crash.app-startup"
+    version: 1
+    title: "애플리케이션 시작 실패"
+    description: "기동 직후 exit 1로 종료되는 테스트 앱을 실행해 시작 실패를 만듭니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "CrashLoop 관측 직후 run-scoped Loki 로그와 Prometheus metric이 아직 비어 있으면 required evidence가 누락되거나 과거 로그 없이 원인을 확정할 수 없습니다. 빈 provider 결과 재시도 검증 전에는 READY가 아닙니다."
+    detector_work_needed:
+      - "run-scoped Loki empty-result bounded retry/backoff"
+      - "실제 Prometheus sample을 포함하는 CrashLoop metric 수집 계약"
+      - "app_startup_failure까지 evidence → RCA completed E2E 검증"
+    expected:
+      root_cause: "app_startup_failure"
+      symptom: "CrashLoopBackOff"
+    evidence_sources: ["kubernetes", "logs"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-crash-app-startup"
+        fault_mode: "app_startup_failure"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      pod_waiting_reasons: ["CrashLoopBackOff"]
+      log_message_any: ["FATAL", "startup failed"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "crash.bad-image-rollout"
+    version: 1
+    title: "배포 이미지 기동 문제"
+    description: "이미지는 pull되지만 앱이 기동되지 않는 새 rollout을 재현합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "현재 수집 근거만으로 최근 이미지 rollout과 crash 시작 시점을 안정적으로 연결하지 못합니다."
+    detector_work_needed:
+      - "ReplicaSet revision과 image digest 변경 lineage 수집"
+      - "신규 revision Pod만의 startup 로그 상관 분석"
+    expected:
+      root_cause: "bad_image_rollout"
+      symptom: "CrashLoopBackOff"
+    evidence_sources: ["kubernetes", "logs", "metadata"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-crash-bad-image"
+        fault_mode: "bad_image_rollout"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      pod_waiting_reasons: ["CrashLoopBackOff"]
+      log_message_any: ["ModuleNotFoundError", "exec format error"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "crash.dependency-connect"
+    version: 1
+    title: "기동 중 의존성 연결 실패"
+    description: "기동 시 연결할 수 없는 의존성을 사용해 반복 종료를 재현합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "CrashLoop 증거와 dependency trace를 한 run으로 묶는 수집기가 아직 없습니다."
+    detector_work_needed:
+      - "이전 컨테이너 로그 수집"
+      - "dependency endpoint와 trace span의 run correlation 연결"
+    expected:
+      root_cause: "dependency_connection_failure"
+      symptom: "CrashLoopBackOff"
+    evidence_sources: ["kubernetes", "logs", "traces"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-crash-dependency"
+        fault_mode: "dependency_connection_failure"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 90
+      poll_seconds: 2
+      pod_waiting_reasons: ["CrashLoopBackOff"]
+      log_message_any: ["connection refused", "timeout", "unreachable"]
+    cleanup: *manifest_delete_cleanup

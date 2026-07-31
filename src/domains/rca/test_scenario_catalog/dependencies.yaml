@@ -1,0 +1,64 @@
+scenarios:
+  - scenario_id: "db.connectivity"
+    version: 1
+    title: "DB 연결 실패"
+    description: "sandbox 테스트 앱과 격리된 DB fixture 사이의 연결 거부/timeout을 재현합니다."
+    execution: "hybrid"
+    availability: "fixture_required"
+    availability_reason: "운영 DB를 건드리지 않는 격리 DB endpoint와 reset hook이 필요합니다."
+    fixture_requirements:
+      - "sandbox 전용 disposable DB"
+      - "연결 차단과 복구를 제공하는 fixture adapter"
+    expected:
+      root_cause: "database_connectivity_failure"
+      symptom: "DB connection failed"
+    evidence_sources: ["kubernetes", "metrics", "logs", "traces", "metadata"]
+    safety: &sandbox_safety
+      namespace: "sandbox"
+      cleanup_required: true
+      ttl_seconds: 300
+      management_cluster_allowed: false
+      resource_name_prefix: "rca-test-"
+      max_concurrent_runs: 1
+    trigger:
+      adapter: "external.fixture"
+      params:
+        fixture_id: "rca-test-db-connectivity"
+        fault_mode: "database_connectivity"
+    observe:
+      timeout_seconds: 120
+      poll_seconds: 3
+      log_message_any: ["connection refused", "connection timed out"]
+      external_status_any: ["unreachable", "timeout"]
+    cleanup:
+      adapter: "fixture.reset"
+      params: {fixture_id: "rca-test-db-connectivity"}
+
+  - scenario_id: "db.credentials"
+    version: 1
+    title: "DB 인증 또는 설정 오류"
+    description: "sandbox 테스트 앱에 격리 DB의 잘못된 credential을 주입해 인증 실패를 재현합니다."
+    execution: "hybrid"
+    availability: "fixture_required"
+    availability_reason: "운영 Secret과 분리된 테스트 DB credential 및 자동 복구 fixture가 필요합니다."
+    fixture_requirements:
+      - "sandbox 전용 disposable DB"
+      - "테스트 credential Secret과 reset hook"
+    expected:
+      root_cause: "database_credential_or_config_error"
+      symptom: "DB connection failed"
+    evidence_sources: ["kubernetes", "logs", "metadata"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "external.fixture"
+      params:
+        fixture_id: "rca-test-db-credentials"
+        fault_mode: "database_credentials"
+    observe:
+      timeout_seconds: 120
+      poll_seconds: 3
+      log_message_any: ["password authentication failed", "database not found"]
+      external_status_any: ["authentication_failed", "invalid_configuration"]
+    cleanup:
+      adapter: "fixture.reset"
+      params: {fixture_id: "rca-test-db-credentials"}

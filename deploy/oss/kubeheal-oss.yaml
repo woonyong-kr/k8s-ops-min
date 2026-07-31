@@ -1,0 +1,232 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeheal-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubeheal-oss-config
+  namespace: kubeheal-system
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: kubeheal-local-only
+  AGENT_TOKEN: replace-with-registration-token
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubeheal-postgres
+  namespace: kubeheal-system
+spec:
+  selector:
+    app: kubeheal-postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kubeheal-postgres
+  namespace: kubeheal-system
+spec:
+  serviceName: kubeheal-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubeheal-postgres
+  template:
+    metadata:
+      labels:
+        app: kubeheal-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_DB
+              value: kubeheal
+            - name: POSTGRES_USER
+              value: kubeheal
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kubeheal-oss-config
+                  key: POSTGRES_PASSWORD
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "kubeheal", "-d", "kubeheal"]
+            periodSeconds: 3
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubeheal-controller
+  namespace: kubeheal-system
+spec:
+  selector:
+    app: kubeheal-controller
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+    - name: realtime
+      port: 8001
+      targetPort: 8001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubeheal-controller
+  namespace: kubeheal-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubeheal-controller
+  template:
+    metadata:
+      labels:
+        app: kubeheal-controller
+    spec:
+      containers:
+        - name: controller
+          image: kubeheal-service:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "src/entrypoints/app.py"]
+          env:
+            - name: DATABASE_URL
+              value: postgresql+psycopg://kubeheal:kubeheal-local-only@kubeheal-postgres:5432/kubeheal
+            - name: CONTROLLER_EVENT_BUS_MODE
+              value: inprocess
+            - name: AGENT_ACCESS_MODE
+              value: read_only
+            - name: REMEDIATION_DELIVERY_MODE
+              value: pull_request
+            - name: PRODUCTION_AUTO_MERGE_ENABLED
+              value: "false"
+            - name: RECOVERY_ENABLE_AUTO_REVERT_PR
+              value: "true"
+            - name: COOKIE_SECURE
+              value: "0"
+          ports:
+            - name: http
+              containerPort: 8000
+            - name: realtime
+              containerPort: 8001
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 3
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubeheal-agent
+  namespace: kubeheal-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubeheal-agent-read-only
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "events", "services", "configmaps", "serviceaccounts", "resourcequotas"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "controllerrevisions", "statefulsets", "daemonsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "rollouts"]
+    verbs: ["get", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "clusterroles", "rolebindings", "clusterrolebindings"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["get", "list"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["get", "list"]
+  - apiGroups: ["source.toolkit.fluxcd.io"]
+    resources: ["gitrepositories", "ocirepositories", "helmrepositories", "buckets", "helmcharts"]
+    verbs: ["get", "list"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes/proxy"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubeheal-agent-read-only
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubeheal-agent-read-only
+subjects:
+  - kind: ServiceAccount
+    name: kubeheal-agent
+    namespace: kubeheal-system
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kubeheal-agent
+  namespace: kubeheal-system
+spec:
+  selector:
+    matchLabels:
+      app: kubeheal-agent
+  template:
+    metadata:
+      labels:
+        app: kubeheal-agent
+    spec:
+      serviceAccountName: kubeheal-agent
+      containers:
+        - name: agent
+          image: kubeheal-service:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "src/services/target/cluster-agent/app.py"]
+          env:
+            - name: MANAGEMENT_BASE_URL
+              value: http://kubeheal-controller.kubeheal-system.svc
+            - name: REALTIME_GATEWAY_URL
+              value: ws://kubeheal-controller.kubeheal-system.svc:8001
+            - name: AGENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: kubeheal-oss-config
+                  key: AGENT_TOKEN
+            - name: TARGET_CLUSTER_ID
+              value: oss-kind
+            - name: WORKSPACE_ID
+              value: default
+            - name: AGENT_ACCESS_MODE
+              value: read_only
+            - name: AGENT_DIRECT_COMMANDS_ENABLED
+              value: "false"
+            - name: RECONCILER_MODE
+              value: argocd
+            - name: NODE_COLLECTOR_ENABLED
+              value: "false"

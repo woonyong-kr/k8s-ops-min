@@ -1,0 +1,13 @@
+kind: Service
+spec:
+  ports:
+  - name: redis
+    port: 6379
+    protocol: TCP
+    targetPort: redis
+  selector:
+    app: redis
+metadata:
+  name: cache
+  namespace: sandbox
+apiVersion: v1

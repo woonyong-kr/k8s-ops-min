@@ -1,0 +1,121 @@
+# RCA 원인 룰 카탈로그 — Admission / RBAC / policy rejection 계열
+#
+# 근거 자료:
+# - rca_ai_safepr_platform_data_catalog.xlsx / Incident Evidence Bundles
+# - Google Sheet gid=104 RCA rule 후보 목록
+rules:
+  - id: "admission_policy_rejection"
+    symptoms:
+      - "Admission / policy rejection"
+      - "Admission webhook denied"
+      - "Manifest Validation Failed"
+    required_sources: ["kubernetes", "logs", "metadata"]
+    candidates:
+      - candidate_id: "policy_violation"
+        title: "Admission 정책 위반"
+        description: "Gatekeeper, Kyverno, admission webhook 같은 정책 검증에서 리소스 생성 또는 변경이 거부됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "event/log에 admission denied, policy violation, webhook denied 문구가 있는지 확인"
+          - "위반 policy 이름과 리소스 kind/name을 확인"
+          - "정책 완화가 아니라 manifest를 정책에 맞게 고치는 방향인지 검토"
+        signals:
+          - id: "policy_rejection_signal"
+            any_of:
+              - event_pattern: "admission"
+              - event_pattern: "denied"
+              - event_pattern: "policy"
+              - log_pattern: "admission"
+              - log_pattern: "policy violation"
+      - candidate_id: "invalid_manifest"
+        title: "잘못된 manifest schema 또는 immutable field 변경"
+        description: "Kubernetes API schema 검증 실패나 immutable field 변경으로 manifest apply가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+        checks:
+          - "required field 누락, unknown field, immutable field 오류 확인"
+          - "dry-run/apply 결과와 GitOps controller log를 비교"
+          - "최근 manifest 변경분에서 오류 필드를 식별"
+        signals:
+          - id: "invalid_manifest_signal"
+            any_of:
+              - event_pattern: "invalid"
+              - event_pattern: "required"
+              - event_pattern: "immutable"
+              - log_pattern: "invalid"
+              - log_pattern: "unknown field"
+              - log_pattern: "immutable"
+      - candidate_id: "image_vulnerability_block"
+        title: "이미지 보안 정책 차단"
+        description: "취약점, 서명, registry 정책 때문에 image 사용이 admission 단계에서 차단됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "image policy webhook 또는 scanner result가 거부 사유인지 확인"
+          - "image tag/digest와 policy name을 확인"
+          - "보안 예외가 필요한 변경이면 manual approval route로 분리"
+        signals:
+          - id: "image_policy_block_signal"
+            any_of:
+              - event_pattern: "vulnerability"
+              - event_pattern: "image policy"
+              - event_pattern: "signature"
+              - log_pattern: "vulnerability"
+              - log_pattern: "image policy"
+
+  - id: "rbac_denied"
+    symptoms:
+      - "RBAC denied"
+      - "Forbidden"
+    required_sources: ["kubernetes", "logs", "metadata"]
+    candidates:
+      - candidate_id: "service_account_permission_denied"
+        title: "ServiceAccount 권한 부족"
+        description: "Pod 또는 controller가 사용하는 ServiceAccount에 필요한 Kubernetes API 권한이 없어 요청이 거부됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "event/log에 forbidden, cannot get/list/watch/create 문구가 있는지 확인"
+          - "Pod template serviceAccountName과 Role/RoleBinding 범위를 확인"
+          - "권한 확대는 보안 영향이 있으므로 자동 PR이 아니라 승인 필요로 판단"
+        signals:
+          - id: "rbac_denied_signal"
+            any_of:
+              - event_pattern: "forbidden"
+              - event_pattern: "cannot"
+              - log_pattern: "forbidden"
+              - log_pattern: "permission denied"
+
+  - id: "certificate_expired"
+    symptoms:
+      - "Certificate expired"
+      - "TLS handshake failed"
+    required_sources: ["kubernetes", "logs", "traces", "metadata"]
+    candidates:
+      - candidate_id: "certificate_expired_or_invalid"
+        title: "인증서 만료 또는 TLS 설정 오류"
+        description: "TLS 인증서 만료, SAN mismatch, trust chain 문제로 연결이나 ingress TLS handshake가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "traces:related_traces"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "로그에 certificate expired, x509, tls handshake error가 있는지 확인"
+          - "Ingress/Secret reference와 인증서 대상 host를 비교"
+          - "Secret 값은 수집하지 않고 reference/name만 근거로 사용"
+        signals:
+          - id: "tls_certificate_signal"
+            any_of:
+              - log_pattern: "certificate expired"
+              - log_pattern: "x509"
+              - log_pattern: "tls handshake"
+              - event_pattern: "certificate"

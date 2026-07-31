@@ -1,0 +1,204 @@
+# mTLS 개발 콘솔 — Cloudflare Tunnel에서만 접근하는 세션 없는 전용 프록시.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: console-dev-nginx
+  namespace: management
+data:
+  default.conf.template: |
+    server {
+        listen 8080;
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+        client_max_body_size 2m;
+
+        gzip on;
+        gzip_types text/css application/javascript application/json image/svg+xml;
+        resolver kube-dns.kube-system.svc.cluster.local valid=10s ipv6=off;
+        set $api_upstream http://api-gateway.management.svc.cluster.local:8000;
+        set $realtime_upstream http://realtime-gateway.management.svc.cluster.local:8000;
+
+        location /api/live/ {
+            # 변수 기반 proxy_pass에 URI(`/live/`)를 붙이면 그 URI가 원 요청 경로
+            # 전체를 대체해 `/api/live/browser`가 `/live/`로 뭉개진다(하위 경로와
+            # query 소실 → realtime-gateway 라우트 불일치 → handshake 403).
+            # rewrite로 접두만 치환해 하위 경로/query string을 보존한다.
+            rewrite ^/api/live/(.*)$ /live/$1 break;
+            proxy_pass $realtime_upstream;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Kubeheal-Internal-Auth "${TRUSTED_PROXY_AUTH_SECRET}";
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+
+        location /api/ {
+            # proxy_pass에 변수가 포함된 상태에서 고정 URI(`/`)를 붙이면 Nginx는
+            # `/api/clusters` 같은 원래 경로를 모두 `/`로 치환한다. 브라우저 API
+            # 경로와 query string을 그대로 gateway로 전달해야 한다.
+            proxy_pass $api_upstream$request_uri;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Kubeheal-Internal-Auth "${TRUSTED_PROXY_AUTH_SECRET}";
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+
+        location /assets/ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri =404;
+        }
+
+        location = /index.html {
+            expires -1;
+            add_header Cache-Control "no-store";
+            try_files /index.html =404;
+        }
+
+        location = /devpreview-unified.html {
+            absolute_redirect off;
+            return 308 /;
+        }
+
+        location = /devpreview-index.html {
+            absolute_redirect off;
+            return 308 /;
+        }
+
+        location ~* [.]html$ {
+            return 404;
+        }
+
+        location = / {
+            expires -1;
+            add_header Cache-Control "no-store";
+            try_files /index.html =404;
+        }
+
+        location / {
+            expires -1;
+            add_header Cache-Control "no-store";
+            try_files $uri /index.html;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: console-dev
+  namespace: management
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: console-dev
+  template:
+    metadata:
+      labels:
+        app: console-dev
+    spec:
+      automountServiceAccountToken: false
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: console-dev
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: console
+          # 배포 파이프라인이 같은 dev SHA에서 빌드한 ECR digest로만 교체한다.
+          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-console@sha256:8c49f7bf8a10f5b9edb8de798cbe94d78ca29d03699bc2f3686c1636ec397978
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: NGINX_ENVSUBST_FILTER
+              value: TRUSTED_PROXY_AUTH_SECRET
+            - name: TRUSTED_PROXY_AUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: management-runtime-secret
+                  key: TRUSTED_PROXY_AUTH_SECRET
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              # SPA fallback/API upstream과 무관한 정적 산출물만 확인한다.
+              path: /index.html
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 2
+            timeoutSeconds: 1
+            failureThreshold: 15
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d
+            - name: nginx-template
+              mountPath: /etc/nginx/templates/default.conf.template
+              subPath: default.conf.template
+              readOnly: true
+      volumes:
+        - name: nginx-conf
+          emptyDir: {}
+        - name: nginx-template
+          configMap:
+            name: console-dev-nginx
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: console-dev
+  namespace: management
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: console-dev
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: console-dev
+  namespace: management
+spec:
+  type: ClusterIP
+  selector:
+    app: console-dev
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

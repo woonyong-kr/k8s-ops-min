@@ -1,0 +1,150 @@
+# RCA 원인 룰 카탈로그 — CrashLoopBackOff 계열 (구 causes/crashloop.py)
+#
+# signals: 후보 간 판별 신호(DSL 정의: causes/signals.py, 스키마: causes/loader.py).
+# 선언된 그룹이 모두 충족돼야 완결 점수(1.0)에 도달한다 — 소스 존재만으로는
+# oom_killed 같은 특정 후보가 exit 1 크래시를 가로채지 못한다.
+rules:
+  - id: "crashloop_backoff"
+    symptoms: ["CrashLoopBackOff", "pod_restart_loop"]
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "oom_killed"
+        title: "컨테이너 OOMKilled"
+        description: "컨테이너가 메모리 제한을 초과해 재시작됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "containerStatuses.lastState.terminated.reason == OOMKilled 확인"
+          - "restartCount 증가와 memory usage가 limit 근처인지 확인"
+          - "로그에 out of memory, heap, allocation failure 흔적 확인"
+        signals:
+          # 양성 OOM 근거 필수 — terminated reason/exit 137/OOMKilling 이벤트/OOM 로그
+          # 중 하나가 관측되지 않으면 oom_killed 는 완결 점수에 도달할 수 없다.
+          - id: "oom_evidence"
+            any_of:
+              - fact: "terminated_reason=OOMKilled"
+              - fact: "exit_code=137"
+              - fact: "event_reason=OOMKilling"
+              - log_pattern: "oomkilled"
+              - log_pattern: "out of memory"
+              - log_pattern: "outofmemory"
+      - candidate_id: "bad_image_rollout"
+        title: "배포 이미지 문제"
+        description: "최근 배포 이미지가 애플리케이션 시작 실패를 유발했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "image tag/digest 또는 git_sha 변경 이후 crash가 시작됐는지 확인"
+          - "새 ReplicaSet/revision의 Pod에서만 CrashLoopBackOff 발생하는지 확인"
+          - "로그에 module/import/startup error 또는 binary mismatch 확인"
+        signals:
+          - id: "broken_image_startup_log"
+            any_of:
+              - log_pattern: "modulenotfounderror"
+              - log_pattern: "importerror"
+              - log_pattern: "no such file or directory"
+              - log_pattern: "exec format error"
+              - log_pattern: "binary mismatch"
+      - candidate_id: "config_env_error"
+        title: "설정 또는 환경변수 오류"
+        description: "ConfigMap, Secret, 환경변수 누락으로 컨테이너 시작이 실패했을 가능성이 있습니다."
+        # metadata(배포 이력)는 현행 근거 번들이 수집하지 않는 소스라 기대치에서 제외 —
+        # kubernetes 상태 + 로그의 설정 오류 신호만으로 판별한다(checks 프로즈는 유지).
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+        checks:
+          - "command/args/env와 ConfigMap/Secret 참조 변경 여부 확인"
+          - "로그에 missing env, config load failed, file not found 확인"
+          - "container start 직후 exitCode와 previous container logs 확인"
+        signals:
+          - id: "config_error_log"
+            any_of:
+              - log_pattern: "environment variable"
+              - log_pattern: "missing env"
+              - log_pattern: "configmap"
+              - log_pattern: "config load"
+              - log_pattern: "file not found"
+              - log_pattern: "secret not found"
+              - log_pattern: "not set"
+              - log_pattern: "invalid configuration"
+      - candidate_id: "app_port_bind_failed"
+        title: "애플리케이션 port bind 실패"
+        description: "애플리케이션이 시작 중 listen port를 열지 못해 프로세스가 종료됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+        checks:
+          - "로그에 address already in use, listen tcp, bind 실패 문구가 있는지 확인"
+          - "애플리케이션 listen port와 containerPort/Service targetPort 설정을 비교"
+          - "privileged port 또는 잘못된 bind address를 사용했는지 확인"
+        signals:
+          - id: "port_bind_failure_signal"
+            any_of:
+              - log_pattern: "address already in use"
+              - log_pattern: "listen tcp"
+              - log_pattern: "bind: permission denied"
+              - log_pattern: "cannot assign requested address"
+              - log_pattern: "port already in use"
+      - candidate_id: "permission_denied_startup"
+        title: "시작 중 권한 오류"
+        description: "애플리케이션 시작 중 파일, 디렉터리, volume, 인증서 접근 권한이 없어 종료됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+        checks:
+          - "로그에 permission denied, operation not permitted, read-only file system 확인"
+          - "securityContext의 runAsUser, fsGroup, readOnlyRootFilesystem 설정 확인"
+          - "Secret/ConfigMap/volume mount path와 파일 권한을 확인"
+        signals:
+          - id: "startup_permission_denied_signal"
+            any_of:
+              - log_pattern: "permission denied"
+              - log_pattern: "operation not permitted"
+              - log_pattern: "read-only file system"
+              - log_pattern: "eacces"
+              - log_pattern: "permissionerror"
+      - candidate_id: "app_startup_failure"
+        title: "애플리케이션 시작 실패"
+        description: "애플리케이션 초기화 코드나 런타임 오류로 프로세스가 종료됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+        checks:
+          - "로그에 startup error"
+          - "프로세스가 readiness 이전에 종료"
+          - "container start 직후 반복 재시작"
+        signals:
+          # 일반 앱 크래시 — 137 이 아닌 종료 코드(exit 1 등) 또는 FATAL/panic 류 시작 로그.
+          # config_env_error 와 동점이면 카탈로그 순서상 더 구체적인 config 후보가 우선한다.
+          - id: "startup_crash_signal"
+            any_of:
+              - fact: "exit_code=non_oom"
+              - log_pattern: "fatal"
+              - log_pattern: "panic"
+              - log_pattern: "traceback"
+              - log_pattern: "unhandled exception"
+              - log_pattern: "startup failed"
+      - candidate_id: "dependency_connection_failure"
+        title: "의존성 연결 실패"
+        description: "DB, 외부 API, 네트워크 endpoint 연결 실패로 기동 또는 헬스체크가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "traces:related_traces"
+        checks:
+          - "로그에 DB/API connection refused, timeout, auth failed 확인"
+          - "readiness/liveness 실패 시점과 dependency 오류 시점 비교"
+          - "trace에서 외부 endpoint timeout 또는 dependency span 오류 확인"
+        signals:
+          - id: "dependency_error_log"
+            any_of:
+              - log_pattern: "connection refused"
+              - log_pattern: "connection timed out"
+              - log_pattern: "timeout"
+              - log_pattern: "authentication failed"
+              - log_pattern: "unreachable"

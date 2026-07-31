@@ -1,0 +1,174 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-agent
+  namespace: management
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: management-cluster-agent-read
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "events", "nodes", "services", "endpoints", "serviceaccounts", "resourcequotas"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "controllerrevisions", "daemonsets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "rollouts"]
+    verbs: ["get", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "clusterroles", "rolebindings", "clusterrolebindings"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["get", "list"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["get", "list"]
+  - apiGroups: ["source.toolkit.fluxcd.io"]
+    resources: ["gitrepositories", "ocirepositories", "helmrepositories", "buckets", "helmcharts"]
+    verbs: ["get", "list"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["nodes/proxy"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: management-cluster-agent-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: management-cluster-agent-read
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: management
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-agent-gitops-control
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["source.toolkit.fluxcd.io"]
+    resources: ["gitrepositories", "ocirepositories", "helmrepositories", "buckets", "helmcharts"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-agent-gitops-control
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-agent-gitops-control
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: management
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: target-agent-policy
+  namespace: management
+data:
+  owner: cluster-agent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-agent
+  namespace: management
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-agent
+  template:
+    metadata:
+      labels:
+        app: cluster-agent
+    spec:
+      priorityClassName: gitops-control-critical
+      serviceAccountName: cluster-agent
+      containers:
+        - name: agent
+          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          imagePullPolicy: IfNotPresent
+          command: ["python", "src/services/target/cluster-agent/app.py"]
+          env:
+            - name: MANAGEMENT_BASE_URL
+              value: "http://api-gateway:8000"
+            - name: REALTIME_GATEWAY_URL
+              value: "ws://realtime-gateway.management.svc.cluster.local:8000"
+            - name: AGENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: target-runtime-secret
+                  key: AGENT_TOKEN
+            - name: TARGET_CLUSTER_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: management-runtime-config
+                  key: MANAGEMENT_CLUSTER_ID
+            - name: CLUSTER_ROLE
+              value: "management"
+            - name: BOOTSTRAP_MODE
+              value: "management"
+            - name: AGENT_DIRECT_COMMANDS_ENABLED
+              value: "true"
+            - name: NODE_COLLECTOR_ENABLED
+              value: "false"
+            - name: OTEL_SERVICE_NAME
+              value: "target-cluster-agent"
+            - name: LOKI_BASE_URL
+              value: ""
+            - name: TEMPO_BASE_URL
+              value: ""
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: ""
+            # 실시간 모니터링 체감을 위해 kubelet 갱신 주기(~10s)를 놓치지 않는 5s.
+            # 저장 부하는 evidence result 조기 해제(b30ee0ea)로 상쇄된다.
+            - name: EVIDENCE_INTERVAL_SECONDS
+              value: "5"
+            - name: POLICY_SYNC_INTERVAL_SECONDS
+              value: "15"
+            - name: RECONCILE_INTERVAL_SECONDS
+              value: "30"
+            - name: EVIDENCE_PROVIDER_WORKERS
+              value: "kubernetes=1,metrics=0,logs=0,traces=0"
+            - name: EVIDENCE_PROVIDER_MAX_WORKERS
+              value: "kubernetes=2,metrics=0,logs=0,traces=0"
+            - name: EVIDENCE_FAILURE_POLICY
+              value: "allow_partial"
+            - name: AGENT_CONTROL_DB_PATH
+              value: "/data/agent-control.db"
+            - name: COMMAND_OUTBOX_DB_PATH
+              value: "/data/command-outbox.db"
+          volumeMounts:
+            - name: agent-control-data
+              mountPath: /data
+      volumes:
+        - name: agent-control-data
+          emptyDir: {}

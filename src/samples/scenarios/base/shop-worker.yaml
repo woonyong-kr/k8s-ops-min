@@ -1,0 +1,57 @@
+# baseline: 주문 큐 소비 워커 역할. redis orders 리스트에 job을 넣고 꺼내며
+# 구조화 로그를 남기고, 주기적으로 CPU burst를 만들어 usage 시계열이 평탄해지지 않게 한다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-worker
+  namespace: sandbox
+  labels:
+    app: shop-worker
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-worker
+  template:
+    metadata:
+      labels:
+        app: shop-worker
+        scenario: baseline
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: worker
+          image: redis:7.2-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              i=0
+              echo "{\"ts\":\"$(date -Iseconds)\",\"level\":\"info\",\"service\":\"shop-worker\",\"action\":\"worker started, waiting for redis\"}"
+              until redis-cli -h shop-redis ping >/dev/null 2>&1; do sleep 2; done
+              while true; do
+                i=$((i+1))
+                redis-cli -h shop-redis LPUSH orders "order-${i}" >/dev/null
+                job="$(redis-cli -h shop-redis RPOP orders)"
+                echo "{\"ts\":\"$(date -Iseconds)\",\"level\":\"info\",\"service\":\"shop-worker\",\"action\":\"order processed\",\"job\":\"${job}\",\"queue_depth\":\"$(redis-cli -h shop-redis LLEN orders)\"}"
+                # 20건마다 CPU burst — 리포트 집계 같은 주기 작업 재현
+                if [ $((i % 20)) -eq 0 ]; then
+                  echo "{\"ts\":\"$(date -Iseconds)\",\"level\":\"info\",\"service\":\"shop-worker\",\"action\":\"batch aggregation burst\"}"
+                  head -c 8000000 /dev/urandom | sha256sum >/dev/null
+                fi
+                sleep $(( (i % 5) + 1 ))
+              done
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 300m
+              memory: 64Mi
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "-h", "shop-redis", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 30

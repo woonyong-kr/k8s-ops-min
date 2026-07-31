@@ -1,0 +1,17 @@
+kind: Service
+spec:
+  ports:
+  - name: http
+    port: 8001
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: game-server
+  clusterIP: None
+  publishNotReadyAddresses: true
+metadata:
+  name: game-room-headless
+  labels:
+    app: game-server
+  namespace: sandbox
+apiVersion: v1

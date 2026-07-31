@@ -1,0 +1,37 @@
+# fault: sched-fail — 존재하지 않는 nodeSelector로 스케줄 불가능한 배포.
+# 기대 증상: pod Pending 지속, FailedScheduling 이벤트
+# ("node(s) didn't match Pod's node affinity/selector").
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-batch
+  namespace: sandbox
+  labels:
+    app: analytics-batch
+    scenario: sched-fail
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-batch
+  template:
+    metadata:
+      labels:
+        app: analytics-batch
+        scenario: sched-fail
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      nodeSelector:
+        node-tier: gpu-a100
+      containers:
+        - name: analytics-batch
+          image: busybox:1.36.1
+          command: ["/bin/sh", "-c", "echo analytics batch started; sleep 3600"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi

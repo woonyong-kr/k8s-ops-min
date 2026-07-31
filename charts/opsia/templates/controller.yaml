@@ -1,0 +1,231 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opsia.fullname" . }}-controller
+  labels:
+    {{- include "opsia.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+spec:
+  replicas: {{ .Values.controller.replicas }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "opsia.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: controller
+  template:
+    metadata:
+      annotations:
+        checksum/console-config: {{ include (print $.Template.BasePath "/console-config.yaml") . | sha256sum }}
+        {{- with .Values.scm.credentialVersion }}
+        opsia.io/scm-credential-version: {{ . | quote }}
+        {{- end }}
+      labels:
+        {{- include "opsia.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: controller
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: wait-for-database
+          image: {{ include "opsia.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - python
+            - -c
+            - |
+              import os, time
+              import psycopg
+              deadline = time.monotonic() + 180
+              database_url = os.environ["DATABASE_URL"].replace(
+                  "postgresql+psycopg://", "postgresql://", 1
+              )
+              while True:
+                  try:
+                      with psycopg.connect(database_url):
+                          break
+                  except psycopg.OperationalError:
+                      if time.monotonic() >= deadline:
+                          raise
+                      time.sleep(2)
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: DATABASE_URL
+        - name: bootstrap
+          image: {{ include "opsia.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "src/entrypoints/bootstrap.py"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: DATABASE_URL
+            - name: AUTH_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: AUTH_EMAIL
+            - name: AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: AUTH_PASSWORD
+            - name: OSS_AGENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: AGENT_TOKEN
+            - name: OSS_AGENT_CLUSTER_ID
+              value: {{ .Values.agent.clusterId | quote }}
+      containers:
+        - name: controller
+          image: {{ include "opsia.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "src/entrypoints/app.py"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: DATABASE_URL
+            - name: DATABASE_STARTUP_MODE
+              value: initialize
+            - name: FILTER_CURSOR_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: FILTER_CURSOR_SIGNING_KEY
+            - name: CONTROLLER_EVENT_BUS_MODE
+              value: inprocess
+            - name: DEV_AUTH_BYPASS
+              value: "0"
+            - name: CONSOLE_ORIGIN
+              value: http://127.0.0.1:8080
+            - name: REALTIME_ORIGIN
+              value: ws://127.0.0.1:8001
+            - name: PUBLIC_MANAGEMENT_BASE_URL
+              value: {{ include "opsia.managementBaseUrl" . | trim | quote }}
+            - name: OPSIA_ACCESS_MODE
+              value: {{ include "opsia.accessMode" . | trim | quote }}
+            - name: OPSIA_EXTERNAL_URL
+              value: {{ include "opsia.externalUrl" . | trim | quote }}
+            - name: TARGET_AGENT_IMAGE
+              value: {{ include "opsia.image" . | quote }}
+            - name: AGENT_ACCESS_MODE
+              value: read_only
+            - name: AGENT_DIRECT_COMMANDS_ENABLED
+              value: "false"
+            - name: REMEDIATION_DELIVERY_MODE
+              value: pull_request
+            - name: PRODUCTION_AUTO_MERGE_ENABLED
+              value: "false"
+            - name: RECOVERY_ENABLE_AUTO_REVERT_PR
+              value: "false"
+            - name: SCM_PROVIDER
+              value: {{ .Values.scm.provider | quote }}
+            - name: SCM_REPO
+              value: {{ .Values.scm.repository | quote }}
+            - name: SCM_BASE_BRANCH
+              value: {{ .Values.scm.baseBranch | quote }}
+            {{- with .Values.scm.github.apiBase }}
+            - name: GITHUB_API_BASE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.scm.github.tokenSecretName }}
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . | quote }}
+                  key: {{ $.Values.scm.github.tokenSecretKey | quote }}
+            {{- end }}
+            - name: COOKIE_SECURE
+              value: {{ include "opsia.cookieSecure" . | trim | quote }}
+            - name: LLM_PROVIDER
+              value: {{ .Values.llm.provider | quote }}
+            - name: LLM_MODEL
+              value: {{ .Values.llm.model | quote }}
+            - name: LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: LLM_API_KEY
+          ports:
+            - name: http
+              containerPort: 8000
+            - name: realtime
+              containerPort: 8001
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 3
+            timeoutSeconds: 5
+            failureThreshold: 20
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 3
+            timeoutSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.controller.resources | nindent 12 }}
+        - name: console
+          image: {{ include "opsia.consoleImage" . | quote }}
+          imagePullPolicy: {{ .Values.console.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - name: console
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: console
+            periodSeconds: 3
+            timeoutSeconds: 5
+            failureThreshold: 20
+          resources:
+            {{- toYaml .Values.console.resources | nindent 12 }}
+          volumeMounts:
+            - name: console-config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+            - name: console-tmp
+              mountPath: /tmp
+      volumes:
+        - name: console-config
+          configMap:
+            name: {{ include "opsia.fullname" . }}-console
+        - name: console-tmp
+          emptyDir: {}

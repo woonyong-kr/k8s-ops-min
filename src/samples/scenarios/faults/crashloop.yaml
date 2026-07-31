@@ -1,0 +1,42 @@
+# fault: crashloop — 필수 환경변수 누락으로 기동 직후 exit 1.
+# 기대 증상: CrashLoopBackOff, restartCount 증가, BackOff 이벤트,
+# 로그에 "FATAL ... DATABASE_URL is not set" (config_env_error 후보와 정합).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-gateway
+  namespace: sandbox
+  labels:
+    app: payment-gateway
+    scenario: crashloop
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-gateway
+  template:
+    metadata:
+      labels:
+        app: payment-gateway
+        scenario: crashloop
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: payment-gateway
+          image: busybox:1.36.1
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "{\"ts\":\"$(date -Iseconds)\",\"level\":\"info\",\"service\":\"payment-gateway\",\"action\":\"starting payment gateway v2.3.1\"}"
+              echo "{\"ts\":\"$(date -Iseconds)\",\"level\":\"error\",\"service\":\"payment-gateway\",\"action\":\"config load failed\"}"
+              echo "FATAL: required environment variable DATABASE_URL is not set"
+              exit 1
+          resources:
+            requests:
+              cpu: 25m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi

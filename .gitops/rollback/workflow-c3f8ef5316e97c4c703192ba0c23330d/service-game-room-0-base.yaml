@@ -1,0 +1,19 @@
+kind: Service
+spec:
+  ports:
+  - name: http
+    port: 8001
+    protocol: TCP
+    targetPort: http
+  selector:
+    app: game-server
+    opsia.dev/fleet: live
+    opsia.dev/room-id: room-0
+metadata:
+  name: game-room-0
+  labels:
+    app: game-server
+    opsia.dev/room-id: room-0
+    game.opsia.dev/room-id: room-0
+  namespace: sandbox
+apiVersion: v1

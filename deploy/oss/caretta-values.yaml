@@ -1,0 +1,44 @@
+# Opsia live-traffic learning setup for EKS + VPC CNI.
+#
+# The upstream Caretta 0.0.16 chart predates Kubernetes 1.25 and enables
+# PodSecurityPolicy by default. EKS 1.34 no longer serves that API, so every
+# bundled chart has its PSP switch disabled explicitly.
+rbac:
+  pspEnabled: false
+  sccEnabled: false
+
+pollIntervalSeconds: 5
+traverseUpHierarchy: true
+enableDnsResolving: true
+image:
+  pullPolicy: IfNotPresent
+
+# Opsia reads traffic from the cluster's existing Prometheus service. These
+# annotations add the Caretta agents to that Prometheus pod-discovery job.
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "7117"
+  prometheus.io/path: /metrics
+
+# The 300Mi upstream default is too small while one of the demo nodes builds
+# its initial workload/connection map and causes an OOM restart.
+resources:
+  requests:
+    cpu: 10m
+    memory: 100Mi
+  limits:
+    cpu: 250m
+    memory: 768Mi
+
+victoria-metrics-single:
+  rbac:
+    pspEnabled: false
+  server:
+    persistentVolume:
+      enabled: false
+
+grafana:
+  rbac:
+    pspEnabled: false
+  testFramework:
+    enabled: false

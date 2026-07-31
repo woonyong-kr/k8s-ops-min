@@ -1,0 +1,62 @@
+[project]
+name = "services"
+version = "0.1.0"
+description = "Event-driven Kubernetes operations platform"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "cryptography>=46.0.0",
+    "fastapi>=0.116.0",
+    "greenlet>=3.1.1",
+    "httpx>=0.28.0",
+    "nats-py>=2.11.0",
+    "opentelemetry-api>=1.43.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.43.0",
+    "opentelemetry-sdk>=1.43.0",
+    "psycopg[binary]>=3.2.0",
+    "pyjwt>=2.8.0",
+    "pyyaml>=6.0.0",
+    "redis>=6.4.0",
+    "sqlalchemy>=2.0.0",
+    "uvicorn[standard]>=0.34.0",
+    "websockets>=16.0",
+]
+
+[project.optional-dependencies]
+aws = [
+    "boto3>=1.34.0",
+]
+
+[dependency-groups]
+dev = [
+    "alembic>=1.16.0",
+    "httpx2>=2.5.0",
+    "import-linter>=2.0",
+    "pre-commit>=4.6.0",
+    "pytest>=8.4.0",
+    "ruff>=0.12.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+# 가독성 폭(클린코드 기준): 80은 좁아 의미 없는 줄바꿈을 부르고, 1000은 과함 → 100.
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # 폭은 포매터가 관리, 린트로 길이 트집 안 잡음
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI 의존성 주입은 인자 기본값의 Depends/Query/Path 가 정석 → B008 예외.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Body",
+]

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.kyro.frontend</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/woonyong/workspace/Krafton-Jungle/SW_AI_W17-21-final/frontend &amp;&amp; exec /Users/woonyong/.volta/bin/npm run dev -- --host 127.0.0.1 --port 5199 --strictPort</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/kyro-frontend-5199.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/kyro-frontend-5199.log</string>
+</dict>
+</plist>

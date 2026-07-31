@@ -1,0 +1,83 @@
+# Cloudflare Tunnel connector — 원격 ingress 설정은 Cloudflare API 자동화가 관리한다.
+# 현재 console 정본 이름은 console-dev다. 이름 변경 전 DNS -> Tunnel -> ingress -> Service
+# 참조 그래프를 함께 바꾸고 외부 health를 검증한다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: management
+  annotations:
+    opsia.io/cloudflare-hostname: k8s.woonyong.org
+    opsia.io/cloudflare-origin-service: http://console-dev.management.svc.cluster.local:80
+    opsia.io/cloudflare-mtls-hostname: dev-k8s.woonyong.org
+    opsia.io/canonical-console-service: console-dev.management.svc.cluster.local
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: cloudflared
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      automountServiceAccountToken: false
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: cloudflared
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2026.6.1@sha256:6d91c121b803126f7a5344005d17a9324788fc09d305b6e2560ec6040a7ae283
+          imagePullPolicy: IfNotPresent
+          args: ["tunnel", "--no-autoupdate", "run"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflared-token
+                  key: token
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            exec:
+              command: ["cloudflared", "version"]
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: cloudflared
+  namespace: management
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: cloudflared

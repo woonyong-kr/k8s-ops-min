@@ -1,0 +1,135 @@
+# RCA 원인 룰 카탈로그 — Node health / eviction 계열
+# 근거:
+# - rca_ai_safepr_platform_data_catalog.xlsx / Incident Evidence Bundles
+# - Kubernetes Node condition, Pod eviction event, kubelet/container runtime 장애 패턴
+rules:
+  - id: "node_not_ready"
+    symptoms:
+      - "NodeNotReady"
+      - "Node not ready"
+      - "KubeletNotReady"
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "kubelet_unavailable"
+        title: "kubelet heartbeat 중단"
+        description: "노드 kubelet heartbeat가 끊겨 NodeReady 상태가 False 또는 Unknown으로 전환됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Node.status.conditions Ready=False/Unknown reason과 lastHeartbeatTime 확인"
+          - "kubelet heartbeat 또는 node exporter scrape 실패 여부 확인"
+          - "node/kubelet log에서 node status update 실패를 확인"
+        signals:
+          - id: "kubelet_unavailable_signal"
+            any_of:
+              - event_pattern: "KubeletNotReady"
+              - event_pattern: "NodeNotReady"
+              - event_pattern: "node is not ready"
+              - log_pattern: "kubelet stopped"
+              - log_pattern: "node status update failed"
+
+      - candidate_id: "container_runtime_unavailable"
+        title: "컨테이너 런타임 장애"
+        description: "containerd/CRI 런타임이 응답하지 않아 kubelet이 Pod 상태를 갱신하거나 새 컨테이너를 시작하지 못했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+        checks:
+          - "Node condition reason/message에 container runtime is down 정황이 있는지 확인"
+          - "kubelet log에서 CRI/containerd connection refused 또는 timeout 확인"
+          - "같은 노드의 여러 Pod에서 ContainerStatusUnknown 또는 CreateContainerError가 발생했는지 확인"
+        signals:
+          - id: "container_runtime_unavailable_signal"
+            any_of:
+              - event_pattern: "container runtime"
+              - event_pattern: "ContainerRuntimeNotReady"
+              - log_pattern: "container runtime is down"
+              - log_pattern: "containerd"
+              - log_pattern: "cri connection refused"
+
+      - candidate_id: "node_network_unavailable"
+        title: "노드 네트워크 불가"
+        description: "CNI 또는 노드 네트워크 문제로 NodeNetworkUnavailable 상태가 발생했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Node condition NetworkUnavailable=True 또는 CNI 관련 event 확인"
+          - "CNI daemonset pod 상태와 node network interface error metric 확인"
+          - "kubelet/CNI log에서 failed to setup pod network, CNI plugin error 확인"
+        signals:
+          - id: "node_network_unavailable_signal"
+            any_of:
+              - event_pattern: "NetworkUnavailable"
+              - event_pattern: "CNI"
+              - event_pattern: "failed to setup network"
+              - log_pattern: "failed to setup pod network"
+              - log_pattern: "cni plugin"
+
+  - id: "pod_evicted"
+    symptoms:
+      - "Pod evicted"
+      - "Evicted"
+      - "Node pressure eviction"
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "pod_evicted_memory_pressure"
+        title: "메모리 압박으로 Pod eviction"
+        description: "노드 메모리 압박으로 kubelet이 Pod를 eviction했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Pod status.reason=Evicted와 message의 memory pressure 문구 확인"
+          - "Node condition MemoryPressure=True 및 node memory available 감소 확인"
+          - "동일 노드의 다른 Pod eviction 여부 확인"
+        signals:
+          - id: "memory_eviction_signal"
+            any_of:
+              - event_pattern: "Evicted"
+              - event_pattern: "memory pressure"
+              - event_pattern: "The node was low on resource: memory"
+              - fact: "event_reason=Evicted"
+
+      - candidate_id: "pod_evicted_disk_pressure"
+        title: "디스크/ephemeral-storage 압박으로 Pod eviction"
+        description: "노드 디스크 또는 ephemeral-storage 압박으로 kubelet이 Pod를 eviction했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Pod eviction message에 ephemeral-storage, disk pressure, imagefs/nodefs 압박이 있는지 확인"
+          - "Node condition DiskPressure=True 및 filesystem usage metric 증가 확인"
+          - "컨테이너 로그 또는 emptyDir 사용량 증가 여부 확인"
+        signals:
+          - id: "disk_eviction_signal"
+            any_of:
+              - event_pattern: "disk pressure"
+              - event_pattern: "ephemeral-storage"
+              - event_pattern: "imagefs"
+              - event_pattern: "nodefs"
+              - fact: "event_reason=Evicted"
+
+      - candidate_id: "pod_evicted_pid_pressure"
+        title: "PID 압박으로 Pod eviction"
+        description: "노드 PID 압박으로 kubelet이 Pod를 eviction했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Node condition PIDPressure=True 또는 eviction message의 pid pressure 확인"
+          - "node process count/PID usage metric 확인"
+          - "대상 workload의 process/thread 급증 로그 확인"
+        signals:
+          - id: "pid_eviction_signal"
+            any_of:
+              - event_pattern: "PIDPressure"
+              - event_pattern: "pid pressure"
+              - event_pattern: "The node was low on resource: pid"
+              - fact: "event_reason=Evicted"

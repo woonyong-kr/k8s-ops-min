@@ -1,0 +1,89 @@
+# RCA 원인 룰 카탈로그 — Deployment rollout / GitOps sync 계열 (구 causes/deployment_gitops.py)
+rules:
+  - id: "deployment_rollout_failed"
+    symptoms: ["ProgressDeadlineExceeded", "Rollout failed"]
+    required_sources: ["kubernetes", "metrics", "logs", "metadata"]
+    candidates:
+      - candidate_id: "deployment_progress_deadline_exceeded"
+        title: "Deployment rollout 진행 기한 초과"
+        description: "새 ReplicaSet의 Pod가 Ready로 전환되지 못해 Deployment rollout이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "Deployment.status.conditions.reason == ProgressDeadlineExceeded 확인"
+          - "updatedReplicas 대비 availableReplicas가 부족한지 확인"
+          - "신규 ReplicaSet Pod의 probe 실패, CrashLoopBackOff, ImagePullBackOff 확인"
+          - "image digest, git_sha, helm revision 변경 이후 발생했는지 확인"
+        signals:
+          - id: "progress_deadline_signal"
+            any_of:
+              - event_pattern: "ProgressDeadlineExceeded"
+              - event_pattern: "progress deadline"
+              - log_pattern: "ProgressDeadlineExceeded"
+              - log_pattern: "rollout exceeded"
+      - candidate_id: "replica_unavailable_after_rollout"
+        title: "Rollout 이후 replica unavailable"
+        description: "배포 이후 원하는 replica 수만큼 ready Pod가 확보되지 않았을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Deployment.status.unavailableReplicas와 ReplicaSet.readyReplicas 확인"
+          - "kube_deployment_status_replicas_unavailable 증가 확인"
+          - "신규 Pod의 readiness/startup error 로그 확인"
+        signals:
+          # 이 룰에서 metadata 없이 완결 가능한 유일한 후보 — 소스 존재만으로 1.0 이
+          # 되지 않도록 unavailable/deadline 정황 관측을 완결 조건으로 요구한다.
+          # (판별 신호 DSL: causes/signals.py)
+          - id: "replica_unavailable_signal"
+            any_of:
+              - event_pattern: "unavailable"
+              - event_pattern: "deadline"
+              - log_pattern: "unavailable"
+  - id: "gitops_controller_sync_failed"
+    symptoms: ["GitOps Sync Failed", "Sync Failed"]
+    required_sources: ["kubernetes", "metrics", "logs", "metadata"]
+    candidates:
+      - candidate_id: "gitops_sync_failed"
+        title: "GitOps sync 실패"
+        description: "GitOps controller sync 과정에서 manifest render 또는 apply가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "Application.status.sync.status와 Application.status.conditions 확인"
+          - "app sync failed metric 확인"
+          - "GitOps controller/repo-server log에서 render/apply 오류 확인"
+          - "git revision, manifest path, Helm values 변경 이후 실패했는지 확인"
+        signals:
+          - id: "gitops_sync_failed_signal"
+            any_of:
+              - event_pattern: "SyncFailed"
+              - log_pattern: "sync failed"
+              - log_pattern: "comparison error"
+              - log_pattern: "manifest generation error"
+      - candidate_id: "manifest_validation_failed"
+        title: "Manifest 검증 실패"
+        description: "Kubernetes API schema 또는 admission 정책 검증에서 manifest가 거부됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "kubectl apply dry-run 또는 AdmissionReview denied 응답 확인"
+          - "API version, required field, immutable field 오류 확인"
+          - "위반 필드가 최근 Git commit 변경분과 연결되는지 확인"
+        signals:
+          - id: "manifest_validation_signal"
+            any_of:
+              - event_pattern: "Invalid"
+              - log_pattern: "validation failed"
+              - log_pattern: "immutable field"
+              - log_pattern: "unknown field"
+              - log_pattern: "admission webhook"

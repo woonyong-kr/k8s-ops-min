@@ -1,0 +1,66 @@
+# RCA 원인 룰 카탈로그 — 외부 의존성(DB) 계열 (구 causes/dependencies.py)
+rules:
+  - id: "db_connection_failed"
+    symptoms: ["DB connection failed"]
+    required_sources: ["kubernetes", "metrics", "logs", "traces", "metadata"]
+    candidates:
+      - candidate_id: "database_connectivity_failure"
+        title: "DB 연결 실패"
+        description: "DB endpoint, credential, network 경로 문제로 애플리케이션 DB 연결이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "traces:related_traces"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "Secret/ConfigMap의 DB connection ref와 최근 변경 여부 확인"
+          - "로그에 DB connection refused, timeout, authentication failed 확인"
+          - "trace에서 DB client span error 또는 latency 증가 확인"
+          - "DB connection error metric 또는 pool exhausted metric 확인"
+        signals:
+          - id: "database_connectivity_signal"
+            any_of:
+              - log_pattern: "database connection"
+              - log_pattern: "connection refused"
+              - log_pattern: "connection timed out"
+              - log_pattern: "ECONNREFUSED"
+              - log_pattern: "timeout"
+      - candidate_id: "database_credential_or_config_error"
+        title: "DB 인증 또는 설정 오류"
+        description: "DB credential, host, port, database name 설정 오류로 연결이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "Secret/ConfigMap 참조와 실제 key 존재 여부 확인"
+          - "로그에 password authentication failed, unknown host, database not found 확인"
+          - "최근 Secret/ConfigMap/Helm values 변경 이후 발생했는지 확인"
+        signals:
+          - id: "database_config_signal"
+            any_of:
+              - log_pattern: "password authentication failed"
+              - log_pattern: "authentication failed"
+              - log_pattern: "database not found"
+              - log_pattern: "unknown host"
+              - log_pattern: "invalid connection string"
+      - candidate_id: "database_connection_pool_exhausted"
+        title: "DB connection pool 고갈"
+        description: "애플리케이션 또는 DB connection pool이 고갈되어 신규 요청이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "traces:related_traces"
+        checks:
+          - "DB connection count 또는 pool usage가 한계치에 도달했는지 확인"
+          - "로그에 too many connections 또는 connection pool exhausted 확인"
+          - "trace에서 DB span latency와 error 증가 확인"
+        signals:
+          - id: "database_pool_exhausted_signal"
+            any_of:
+              - log_pattern: "connection pool exhausted"
+              - log_pattern: "too many connections"
+              - log_pattern: "remaining connection slots"
+              - log_pattern: "pool timeout"

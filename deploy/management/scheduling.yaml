@@ -1,0 +1,8 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: gitops-control-critical
+value: 1000000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "GitOps 제어 경로와 realtime 상태 전달 pod를 일반 workload보다 먼저 스케줄링한다."

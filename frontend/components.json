@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "nova",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/tokens.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/shared/ui",
+    "utils": "@/shared/ui/primitives/cn",
+    "ui": "@/shared/ui/primitives",
+    "lib": "@/shared",
+    "hooks": "@/shared"
+  },
+  "registries": {}
+}

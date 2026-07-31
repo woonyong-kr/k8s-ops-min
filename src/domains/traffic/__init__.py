@@ -1,0 +1,1 @@
+"""Traffic observation domain."""

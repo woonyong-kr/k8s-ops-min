@@ -1,0 +1,62 @@
+# fault: svc-selector — Service selector 불일치(네트워크 계열 장애).
+# checkout-gateway Service는 app=checkout-gateway-v2를 selector로 갖지만
+# 그런 pod가 없어 endpoint가 비고, 클라이언트 호출은 connection refused/timeout.
+# 기대 증상: EndpointSlice endpoints 없음, checkout-client 로그에 연결 실패 반복.
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-gateway
+  namespace: sandbox
+  labels:
+    app: checkout-gateway
+    scenario: svc-selector
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  selector:
+    app: checkout-gateway-v2
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-client
+  namespace: sandbox
+  labels:
+    app: checkout-client
+    scenario: svc-selector
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout-client
+  template:
+    metadata:
+      labels:
+        app: checkout-client
+        scenario: svc-selector
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: checkout-client
+          image: curlimages/curl:8.10.1
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                if ! curl -sf --max-time 3 "http://checkout-gateway.sandbox.svc/health" >/dev/null; then
+                  echo "{\"ts\":\"$(date -Iseconds)\",\"level\":\"error\",\"service\":\"checkout-client\",\"action\":\"checkout-gateway unreachable: connection refused or timeout\"}"
+                fi
+                sleep 5
+              done
+          resources:
+            requests:
+              cpu: 25m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi

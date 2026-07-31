@@ -1,0 +1,9 @@
+apiVersion: v2
+name: opsia
+description: Opsia rule-first Kubernetes operations controller
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/Jungle-303-04/final
+sources:
+  - https://github.com/Jungle-303-04/final

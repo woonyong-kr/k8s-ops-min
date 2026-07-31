@@ -1,0 +1,65 @@
+# baseline: 상점 프론트 역할. nginx access log가 stdout으로 나가
+# opentelemetry-collector → Loki 경로의 상시 로그 스트림을 만든다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-frontend
+  namespace: sandbox
+  labels:
+    app: shop-frontend
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shop-frontend
+  template:
+    metadata:
+      labels:
+        app: shop-frontend
+        scenario: baseline
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-frontend
+  namespace: sandbox
+  labels:
+    app: shop-frontend
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  selector:
+    app: shop-frontend
+  ports:
+    - port: 80
+      targetPort: http
+      name: http

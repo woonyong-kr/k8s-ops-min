@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clusterId": {"type": "string", "minLength": 1},
+        "token": {"type": "string"},
+        "realtimeGatewayUrl": {
+          "type": "string",
+          "pattern": "^(|wss?://[^/]+/?)$"
+        },
+        "resources": {"type": "object"}
+      },
+      "required": ["clusterId", "token", "realtimeGatewayUrl", "resources"]
+    },
+    "access": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "portforward", "loadbalancer", "ingress", "nodeport"]
+        },
+        "externalUrl": {
+          "type": "string",
+          "pattern": "^(|https?://(\\[[0-9A-Fa-f:.]+\\]|[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*)(:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?/?)$"
+        },
+        "host": {
+          "type": "string"
+        },
+        "nodePort": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 32767
+        },
+        "loadBalancer": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {"type": "string"}
+            },
+            "tlsTermination": {
+              "type": "string",
+              "enum": ["disabled", "external"]
+            }
+          },
+          "required": ["annotations", "tlsTermination"]
+        },
+        "ingress": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "className": {"type": "string"},
+            "annotations": {"type": "object"},
+            "tls": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {"type": "boolean"},
+                "secretName": {"type": "string"}
+              },
+              "required": ["enabled", "secretName"]
+            }
+          },
+          "required": ["className", "annotations", "tls"]
+        }
+      },
+      "required": ["mode", "externalUrl", "host", "nodePort", "loadBalancer", "ingress"],
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "ingress"}}},
+          "then": {"properties": {"host": {"minLength": 1}}}
+        },
+        {
+          "if": {
+            "properties": {
+              "ingress": {
+                "properties": {
+                  "tls": {
+                    "properties": {"enabled": {"const": true}}
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "ingress": {
+                "properties": {
+                  "tls": {
+                    "properties": {"secretName": {"minLength": 1}}
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

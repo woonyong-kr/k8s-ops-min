@@ -1,0 +1,46 @@
+# 데이터 파운데이션 계층 로컬 스택.
+# AWS 계정이나 실제 클러스터 없이 전체가 돈다.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: catalog
+    ports: ["5433:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      retries: 20
+
+  # S3 대체. 원본은 자주 읽지 않지만 반드시 남아야 하는 데이터라
+  # 객체 저장소가 맞다. 로컬에서는 MinIO 로 대체해 AWS 없이 돌린다.
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ["9000:9000", "9001:9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 20
+
+  airflow:
+    image: apache/airflow:2.10.5-python3.12
+    depends_on:
+      postgres: {condition: service_healthy}
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://postgres@postgres:5432/catalog
+      CATALOG_DATABASE_URL: postgresql+psycopg://postgres@postgres:5432/catalog
+      PYTHONPATH: /opt/project/src
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/project/src
+      - ./sql:/opt/project/sql
+      - ./fixtures:/opt/project/fixtures
+    ports: ["8080:8080"]
+    command: standalone

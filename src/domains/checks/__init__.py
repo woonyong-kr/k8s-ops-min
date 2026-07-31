@@ -1,0 +1,1 @@
+"""Checks domain read boundaries."""

@@ -1,0 +1,63 @@
+# baseline: shop 마이크로서비스의 큐/캐시 저장소.
+# shop-worker가 orders 리스트를 소비하는 대상이라 sandbox 상시 워크로드로 유지한다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-redis
+  namespace: sandbox
+  labels:
+    app: shop-redis
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-redis
+  template:
+    metadata:
+      labels:
+        app: shop-redis
+        scenario: baseline
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-redis
+  namespace: sandbox
+  labels:
+    app: shop-redis
+    scenario: baseline
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  selector:
+    app: shop-redis
+  ports:
+    - port: 6379
+      targetPort: redis
+      name: redis

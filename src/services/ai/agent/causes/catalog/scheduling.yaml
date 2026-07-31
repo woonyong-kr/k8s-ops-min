@@ -1,0 +1,97 @@
+# RCA 원인 룰 카탈로그 — 스케줄링 실패 계열 (구 causes/scheduling.py)
+# signals: 후보 판별 신호(causes/signals.py) — FailedScheduling 이벤트 메시지로 구별한다.
+rules:
+  - id: "failed_scheduling"
+    symptoms: ["FailedScheduling", "Pending"]
+    required_sources: ["kubernetes"]
+    candidates:
+      - candidate_id: "insufficient_cpu"
+        title: "노드 CPU 부족"
+        description: "요청한 CPU request를 만족하는 노드가 없어 스케줄링이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+        checks:
+          - "events.reason/message에 Insufficient cpu가 있는지 확인"
+          - "Pod.spec.resources.requests.cpu와 Node.status.allocatable 비교"
+          - "cluster/node CPU allocatable 대비 requested CPU 포화 여부 확인"
+        signals:
+          - id: "insufficient_cpu_event"
+            any_of:
+              - event_pattern: "insufficient cpu"
+      - candidate_id: "insufficient_memory"
+        title: "노드 메모리 부족"
+        description: "요청한 memory request를 만족하는 노드가 없어 스케줄링이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+        checks:
+          - "events.reason/message에 Insufficient memory가 있는지 확인"
+          - "Pod.spec.resources.requests.memory와 Node.status.allocatable 비교"
+          - "cluster/node memory allocatable 대비 requested memory 포화 여부 확인"
+        signals:
+          - id: "insufficient_memory_event"
+            any_of:
+              - event_pattern: "insufficient memory"
+      - candidate_id: "node_affinity_or_taint_mismatch"
+        title: "노드 affinity 또는 taint/toleration 불일치"
+        description: "nodeSelector, affinity, taint/toleration 조건이 맞지 않아 스케줄링이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+        checks:
+          - "events.reason/message에 node affinity 또는 taint 관련 실패가 있는지 확인"
+          - "Pod.spec.nodeSelector/affinity와 Node.labels 비교"
+          - "Pod.spec.tolerations와 Node.spec.taints 비교"
+        signals:
+          - id: "affinity_or_taint_event"
+            any_of:
+              - event_pattern: "affinity"
+              - event_pattern: "taint"
+              - event_pattern: "didn't match"
+      - candidate_id: "node_selector_mismatch"
+        title: "nodeSelector 불일치"
+        description: "Pod nodeSelector 또는 required node affinity 조건을 만족하는 노드가 없어 스케줄링이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "Pod.spec.nodeSelector와 Node.labels를 비교"
+          - "event message에 node selector, node affinity, didn't match 문구가 있는지 확인"
+          - "최근 node label 또는 workload selector 변경 여부 확인"
+        signals:
+          - id: "node_selector_mismatch_signal"
+            any_of:
+              - event_pattern: "node selector"
+              - event_pattern: "node affinity"
+              - event_pattern: "didn't match Pod's node affinity"
+              - event_pattern: "didn't match node selector"
+      - candidate_id: "untolerated_taint"
+        title: "허용되지 않은 taint"
+        description: "노드 taint를 Pod toleration이 허용하지 못해 스케줄링이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "Node.spec.taints와 Pod.spec.tolerations를 비교"
+          - "event message에 untolerated taint 문구가 있는지 확인"
+          - "최근 node taint 또는 workload toleration 변경 여부 확인"
+        signals:
+          - id: "untolerated_taint_signal"
+            any_of:
+              - event_pattern: "untolerated taint"
+              - event_pattern: "had taint"
+              - event_pattern: "taint"
+      - candidate_id: "pvc_pending"
+        title: "PVC 바인딩 대기"
+        description: "PVC가 바인딩되지 않아 Pod가 Pending 상태에 머무를 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+        checks:
+          - "events.reason/message에 unbound immediate PersistentVolumeClaims 확인"
+          - "PersistentVolumeClaim.status.phase가 Pending인지 확인"
+          - "StorageClass, zone, volume binding mode 변경 여부 확인"
+        signals:
+          - id: "pvc_unbound_event"
+            any_of:
+              - event_pattern: "persistentvolumeclaim"
+              - event_pattern: "unbound"

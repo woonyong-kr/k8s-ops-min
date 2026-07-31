@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "opsia.fullname" . }}-agent
+  labels:
+    {{- include "opsia.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agent
+spec:
+  selector:
+    matchLabels:
+      {{- include "opsia.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: agent
+  template:
+    metadata:
+      labels:
+        {{- include "opsia.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: agent
+    spec:
+      serviceAccountName: {{ include "opsia.fullname" . }}-agent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent
+          image: {{ include "opsia.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "src/services/target/cluster-agent/app.py"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: MANAGEMENT_BASE_URL
+              value: http://{{ include "opsia.fullname" . }}.{{ .Release.Namespace }}.svc/api
+            - name: REALTIME_GATEWAY_URL
+              value: {{ default (printf "ws://%s.%s.svc" (include "opsia.fullname" .) .Release.Namespace) .Values.agent.realtimeGatewayUrl | trimSuffix "/" | quote }}
+            - name: AGENT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsia.fullname" . }}-bootstrap
+                  key: AGENT_TOKEN
+            - name: TARGET_CLUSTER_ID
+              value: {{ .Values.agent.clusterId | quote }}
+            - name: WORKSPACE_ID
+              value: default
+            - name: AGENT_ACCESS_MODE
+              value: read_only
+            - name: AGENT_DIRECT_COMMANDS_ENABLED
+              value: "false"
+            - name: RECONCILER_MODE
+              value: argocd
+            - name: NODE_COLLECTOR_ENABLED
+              value: "false"
+          resources:
+            {{- toYaml .Values.agent.resources | nindent 12 }}

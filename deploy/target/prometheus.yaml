@@ -1,0 +1,117 @@
+# prometheus-community/prometheus Helm chart 값
+# target Kubernetes cluster의 Prometheus 설치 제어
+
+server:
+  # 에이전트의 동적 Prometheus integration이 참조할 서비스
+  fullnameOverride: prometheus
+
+  global:
+    # 애플리케이션 SLI 장애를 1분 기본값보다 빠르게 탐지한다.
+    scrape_interval: 15s
+    scrape_timeout: 10s
+    evaluation_interval: 5s
+
+  persistentVolume:
+    # Prometheus Pod restart 후에도 time-series data 유지
+    enabled: true
+
+  service:
+    # target cluster 내부에만 Prometheus 노출
+    type: ClusterIP
+    servicePort: 9090
+
+serverFiles:
+  alerting_rules.yml:
+    groups:
+      - name: opsia-application-sli
+        rules:
+          # Application Pods expose the monotonic request counter. Aggregate
+          # away Pod/instance labels so every workload SLI has exactly one
+          # six-label ratio series before Alertmanager and RCA consume it.
+          - record: opsia_sli_failure_ratio
+            expr: >-
+              sum by (namespace, resource_kind, resource_name, service, sli, symptom) (
+                rate(opsia_sli_requests_total{
+                  namespace!="",
+                  resource_kind!="",
+                  resource_name!="",
+                  service!="",
+                  sli!="",
+                  symptom!="",
+                  outcome="failure"
+                }[45s])
+              )
+              /
+              clamp_min(
+                sum by (namespace, resource_kind, resource_name, service, sli, symptom) (
+                  rate(opsia_sli_requests_total{
+                    namespace!="",
+                    resource_kind!="",
+                    resource_name!="",
+                    service!="",
+                    sli!="",
+                    symptom!=""
+                  }[45s])
+                ),
+                0.000001
+              )
+          - alert: OpsiaSliFailureRatioHigh
+            expr: >-
+              opsia_sli_failure_ratio{
+                namespace!="",
+                resource_kind!="",
+                resource_name!="",
+                service!="",
+                sli!="",
+                symptom!=""
+              } > 0.2
+            for: 0s
+            labels:
+              severity: warning
+              # 표준 SLI metric label을 RCA가 소비하는 외부 alert 계약으로 승격한다.
+              opsia_namespace: '{{ $labels.namespace }}'
+              opsia_resource_kind: '{{ $labels.resource_kind }}'
+              opsia_resource_name: '{{ $labels.resource_name }}'
+              opsia_service: '{{ $labels.service }}'
+              opsia_sli: '{{ $labels.sli }}'
+              opsia_symptom: '{{ $labels.symptom }}'
+            annotations:
+              summary: >-
+                {{ $labels.resource_kind }}/{{ $labels.resource_name }}의
+                {{ $labels.symptom }} 비율이 임계치를 초과했습니다.
+              description: >-
+                opsia_sli_failure_ratio={{ $value }} (threshold=0.2)
+              opsia_symptom: '{{ $labels.symptom }}'
+              # 사람이 읽는 문장에서 숫자를 재파싱하지 않는 기계 판독 계약.
+              opsia_observed_value: '{{ $value }}'
+              opsia_threshold: '0.2'
+
+kube-state-metrics:
+  # Kubernetes object 상태를 kube_pod_info 같은 metric으로 변환
+  enabled: true
+
+prometheus-node-exporter:
+  # 각 Kubernetes node의 CPU, memory, disk, network metric 노출
+  enabled: true
+  hostRootFsMount:
+    # Docker Desktop/kind local cluster 친화 설정
+    enabled: false
+
+alertmanager:
+  # Prometheus 생성 alert 수신
+  enabled: true
+  persistence:
+    enabled: true
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/path: /metrics
+      prometheus.io/port: "9093"
+
+prometheus-pushgateway:
+  # 짧은 batch job 종료 전 metric push 허용
+  enabled: true
+  serviceAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /metrics
+    prometheus.io/port: "9091"

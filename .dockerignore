@@ -1,0 +1,9 @@
+.git
+.idea
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.env*
+*.local.bru
+.DS_Store

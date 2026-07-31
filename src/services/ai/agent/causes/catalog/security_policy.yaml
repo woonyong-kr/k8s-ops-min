@@ -1,0 +1,66 @@
+# RCA 원인 룰 카탈로그 — Secret/보안 정책 계열 (구 causes/security_policy.py)
+rules:
+  - id: "secret_not_found"
+    symptoms: ["Secret not found"]
+    required_sources: ["kubernetes", "logs", "metadata"]
+    candidates:
+      - candidate_id: "missing_secret_reference"
+        title: "Secret 참조 누락"
+        description: "Pod가 참조하는 Secret이 없거나 namespace가 맞지 않아 컨테이너 생성이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "Pod.spec.envFrom.secretRef 또는 volume.secret 참조 확인"
+          - "events.reason/message에 secret not found, FailedMount, CreateContainerConfigError 확인"
+          - "Secret이 같은 namespace에 존재하는지 확인"
+          - "최근 Secret rename/delete 또는 manifest 변경 여부 확인"
+        signals:
+          - id: "missing_secret_reference_signal"
+            any_of:
+              - event_pattern: "secret"
+              - event_pattern: "not found"
+              - event_pattern: "CreateContainerConfigError"
+              - log_pattern: "secret not found"
+      - candidate_id: "secret_key_missing"
+        title: "Secret key 누락"
+        description: "Secret 객체는 있지만 필요한 key가 없어 환경변수 또는 mount 구성이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "env.valueFrom.secretKeyRef key와 Secret data key 비교"
+          - "events.reason/message에 couldn't find key 또는 optional=false 오류 확인"
+          - "최근 Secret template 또는 external secret sync 변경 여부 확인"
+        signals:
+          - id: "secret_key_missing_signal"
+            any_of:
+              - event_pattern: "couldn't find key"
+              - event_pattern: "could not find key"
+              - event_pattern: "key not found"
+              - log_pattern: "missing secret key"
+      - candidate_id: "external_secret_sync_failed"
+        title: "ExternalSecret 동기화 실패"
+        description: "ExternalSecret, CSI secret provider, sealed-secret 등 외부 Secret 공급 경로가 실패해 Pod가 필요한 Secret을 받지 못했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "ExternalSecret/SecretProviderClass/SealedSecret 상태와 sync condition을 확인"
+          - "event/log에 SecretSynced=False, provider auth error, secret sync failed 문구가 있는지 확인"
+          - "최근 secret backend 경로, service account, provider 권한 변경 여부 확인"
+        signals:
+          - id: "external_secret_sync_signal"
+            any_of:
+              - event_pattern: "ExternalSecret"
+              - event_pattern: "SecretSynced"
+              - event_pattern: "secret sync"
+              - event_pattern: "provider"
+              - log_pattern: "external secret"
+              - log_pattern: "secret sync failed"

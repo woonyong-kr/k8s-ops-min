@@ -1,0 +1,123 @@
+scenarios:
+  - scenario_id: "rollout.deadline"
+    version: 1
+    title: "Deployment 진행 기한 초과"
+    description: "Ready가 되지 않는 새 revision으로 ProgressDeadlineExceeded를 재현합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "Deployment condition을 incident symptom과 원인 신호로 사용하는 수집 경로가 불완전합니다."
+    detector_work_needed:
+      - "Deployment Progressing condition reason 수집"
+      - "revision별 rollout 시작 시각과 Pod 상태 correlation"
+    expected:
+      root_cause: "deployment_progress_deadline_exceeded"
+      symptom: "ProgressDeadlineExceeded"
+    evidence_sources: ["kubernetes", "metrics", "logs", "metadata"]
+    safety: &sandbox_safety
+      namespace: "sandbox"
+      cleanup_required: true
+      ttl_seconds: 300
+      management_cluster_allowed: false
+      resource_name_prefix: "rca-test-"
+      max_concurrent_runs: 1
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-rollout-deadline"
+        fault_mode: "deployment_progress_deadline"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 180
+      poll_seconds: 3
+      deployment_condition_reasons: ["ProgressDeadlineExceeded"]
+    cleanup: &manifest_delete_cleanup
+      adapter: "kubernetes.manifest_delete"
+      params: {propagation_policy: "Foreground"}
+
+  - scenario_id: "rollout.replica-unavailable"
+    version: 1
+    title: "Rollout 이후 replica unavailable"
+    description: "새 revision의 available replica가 목표치에 도달하지 못하는 상태를 재현합니다."
+    execution: "real"
+    availability: "detector_gap"
+    availability_reason: "unavailable replica 상태를 독립 incident로 여는 감지기와 revision lineage가 없습니다."
+    detector_work_needed:
+      - "desired/updated/available replica 차이 수집"
+      - "rollout revision lineage 연결"
+    expected:
+      root_cause: "replica_unavailable_after_rollout"
+      symptom: "Rollout failed"
+    evidence_sources: ["kubernetes", "metrics", "logs", "metadata"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "kubernetes.deployment"
+      params:
+        resource_name: "rca-test-rollout-unavailable"
+        fault_mode: "replica_unavailable"
+        replicas: 1
+        labels: {"kubeheal.io/rca-test": "true"}
+    observe:
+      timeout_seconds: 180
+      poll_seconds: 3
+      deployment_condition_reasons: ["MinimumReplicasUnavailable", "ProgressDeadlineExceeded"]
+      event_message_any: ["unavailable"]
+    cleanup: *manifest_delete_cleanup
+
+  - scenario_id: "gitops.sync"
+    version: 1
+    title: "GitOps controller sync 실패"
+    description: "격리된 GitOps 애플리케이션에서 repository/render/apply sync 실패를 재현합니다."
+    execution: "external"
+    availability: "fixture_required"
+    availability_reason: "현재 target에는 표준 GitOps controller 테스트 애플리케이션이 보장되지 않습니다."
+    fixture_requirements:
+      - "sandbox 전용 Argo CD 또는 Flux 애플리케이션"
+      - "테스트 revision과 reset hook"
+    expected:
+      root_cause: "gitops_sync_failed"
+      symptom: "GitOps Sync Failed"
+    evidence_sources: ["kubernetes", "metrics", "logs", "metadata"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "gitops.fixture"
+      params:
+        fixture_id: "rca-test-gitops-sync"
+        fault_mode: "sync_failure"
+    observe:
+      timeout_seconds: 180
+      poll_seconds: 3
+      external_status_any: ["SyncFailed", "Degraded"]
+      log_message_any: ["sync failed", "apply failed"]
+    cleanup: &gitops_reset
+      adapter: "fixture.reset"
+      params: {fixture_id: "rca-test-gitops-sync"}
+
+  - scenario_id: "gitops.manifest-invalid"
+    version: 1
+    title: "GitOps manifest 검증 실패"
+    description: "격리된 테스트 revision의 잘못된 schema/admission 필드로 검증 실패를 재현합니다."
+    execution: "external"
+    availability: "fixture_required"
+    availability_reason: "실제 repository revision과 admission 결과를 되돌릴 외부 GitOps fixture가 필요합니다."
+    fixture_requirements:
+      - "sandbox 전용 테스트 repository"
+      - "invalid manifest revision과 자동 reset hook"
+    expected:
+      root_cause: "manifest_validation_failed"
+      symptom: "GitOps Sync Failed"
+    evidence_sources: ["kubernetes", "logs", "metadata"]
+    safety: *sandbox_safety
+    trigger:
+      adapter: "gitops.fixture"
+      params:
+        fixture_id: "rca-test-gitops-manifest-invalid"
+        fault_mode: "manifest_invalid"
+    observe:
+      timeout_seconds: 180
+      poll_seconds: 3
+      external_status_any: ["SyncFailed", "InvalidSpecError"]
+      log_message_any: ["validation failed", "admission denied"]
+    cleanup:
+      adapter: "fixture.reset"
+      params: {fixture_id: "rca-test-gitops-manifest-invalid"}

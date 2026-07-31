@@ -1,0 +1,201 @@
+# RCA 원인 룰 카탈로그 — 네트워크(DNS/timeout/Ingress) 계열 (구 causes/network.py)
+# signals: 후보 판별 신호(causes/signals.py) — 로그/이벤트의 네트워크 오류 유형으로 구별한다.
+rules:
+  - id: "dns_lookup_failed"
+    symptoms: ["DNS lookup failed"]
+    required_sources: ["kubernetes", "metrics", "logs", "metadata"]
+    candidates:
+      - candidate_id: "service_dns_resolution_failure"
+        title: "서비스 DNS 해석 실패"
+        description: "Service, Endpoint, DNS 응답 문제로 서비스 이름 해석이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "metadata:service_selector_matches"
+        checks:
+          - "Service.spec.clusterIP와 EndpointSlice.endpoints가 정상인지 확인"
+          - "CoreDNS 응답 코드에서 NXDOMAIN 또는 SERVFAIL 증가 확인"
+          - "로그에 no such host, DNS lookup failed, name resolution failed 확인"
+          - "최근 Service selector, namespace, NetworkPolicy 변경 여부 확인"
+        signals:
+          - id: "dns_failure_log"
+            any_of:
+              - log_pattern: "no such host"
+              - log_pattern: "dns"
+              - log_pattern: "name resolution"
+      - candidate_id: "service_name_or_namespace_mismatch"
+        title: "Service 이름 또는 namespace 불일치"
+        description: "애플리케이션이 잘못된 Service 이름이나 namespace를 조회해 DNS 해석이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:service_selector_matches"
+        checks:
+          - "로그의 DNS 이름과 실제 Service/namespace 이름을 비교"
+          - "NXDOMAIN, no such host, name does not resolve 문구를 확인"
+          - "최근 환경변수, ConfigMap, Helm values의 service host 변경 여부 확인"
+        signals:
+          - id: "service_dns_name_mismatch_signal"
+            any_of:
+              - log_pattern: "NXDOMAIN"
+              - log_pattern: "no such host"
+              - log_pattern: "name does not resolve"
+              - log_pattern: "service not found"
+      - candidate_id: "coredns_unavailable"
+        title: "CoreDNS 장애"
+        description: "CoreDNS Pod 또는 DNS upstream 장애로 클러스터 내부 DNS 질의가 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "kube-system CoreDNS Pod Ready 상태와 restart 증가 여부 확인"
+          - "CoreDNS 로그의 SERVFAIL, plugin/errors, timeout 증가 여부 확인"
+          - "DNS 실패가 여러 namespace/workload에서 동시에 발생하는지 확인"
+        signals:
+          - id: "coredns_unavailable_signal"
+            any_of:
+              - log_pattern: "SERVFAIL"
+              - log_pattern: "coredns"
+              - log_pattern: "plugin/errors"
+              - log_pattern: "dns timeout"
+              - event_pattern: "CoreDNS"
+  - id: "connection_timeout"
+    symptoms: ["Connection timeout"]
+    required_sources: ["kubernetes", "metrics", "logs", "traces", "metadata"]
+    candidates:
+      - candidate_id: "network_path_timeout"
+        title: "네트워크 경로 timeout"
+        description: "Service, NetworkPolicy, ingress/egress 경로 문제로 대상 연결이 timeout됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "traces:related_traces"
+          - "metadata:endpoint_slice_ready_endpoints"
+        checks:
+          - "NetworkPolicy.spec ingress/egress가 source/target 통신을 허용하는지 확인"
+          - "EndpointSlice.conditions.ready와 Pod IP가 유효한지 확인"
+          - "service mesh 또는 ingress timeout metric 증가 확인"
+          - "trace에서 upstream timeout 또는 context deadline exceeded 확인"
+        signals:
+          - id: "network_timeout_log"
+            any_of:
+              - log_pattern: "timeout"
+              - log_pattern: "deadline exceeded"
+              - event_pattern: "timeout"
+      - candidate_id: "network_policy_denied"
+        title: "NetworkPolicy 차단"
+        description: "NetworkPolicy ingress/egress 규칙이 source와 target 사이 통신을 허용하지 않아 timeout이 발생했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:network_policy_allows"
+        checks:
+          - "source Pod label과 target Pod label이 NetworkPolicy selector와 맞는지 확인"
+          - "egress/ingress port와 namespaceSelector/podSelector 허용 범위 확인"
+          - "로그에 network policy, connection timed out, i/o timeout 정황이 있는지 확인"
+        signals:
+          - id: "network_policy_denied_signal"
+            any_of:
+              - log_pattern: "network policy"
+              - log_pattern: "egress denied"
+              - log_pattern: "ingress denied"
+              - log_pattern: "i/o timeout"
+              - event_pattern: "NetworkPolicy"
+      - candidate_id: "endpoint_unavailable_timeout"
+        title: "Endpoint 부재로 인한 timeout"
+        description: "Service 뒤에 ready endpoint가 없거나 EndpointSlice가 비어 있어 연결이 timeout됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:endpoint_slice_ready_endpoints"
+        checks:
+          - "EndpointSlice ready endpoint 수와 Service selector를 확인"
+          - "backend Pod Ready=False 또는 rollout unavailable 상태인지 확인"
+          - "로그에 no endpoints, upstream timeout, connection timeout 정황이 있는지 확인"
+        signals:
+          - id: "endpoint_unavailable_timeout_signal"
+            any_of:
+              - log_pattern: "no endpoints"
+              - log_pattern: "upstream timeout"
+              - log_pattern: "connection timed out"
+              - event_pattern: "no endpoints"
+  - id: "ingress_5xx"
+    symptoms: ["Ingress 502/503", "Ingress 502", "Ingress 503"]
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "upstream_unavailable"
+        title: "Ingress upstream 불가"
+        description: "Ingress가 연결할 Service endpoint가 없거나 upstream 연결 실패로 502/503이 발생했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Ingress.status, Service.spec.selector, EndpointSlice.endpoints 확인"
+          - "ingress 502/503 metric 또는 upstream connect failure 증가 확인"
+          - "ingress controller log에 no endpoints, upstream error, connection refused 확인"
+          - "최근 Ingress, Service, Deployment 변경 이후 발생했는지 확인"
+        signals:
+          - id: "upstream_failure_signal"
+            any_of:
+              - log_pattern: "no endpoints"
+              - log_pattern: "upstream"
+              - log_pattern: "connection refused"
+              - event_pattern: "no endpoints"
+      - candidate_id: "backend_readiness_failure"
+        title: "백엔드 readiness 실패"
+        description: "백엔드 Pod가 Ready 상태가 아니어서 Ingress upstream에서 제외됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Pod status.conditions Ready=False 여부 확인"
+          - "kube_endpoint_address_available 또는 ready endpoint 수 감소 확인"
+          - "readiness probe 실패 이벤트와 app log 확인"
+        signals:
+          # 소스만으로 완결 가능하던 후보 —
+          # probe 실패 정황의 관측을 완결 조건으로 요구한다.
+          - id: "probe_failure_signal"
+            any_of:
+              - event_pattern: "probe"
+              - fact: "event_reason=Unhealthy"
+              - log_pattern: "readiness"
+      - candidate_id: "application_5xx_spike"
+        title: "애플리케이션 5xx/timeout 급증"
+        description: "sandbox 데모 애플리케이션이 5xx 또는 dependency timeout을 발생시켜 사용자 요청이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "orders-api/storefront-web 로그의 5xx, upstream_status, dependency_timeout 확인"
+          - "동일 시간대 p95 latency와 5xx 카운터 증가 확인"
+          - "대상 Deployment replica/Ready 상태와 재시작 필요 여부 확인"
+        signals:
+          - id: "application_5xx_signal"
+            any_of:
+              - log_pattern: "upstream_status\":500"
+              - log_pattern: "upstream_status\": 500"
+              - log_pattern: "upstream_status\":502"
+              - log_pattern: "upstream_status\": 502"
+              - log_pattern: "upstream_status\":503"
+              - log_pattern: "upstream_status\": 503"
+              - log_pattern: "upstream_status\":504"
+              - log_pattern: "upstream_status\": 504"
+              - log_pattern: "status\":500"
+              - log_pattern: "status\": 500"
+              - log_pattern: "status\":502"
+              - log_pattern: "status\": 502"
+              - log_pattern: "status\":503"
+              - log_pattern: "status\": 503"
+              - log_pattern: "status\":504"
+              - log_pattern: "status\": 504"
+              - log_pattern: "dependency_timeout"
+              - log_pattern: "dependency call timed out"
+              - log_pattern: "/api/orders/error"
+              - log_pattern: "intentional_error_endpoint"
+              - log_pattern: "intentional error endpoint called"

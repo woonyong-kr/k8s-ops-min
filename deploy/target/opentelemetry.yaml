@@ -1,0 +1,115 @@
+# OpenTelemetry Collector Helm chart 값
+# target Kubernetes cluster의 collector 설치 제어
+
+mode: daemonset
+fullnameOverride: opentelemetry-collector
+
+service:
+  # DaemonSet mode disables the Service by default. Target workloads and the
+  # cluster agent need one stable OTLP endpoint.
+  enabled: true
+  type: ClusterIP
+  internalTrafficPolicy: Cluster
+
+image:
+  # cluster에서 자주 쓰는 receiver/processor 포함 Kubernetes distribution
+  repository: otel/opentelemetry-collector-k8s
+
+presets:
+  # Collect Kubernetes container stdout/stderr from /var/log/pods on every node.
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: ${env:MY_POD_IP}:4317
+        http:
+          endpoint: ${env:MY_POD_IP}:4318
+
+    # 첫 local integration pass에서는 기본 non-OTLP receiver 비활성화
+    jaeger: null
+    prometheus: null
+    zipkin: null
+
+  processors:
+    memory_limiter:
+      check_interval: 5s
+      limit_percentage: 80
+      spike_limit_percentage: 25
+    batch: {}
+
+  exporters:
+    debug: {}
+    otlp/tempo:
+      endpoint: tempo.target.svc:4317
+      tls:
+        insecure: true
+    otlphttp/loki:
+      endpoint: http://loki-gateway.target.svc/otlp
+
+  extensions:
+    health_check: {}
+
+  service:
+    extensions:
+      - health_check
+    pipelines:
+      traces:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - batch
+        exporters:
+          - otlp/tempo
+      metrics:
+        receivers:
+          - otlp
+        processors:
+          - memory_limiter
+          - batch
+        exporters:
+          - debug
+      logs:
+        receivers:
+          - otlp
+          - filelog
+        processors:
+          - memory_limiter
+          - batch
+        exporters:
+          - otlphttp/loki
+
+ports:
+  otlp:
+    enabled: true
+    containerPort: 4317
+    servicePort: 4317
+    protocol: TCP
+  otlp-http:
+    enabled: true
+    containerPort: 4318
+    servicePort: 4318
+    protocol: TCP
+
+  # 위에서 비활성화한 receiver와 일치
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false

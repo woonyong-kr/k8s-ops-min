@@ -1,0 +1,91 @@
+kind: Deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    spec:
+      containers:
+      - env:
+        - name: ORCHESTRATOR_URL
+          value: http://login-gateway-management:8082
+        - name: MAX_FIND_GAME_PER_SECOND
+          value: '25'
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+              apiVersion: v1
+        - name: OPSIA_RESOURCE_KIND
+          value: Deployment
+        - name: OPSIA_WORKLOAD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['app']
+              apiVersion: v1
+        - name: OPSIA_SERVICE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['opsia.dev/service']
+              apiVersion: v1
+        - name: OPSIA_SLI_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['opsia.dev/sli']
+              apiVersion: v1
+        - name: OPSIA_SLI_SYMPTOM
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['opsia.dev/symptom']
+              apiVersion: v1
+        - name: REQUIRE_CONTROL_TOKEN
+          value: 'true'
+        - name: OPS_CONTROL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: demo-game-control
+        name: api-server
+        image: ghcr.io/jungle-303-04/demo-game/api-server:stable
+        ports:
+        - name: http
+          containerPort: 8081
+        resources:
+          limits:
+            cpu: 250m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+            scheme: HTTP
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+          successThreshold: 1
+          initialDelaySeconds: 2
+        imagePullPolicy: Always
+    metadata:
+      labels:
+        app: api-server
+        opsia.dev/sli: admission
+        opsia.dev/service: api-server
+        opsia.dev/symptom: admission_failure
+        app.kubernetes.io/part-of: demo-game
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: '8081'
+        prometheus.io/scrape: 'true'
+metadata:
+  name: api-server
+  namespace: sandbox
+apiVersion: apps/v1

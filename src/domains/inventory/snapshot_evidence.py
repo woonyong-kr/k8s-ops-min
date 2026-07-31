@@ -1,0 +1,25 @@
+"""Shared readers for persisted outbound-agent inventory evidence."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+
+
+def snapshot_source_summary(
+    snapshot: Mapping[str, object] | None,
+) -> Mapping[str, object] | None:
+    """Return the agent-owned source summary from current or legacy snapshot rows.
+
+    Persisted rows wrap the collected summary under ``summary.summary`` alongside
+    health and usage projections. Older test fixtures and pre-envelope rows store
+    the collected summary directly under ``summary``. Consumers use this one
+    compatibility boundary instead of guessing the storage shape independently.
+    """
+
+    if not isinstance(snapshot, Mapping):
+        return None
+    envelope = snapshot.get("summary")
+    if not isinstance(envelope, Mapping):
+        return None
+    source = envelope.get("summary")
+    return source if isinstance(source, Mapping) else envelope

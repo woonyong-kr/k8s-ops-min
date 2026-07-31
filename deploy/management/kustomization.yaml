@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - scheduling.yaml
+  - storage.yaml
+  - pgbouncer.yaml
+  - nats.yaml
+  - rbac.yaml
+  - services.yaml
+  - ai-workers.yaml
+  - auto-revert-worker.yaml
+  - github-poll-worker.yaml
+  - console-dev.yaml
+  - agent-api-proxy.yaml
+  - cloudflared.yaml

@@ -1,0 +1,452 @@
+# =============================================================================
+# 샘플/CI 스키마 검증용 매니페스트 — 단독 배포 대상 아님.
+#
+# 실제 cluster-agent 설치 매니페스트는 런타임에 api-gateway 의
+# target 도메인(src/domains/target/router.py: target_install_manifest)이
+# 클러스터 등록 요청마다 생성/적용한다. 이 파일은 그 출력의 정적 참조본으로,
+# 생성기가 주입하는 target-runtime-config(ConfigMap)/target-runtime-secret(Secret)
+# 은 의도적으로 빠져 있다. `kubectl apply -f` 로 직접 띄우면 cluster-agent 가
+# 그 두 리소스를 envFrom 으로 찾지 못해 기동하지 않는다.
+# 용도: kubeconform 등 CI 스키마 검증 + 리뷰용 형상 참고.
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: target
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sandbox
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: gitops-control-critical
+value: 1000000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "GitOps 제어 경로와 target agent를 일반 workload보다 먼저 스케줄링한다."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: gitops-fast-lane
+value: 100000
+globalDefault: false
+preemptionPolicy: PreemptLowerPriority
+description: "사용자가 선택한 fast-lane workload용 우선순위."
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-agent
+  namespace: target
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-agent-read
+rules:
+  # evidence와 command context에 필요한 클러스터 객체 읽기 권한만 둔다.
+  - apiGroups: [""]
+    resources: ["pods", "events", "nodes", "services", "endpoints", "serviceaccounts", "resourcequotas"]
+    verbs: ["get", "list", "watch"]
+  # create on pods/exec cannot be resourceNames-scoped. Gateway + agent both
+  # enforce exact inventory identity, pod.exec, and POD_EXEC_ALLOWED_NAMESPACES.
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: ["discovery.k8s.io"]
+    resources: ["endpointslices"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+  # workload controller도 읽기 권한만 둔다.
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "controllerrevisions", "daemonsets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "rollouts"]
+    verbs: ["get", "list"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "clusterroles", "rolebindings", "clusterrolebindings"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["get", "list"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["get", "list"]
+  - apiGroups: ["source.toolkit.fluxcd.io"]
+    resources: ["gitrepositories", "ocirepositories", "helmrepositories", "buckets", "helmcharts"]
+    verbs: ["get", "list"]
+  # drilldown 실측 CPU·메모리는 Metrics API가 있을 때만 읽고, 없으면 null을 유지한다.
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["nodes/proxy"]
+    verbs: ["get"]
+---
+# 위 읽기 전용 ClusterRole을 cluster-agent ServiceAccount에 바인딩한다.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-agent-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-agent-read
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+# node-collector is a cluster-agent-managed bounded subworker. It does not
+# inherit the wider cluster-agent identity.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-agent-node-collector
+  namespace: target
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-agent-node-collector-read
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-agent-node-collector-read
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-agent-node-collector-read
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent-node-collector
+    namespace: target
+---
+# GitOps writes are isolated from inventory read access and remain exact-CR/CAS gated.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-agent-gitops-control
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["kustomize.toolkit.fluxcd.io"]
+    resources: ["kustomizations"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["helm.toolkit.fluxcd.io"]
+    resources: ["helmreleases"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["source.toolkit.fluxcd.io"]
+    resources: ["gitrepositories", "ocirepositories", "helmrepositories", "buckets", "helmcharts"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-agent-gitops-control
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-agent-gitops-control
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+# Node scheduling writes are isolated from the read role. Runtime capability
+# advertisement is enabled only in this target profile.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-agent-node-control
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "patch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/eviction"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-agent-node-control
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-agent-node-control
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+# Debug writes are isolated to configured control namespaces.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-agent-resource-debug
+  namespace: sandbox
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/ephemeralcontainers"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-agent-resource-debug
+  namespace: sandbox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-agent-resource-debug
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+# CronJob writes are isolated from read access and namespace-scoped.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-agent-cronjob-control
+  namespace: sandbox
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create"]
+  - apiGroups: ["batch"]
+    resources: ["cronjobs"]
+    verbs: ["patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-agent-cronjob-control
+  namespace: sandbox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-agent-cronjob-control
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+# target-agent가 소유한 리소스에만 쓰기 권한을 둔다.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-agent-self-manage
+  namespace: target
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["target-agent-policy"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["cluster-agent"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-agent-self-manage
+  namespace: target
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-agent-self-manage
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: target-agent-policy
+  namespace: target
+data:
+  owner: cluster-agent
+---
+# sandbox에만 쓰기 권한을 둔다.
+# agent는 target telemetry를 건드리지 않고 sandbox workload/configmap만 patch한다.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-agent-target-manage
+  namespace: target
+rules:
+  - apiGroups: ["apps"]
+    resources: ["daemonsets"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+# sandbox 쓰기 권한을 cluster-agent ServiceAccount에 바인딩한다.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-agent-target-manage
+  namespace: target
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-agent-target-manage
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-agent-sandbox-write
+  namespace: sandbox
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-agent-sandbox-write
+  namespace: sandbox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-agent-sandbox-write
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-agent-catalog-install
+  namespace: sandbox
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets", "serviceaccounts", "services"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-agent-catalog-install
+  namespace: sandbox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-agent-catalog-install
+subjects:
+  - kind: ServiceAccount
+    name: cluster-agent
+    namespace: target
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cluster-agent
+  namespace: target
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cluster-agent
+  template:
+    metadata:
+      labels:
+        app: cluster-agent
+    spec:
+      priorityClassName: gitops-control-critical
+      serviceAccountName: cluster-agent
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 50
+              preference:
+                matchExpressions:
+                  - key: workload-tier
+                    operator: In
+                    values:
+                      - fast-lane
+      containers:
+        - name: cluster-agent
+          image: kubeheal-service:latest
+          imagePullPolicy: IfNotPresent
+          command: ["python", "src/services/target/cluster-agent/app.py"]
+          envFrom:
+            - configMapRef:
+                name: target-runtime-config
+            - secretRef:
+                name: target-runtime-secret
+          env:
+            - name: MANAGEMENT_BASE_URL
+              value: "__MANAGEMENT_BASE_URL__"
+            - name: REALTIME_GATEWAY_URL
+              value: "__REALTIME_GATEWAY_URL__"
+            - name: NODE_COLLECTOR_ENABLED
+              value: "true"
+            - name: NODE_CONTROL_ENABLED
+              value: "true"
+            - name: NODE_COLLECTOR_IMAGE
+              value: kubeheal-service:latest
+            - name: NODE_COLLECTOR_NAMESPACE
+              value: target
+            - name: AGENT_CONTROL_DB_PATH
+              value: /var/lib/target-agent/agent-control.db
+            - name: COMMAND_OUTBOX_DB_PATH
+              value: /var/lib/target-agent/command-outbox.db
+            - name: OTEL_SERVICE_NAME
+              value: target-cluster-agent
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: ""
+          volumeMounts:
+            - name: target-agent-runtime
+              mountPath: /var/lib/target-agent
+      volumes:
+        - name: target-agent-runtime
+          emptyDir: {}

@@ -1,0 +1,1473 @@
+name: Dev Deploy
+
+"on":
+  push:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full SHA that is present on dev
+        required: true
+        type: string
+      deployment_scope:
+        description: FULL deploys services and console; CONSOLE deploys only the console
+        required: true
+        default: FULL
+        type: choice
+        options:
+          - FULL
+          - CONSOLE
+      previous_release_sha:
+        description: Full service SHA of the current release; required only for FULL
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  actions: read
+
+concurrency:
+  group: dev-deploy
+  cancel-in-progress: false
+
+jobs:
+  scope:
+    name: Resolve deployment scope
+    if: >-
+      (github.event_name == 'push' &&
+       github.ref == 'refs/heads/dev' &&
+       vars.AWS_DEV_DEPLOY_ENABLED == '1') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref == 'refs/heads/dev')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      deployment_scope: ${{ steps.resolve.outputs.scope }}
+    steps:
+      - name: Check out dev SHA for scope classification
+        if: github.event_name == 'push'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Resolve deployment scope
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANUAL_SCOPE: ${{ inputs.deployment_scope }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            scope="$(scripts/classify-live-deploy-scope.sh HEAD)"
+            case "${scope}" in
+              FULL|CONSOLE|NONE) ;;
+              *) echo "invalid automatic deployment scope" >&2; exit 1 ;;
+            esac
+          else
+            scope="${MANUAL_SCOPE}"
+            case "${scope}" in
+              FULL|CONSOLE) ;;
+              *) echo "invalid manual deployment scope" >&2; exit 1 ;;
+            esac
+          fi
+          echo "scope=${scope}" >>"${GITHUB_OUTPUT}"
+
+  deploy:
+    name: Deploy dev SHA
+    needs: scope
+    if: ${{ needs.scope.result == 'success' && needs.scope.outputs.deployment_scope != 'NONE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    environment: dev-deploy
+    env:
+      AWS_REGION: ${{ vars.AWS_DEV_REGION }}
+      ECR_REPOSITORY: ${{ vars.AWS_DEV_ECR_REPOSITORY }}
+      CONSOLE_ECR_REPOSITORY: ${{ vars.AWS_DEV_CONSOLE_ECR_REPOSITORY }}
+      EKS_CLUSTER: ${{ vars.AWS_DEV_EKS_CLUSTER }}
+      BASE_URL: ${{ vars.AWS_DEV_BASE_URL }}
+      AGENT_API_BASE_URL: ${{ vars.AGENT_API_BASE_URL }}
+      MGMT_CONTEXT: opsia-dev
+      MGMT_NS: management
+      SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
+      DEPLOYMENT_SCOPE: ${{ needs.scope.outputs.deployment_scope }}
+      PREVIOUS_RELEASE_SHA: ${{ inputs.previous_release_sha }}
+      AUTH_EMAIL: admin
+      AUTH_PASSWORD: ${{ secrets.AWS_DEV_AUTH_PASSWORD }}
+      PROJECT_SLUG: kubernetes-ops
+      SMOKE_CLUSTER_ID: ${{ secrets.AWS_DEV_SMOKE_CLUSTER_ID }}
+      SMOKE_RCA_CORRELATION_ID: ${{ secrets.AWS_DEV_SMOKE_RCA_CORRELATION_ID }}
+      SMOKE_RCA_INCIDENT_ID: ${{ secrets.AWS_DEV_SMOKE_RCA_INCIDENT_ID }}
+      LLM_PROVIDER: ${{ vars.AWS_DEV_LLM_PROVIDER || 'openai' }}
+      LLM_MODEL: ${{ vars.AWS_DEV_LLM_MODEL || 'gpt-4.1' }}
+      LLM_API_KEY: ${{ secrets.AWS_DEV_LLM_API_KEY }}
+      CONSOLE_BOOTSTRAP_ENABLED: ${{ vars.AWS_DEV_CONSOLE_BOOTSTRAP_ENABLED || '0' }}
+      PUBLIC_EDGE_MAX_ATTEMPTS: ${{ vars.AWS_DEV_PUBLIC_EDGE_MAX_ATTEMPTS || '30' }}
+      PUBLIC_EDGE_RETRY_SECONDS: ${{ vars.AWS_DEV_PUBLIC_EDGE_RETRY_SECONDS || '2' }}
+      ROUTE_SMOKE_MIN_CRITICAL_API_REQUESTS: ${{ vars.AWS_DEV_ROUTE_SMOKE_MIN_CRITICAL_API_REQUESTS || '1' }}
+      DEPLOY_LEASE_TTL_SECONDS: ${{ vars.AWS_DEV_DEPLOY_LEASE_TTL_SECONDS || '600' }}
+    steps:
+      - name: Check out dev SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: ".python-version"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.9.17"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Resolve authenticated browser smoke cache key
+        id: playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p \
+            "require('./frontend/package-lock.json').packages['node_modules/playwright'].version")"
+          [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "version=${version}" >>"${GITHUB_OUTPUT}"
+
+      - name: Restore authenticated browser cache
+        id: playwright_cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+
+      - name: Install authenticated browser smoke dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix frontend
+          npm --prefix frontend exec -- playwright install-deps chromium
+          if [[ "${PLAYWRIGHT_CACHE_HIT}" != "true" ]]; then
+            npm --prefix frontend exec -- playwright install chromium
+          fi
+        env:
+          PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright_cache.outputs.cache-hit }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.36.2
+
+      - name: Validate non-secret deployment inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "${SOURCE_SHA}"
+          [[ "${AWS_REGION}" =~ ^[a-z]{2}(-gov)?-[a-z]+-[0-9]$ ]]
+          [[ "${ECR_REPOSITORY}" =~ ^[a-z0-9]+([._/-][a-z0-9]+)*$ ]]
+          [[ "${CONSOLE_ECR_REPOSITORY}" =~ ^[a-z0-9]+([._/-][a-z0-9]+)*$ ]]
+          [[ "${EKS_CLUSTER}" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$ ]]
+          [[ "${BASE_URL}" =~ ^https://[^[:space:]]+$ ]]
+          [[ "${CONSOLE_BOOTSTRAP_ENABLED}" =~ ^[01]$ ]]
+          [[ "${PUBLIC_EDGE_MAX_ATTEMPTS}" =~ ^[1-9][0-9]*$ ]]
+          [[ "${PUBLIC_EDGE_RETRY_SECONDS}" =~ ^[0-9]+([.][0-9]+)?$ ]]
+          [[ "${ROUTE_SMOKE_MIN_CRITICAL_API_REQUESTS}" =~ ^[1-9][0-9]*$ ]]
+          [[ "${DEPLOY_LEASE_TTL_SECONDS}" =~ ^[1-9][0-9]*$ ]]
+          if [[ "${DEPLOYMENT_SCOPE}" == "FULL" ]]; then
+            [[ "${AGENT_API_BASE_URL}" =~ ^https://[^/?#[:space:]]+/api$ ]]
+          fi
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            case "${DEPLOYMENT_SCOPE}" in
+              FULL) [[ "${PREVIOUS_RELEASE_SHA}" =~ ^[0-9a-f]{40}$ ]] ;;
+              CONSOLE) ;;
+              *) echo "invalid deployment scope" >&2; exit 1 ;;
+            esac
+          fi
+
+      - name: Verify manual dev SHA
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          gh_api_retry() {
+            local route="$1"
+            local attempt=1
+            local delay_seconds=2
+            local response_file
+            local error_file
+            response_file="$(mktemp "${RUNNER_TEMP}/gh-api-response.XXXXXX")"
+            error_file="$(mktemp "${RUNNER_TEMP}/gh-api-error.XXXXXX")"
+
+            while (( attempt <= 12 )); do
+              if gh api "${route}" >"${response_file}" 2>"${error_file}"; then
+                cat "${response_file}"
+                rm -f "${response_file}" "${error_file}"
+                return 0
+              fi
+
+              if ! grep -Eq '\(HTTP (429|5[0-9]{2})\)' "${error_file}"; then
+                cat "${error_file}" >&2
+                rm -f "${response_file}" "${error_file}"
+                return 1
+              fi
+
+              echo "GitHub API transient failure for ${route}; retry ${attempt}/12 in ${delay_seconds}s" >&2
+              cat "${error_file}" >&2
+              if (( attempt == 12 )); then
+                break
+              fi
+              sleep "${delay_seconds}"
+              attempt=$((attempt + 1))
+              if (( delay_seconds < 30 )); then
+                delay_seconds=$((delay_seconds * 2))
+                if (( delay_seconds > 30 )); then
+                  delay_seconds=30
+                fi
+              fi
+            done
+
+            echo "GitHub API retry budget exhausted for ${route}" >&2
+            rm -f "${response_file}" "${error_file}"
+            return 1
+          }
+
+          remote_dev="$(
+            gh_api_retry "repos/${GITHUB_REPOSITORY}/git/ref/heads/dev" \
+              | jq -er '.object.sha'
+          )"
+          comparison="$(
+            gh_api_retry "repos/${GITHUB_REPOSITORY}/compare/${SOURCE_SHA}...${remote_dev}" \
+              | jq -er '.status'
+          )"
+          case "${comparison}" in
+            "ahead"|"identical") ;;
+            *) echo "source SHA is not an ancestor of dev: ${comparison}" >&2; exit 1 ;;
+          esac
+      - name: Configure AWS identity
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEV_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_DEV_REGION }}
+
+      - name: Configure explicit dev cluster context
+        shell: bash
+        run: |
+          set -euo pipefail
+          aws eks update-kubeconfig \
+            --region "${AWS_REGION}" \
+            --name "${EKS_CLUSTER}" \
+            --alias "${MGMT_CONTEXT}"
+          test "$(kubectl config current-context)" = "${MGMT_CONTEXT}"
+
+      - name: Grant ephemeral runner cluster access
+        id: cluster_access
+        shell: bash
+        run: |
+          set -euo pipefail
+          runner_ip="$(
+            curl --fail --silent --show-error \
+              --connect-timeout 5 \
+              --max-time 10 \
+              https://checkip.amazonaws.com \
+              | tr -d '[:space:]'
+          )"
+          [[ "${runner_ip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+          IFS=. read -r octet1 octet2 octet3 octet4 <<<"${runner_ip}"
+          for octet in "${octet1}" "${octet2}" "${octet3}" "${octet4}"; do
+            (( octet >= 0 && octet <= 255 ))
+          done
+          runner_cidr="${runner_ip}/32"
+
+          cluster_network="$(
+            aws eks describe-cluster \
+              --region "${AWS_REGION}" \
+              --name "${EKS_CLUSTER}" \
+              --query 'cluster.resourcesVpcConfig' \
+              --output json
+          )"
+          previous_cidrs="$(jq -ce '.publicAccessCidrs // []' <<<"${cluster_network}")"
+          jq -e '
+            .endpointPublicAccess == true
+            and ([.publicAccessCidrs[]?] | all(. != "0.0.0.0/0" and . != "::/0"))
+          ' >/dev/null <<<"${cluster_network}"
+
+          echo "previous_cidrs=${previous_cidrs}" >>"${GITHUB_OUTPUT}"
+          echo "modified=false" >>"${GITHUB_OUTPUT}"
+          echo "RUNNER_ACCESS_CIDR=${runner_cidr}" >>"${GITHUB_ENV}"
+          if jq -e --arg cidr "${runner_cidr}" \
+            '.publicAccessCidrs | index($cidr) != null' \
+            >/dev/null <<<"${cluster_network}"; then
+            exit 0
+          fi
+
+          merged_cidrs="$(
+            jq -ce --arg cidr "${runner_cidr}" \
+              '(.publicAccessCidrs // []) + [$cidr] | unique' \
+              <<<"${cluster_network}"
+          )"
+          resources_vpc_config="$(
+            jq -cn \
+              --argjson cidrs "${merged_cidrs}" \
+              --argjson private_access "$(jq '.endpointPrivateAccess' <<<"${cluster_network}")" \
+              '{
+                endpointPublicAccess:true,
+                endpointPrivateAccess:$private_access,
+                publicAccessCidrs:$cidrs
+              }'
+          )"
+          echo "modified=true" >>"${GITHUB_OUTPUT}"
+          update_id="$(
+            aws eks update-cluster-config \
+              --region "${AWS_REGION}" \
+              --name "${EKS_CLUSTER}" \
+              --resources-vpc-config "${resources_vpc_config}" \
+              --query 'update.id' \
+              --output text
+          )"
+          deadline=$((SECONDS + 900))
+          while true; do
+            update_status="$(
+              aws eks describe-update \
+                --region "${AWS_REGION}" \
+                --name "${EKS_CLUSTER}" \
+                --update-id "${update_id}" \
+                --query 'update.status' \
+                --output text
+            )"
+            case "${update_status}" in
+              Successful) break ;;
+              Failed|Cancelled)
+                echo "temporary EKS access update ended with ${update_status}" >&2
+                exit 1
+                ;;
+            esac
+            if (( SECONDS >= deadline )); then
+              echo "temporary EKS access update timed out" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          unset cluster_network deadline merged_cidrs octet octet1 octet2 octet3 octet4
+          unset previous_cidrs resources_vpc_config runner_cidr runner_ip update_id update_status
+
+      - name: Verify bounded cluster deployment access
+        shell: bash
+        run: |
+          set -euo pipefail
+          cluster_network="$(
+            aws eks describe-cluster \
+              --region "${AWS_REGION}" \
+              --name "${EKS_CLUSTER}" \
+              --query 'cluster.resourcesVpcConfig' \
+              --output json
+          )"
+          jq -e '
+            (.endpointPrivateAccess == true or .endpointPublicAccess == true)
+            and ([.publicAccessCidrs[]?] | all(. != "0.0.0.0/0" and . != "::/0"))
+          ' >/dev/null <<<"${cluster_network}"
+          jq -e --arg cidr "${RUNNER_ACCESS_CIDR}" \
+            '.publicAccessCidrs | index($cidr) != null' \
+            >/dev/null <<<"${cluster_network}"
+          kubectl --context "${MGMT_CONTEXT}" --request-timeout=10s get namespace "${MGMT_NS}" \
+            >/dev/null
+          test "$(kubectl --context "${MGMT_CONTEXT}" auth can-i get deployments \
+            --namespace "${MGMT_NS}")" = "yes"
+          test "$(kubectl --context "${MGMT_CONTEXT}" auth can-i patch deployments \
+            --namespace "${MGMT_NS}")" = "yes"
+          unset cluster_network
+
+      - name: Acquire idempotent deployment lease
+        id: release_lease
+        shell: bash
+        run: |
+          set -euo pipefail
+          console_sha="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get configmap opsia-console-deploy-status \
+              --output jsonpath='{.data.console_sha}' 2>/dev/null || true
+          )"
+          service_sha="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get configmap opsia-deploy-status \
+              --output jsonpath='{.data.dev_sha}' 2>/dev/null || true
+          )"
+          if [[ "${console_sha}" == "${SOURCE_SHA}" ]] \
+            && { [[ "${DEPLOYMENT_SCOPE}" == "CONSOLE" ]] \
+              || [[ "${service_sha}" == "${SOURCE_SHA}" ]]; }; then
+            echo "mode=verify" >>"${GITHUB_OUTPUT}"
+            echo "release ${SOURCE_SHA}/${DEPLOYMENT_SCOPE} is already recorded; using public verification only"
+            exit 0
+          fi
+
+          holder="${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}"
+          acquired_epoch="$(date -u +%s)"
+          existing="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get configmap opsia-deploy-lease --output json 2>/dev/null || true
+          )"
+          desired_data="$(jq -cn \
+            --arg holder "${holder}" \
+            --arg source_sha "${SOURCE_SHA}" \
+            --arg scope "${DEPLOYMENT_SCOPE}" \
+            --arg acquired_epoch "${acquired_epoch}" \
+            '{holder:$holder,source_sha:$source_sha,scope:$scope,state:"running",acquired_epoch:$acquired_epoch}')"
+          if [[ -z "${existing}" ]]; then
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              create configmap opsia-deploy-lease \
+              --from-literal="holder=${holder}" \
+              --from-literal="source_sha=${SOURCE_SHA}" \
+              --from-literal="scope=${DEPLOYMENT_SCOPE}" \
+              --from-literal="state=running" \
+              --from-literal="acquired_epoch=${acquired_epoch}"
+          else
+            previous_state="$(jq -r '.data.state // "unknown"' <<<"${existing}")"
+            previous_holder="$(jq -r '.data.holder // ""' <<<"${existing}")"
+            previous_epoch="$(jq -r '.data.acquired_epoch // "0"' <<<"${existing}")"
+            [[ "${previous_epoch}" =~ ^[0-9]+$ ]]
+            lease_age=$((acquired_epoch - previous_epoch))
+            if [[ "${previous_state}" == "running" ]] \
+              && [[ "${previous_holder}" != "${holder}" ]] \
+              && (( lease_age < DEPLOY_LEASE_TTL_SECONDS )); then
+              echo "deployment lease is held by ${previous_holder} (${lease_age}s old)" >&2
+              exit 1
+            fi
+            jq -cn \
+              --arg resource_version "$(jq -r '.metadata.resourceVersion' <<<"${existing}")" \
+              --argjson data "${desired_data}" \
+              '{
+                apiVersion:"v1",
+                kind:"ConfigMap",
+                metadata:{
+                  name:"opsia-deploy-lease",
+                  namespace:"management",
+                  resourceVersion:$resource_version
+                },
+                data:$data
+              }' \
+              | kubectl --context "${MGMT_CONTEXT}" replace --filename -
+          fi
+          echo "mode=deploy" >>"${GITHUB_OUTPUT}"
+          unset acquired_epoch console_sha desired_data existing holder lease_age
+          unset previous_epoch previous_holder previous_state service_sha
+
+      - name: Install deployment dependencies
+        if: steps.release_lease.outputs.mode == 'deploy'
+        run: uv sync --frozen
+
+      - name: Set up Docker Buildx
+        if: steps.release_lease.outputs.mode == 'deploy'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push immutable service image
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          registry="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          aws ecr describe-repositories --repository-names "${ECR_REPOSITORY}" >/dev/null
+          aws ecr get-login-password \
+            | docker login --username AWS --password-stdin "${registry}"
+          tagged_image="${registry}/${ECR_REPOSITORY}:${SOURCE_SHA}"
+          docker buildx build \
+            --file src/services/Dockerfile \
+            --tag "${tagged_image}" \
+            --cache-from type=gha,scope=opsia-service \
+            --cache-to type=gha,mode=max,scope=opsia-service \
+            --push \
+            .
+          digest="$(aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY}" \
+            --image-ids "imageTag=${SOURCE_SHA}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "image=${registry}/${ECR_REPOSITORY}@${digest}" >>"${GITHUB_OUTPUT}"
+
+      - name: Build and push immutable console image
+        if: steps.release_lease.outputs.mode == 'deploy'
+        id: console_image
+        shell: bash
+        run: |
+          set -euo pipefail
+          account_id="$(aws sts get-caller-identity --query Account --output text)"
+          registry="${account_id}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          aws ecr describe-repositories --repository-names "${CONSOLE_ECR_REPOSITORY}" >/dev/null
+          aws ecr get-login-password \
+            | docker login --username AWS --password-stdin "${registry}"
+          tagged_image="${registry}/${CONSOLE_ECR_REPOSITORY}:${SOURCE_SHA}"
+          docker buildx build \
+            --file frontend/Dockerfile \
+            --build-arg "SOURCE_SHA=${SOURCE_SHA}" \
+            --tag "${tagged_image}" \
+            --cache-from type=gha,scope=opsia-console \
+            --cache-to type=gha,mode=max,scope=opsia-console \
+            --push \
+            frontend
+          digest="$(aws ecr describe-images \
+            --repository-name "${CONSOLE_ECR_REPOSITORY}" \
+            --image-ids "imageTag=${SOURCE_SHA}" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+          [[ "${digest}" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "image=${registry}/${CONSOLE_ECR_REPOSITORY}@${digest}" >>"${GITHUB_OUTPUT}"
+
+      - name: Ensure persistent management runtime secrets
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            get secret management-runtime-secret >/dev/null 2>&1; then
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              create secret generic management-runtime-secret >/dev/null
+          fi
+
+          ensure_runtime_secret_value() {
+            local secret_key="$1"
+            local minimum_length="$2"
+            local encoded value patch
+            encoded="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get secret management-runtime-secret \
+              --output "jsonpath={.data.${secret_key}}")"
+            value=""
+            if [[ -n "${encoded}" ]]; then
+              value="$(printf '%s' "${encoded}" | base64 --decode 2>/dev/null || true)"
+            fi
+            if (( ${#value} >= minimum_length )); then
+              return
+            fi
+            value="$(openssl rand -hex 32)"
+            encoded="$(printf '%s' "${value}" | base64 | tr -d '\n')"
+            patch="$(jq -cn \
+              --arg key "${secret_key}" \
+              --arg value "${encoded}" \
+              '{data:{($key):$value}}')"
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              patch secret management-runtime-secret --type merge --patch "${patch}" \
+              >/dev/null
+          }
+          ensure_runtime_secret_value CREDENTIAL_ENCRYPTION_KEY 1
+          ensure_runtime_secret_value FILTER_CURSOR_SIGNING_KEY 32
+
+      - name: Render and verify auth bypass policy
+        if: steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl kustomize deploy/management >"${RUNNER_TEMP}/management.yaml"
+          uv run python scripts/verify_dev_auth_bypass.py rendered \
+            --manifest "${RUNNER_TEMP}/management.yaml"
+
+      # Cluster-scoped PriorityClasses are reconciled by management bootstrap.
+      # This deploy identity intentionally remains scoped to the management namespace.
+      - name: Verify shared management scheduling
+        if: steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          priority_probe="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" run \
+              opsia-priorityclass-preflight \
+              --image=registry.k8s.io/pause:3.10 \
+              --restart=Never \
+              --overrides='{"spec":{"priorityClassName":"gitops-control-critical"}}' \
+              --dry-run=server \
+              -o json
+          )"
+          jq -e '
+            .spec.priorityClassName == "gitops-control-critical"
+            and .spec.priority == 1000000
+            and .spec.preemptionPolicy == "PreemptLowerPriority"
+          ' >/dev/null <<<"${priority_probe}"
+          unset priority_probe
+
+      - name: Run pre-deploy smoke
+        id: pre_smoke
+        if: steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(bash scripts/pre-deploy-smoke.sh)"
+          printf '%s\n' "${result}"
+          frontend_bundle="${result#frontend_bundle=}"
+          [[ "${frontend_bundle}" =~ ^index-[A-Za-z0-9_-]+\.js$ ]]
+          echo "frontend_bundle=${frontend_bundle}" >>"${GITHUB_OUTPUT}"
+
+      - name: Capture current service digest rollback plan
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        id: service_capture
+        shell: bash
+        env:
+          SERVICE_DEPLOY_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            previous_sha="${PREVIOUS_RELEASE_SHA}"
+          else
+            previous_sha="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get configmap opsia-deploy-status \
+              -o jsonpath='{.data.dev_sha}')"
+          fi
+          [[ "${previous_sha}" =~ ^[0-9a-f]{40}$ ]]
+          kubectl kustomize deploy/management \
+            >"${RUNNER_TEMP}/management-rendered.yaml"
+          uv run python scripts/capture_image_digests.py \
+            --context "${MGMT_CONTEXT}" \
+            --namespace "${MGMT_NS}" \
+            --manifest "${RUNNER_TEMP}/management-rendered.yaml" \
+            --managed-repository "${SERVICE_DEPLOY_IMAGE%@*}" \
+            --previous-release-sha "${previous_sha}" \
+            --output "${RUNNER_TEMP}/service-rollback-plan.json"
+
+      - name: Capture current console digest rollback plan
+        id: console_capture
+        if: steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        env:
+          CONSOLE_DEPLOY_IMAGE: ${{ steps.console_image.outputs.image }}
+        run: |
+          set -euo pipefail
+          console_status="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get configmap opsia-console-deploy-status --output json 2>/dev/null || true
+          )"
+          if [[ -n "${console_status}" ]]; then
+            previous_sha="$(jq -er '.data.console_sha' <<<"${console_status}")"
+            if ! kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get deployment console-dev >/dev/null 2>&1; then
+              echo "console deploy status exists but console-dev is absent; refusing implicit bootstrap" >&2
+              exit 1
+            fi
+          else
+            if kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get deployment console-dev >/dev/null 2>&1; then
+              echo "console deploy status is absent while console-dev exists; refusing unprovable rollback" >&2
+              exit 1
+            fi
+            if [[ "${CONSOLE_BOOTSTRAP_ENABLED}" != "1" ]]; then
+              echo "first console deployment requires AWS_DEV_CONSOLE_BOOTSTRAP_ENABLED=1" >&2
+              exit 1
+            fi
+            previous_sha="0000000000000000000000000000000000000000"
+            echo "capturing explicitly authorized first-console bootstrap rollback plan"
+          fi
+          [[ "${previous_sha}" =~ ^[0-9a-f]{40}$ ]]
+          uv run python scripts/capture_image_digests.py \
+            --context "${MGMT_CONTEXT}" \
+            --namespace "${MGMT_NS}" \
+            --manifest deploy/management/console-dev.yaml \
+            --managed-repository "${CONSOLE_DEPLOY_IMAGE%@*}" \
+            --previous-release-sha "${previous_sha}" \
+            --output "${RUNNER_TEMP}/console-rollback-plan.json"
+          unset console_status previous_sha
+
+      - name: Reconcile canonical management services
+        if: steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python scripts/select_kubernetes_resources.py \
+            --input "${RUNNER_TEMP}/management.yaml" \
+            --kind Service \
+            --name api-gateway \
+            --name console-dev \
+            >"${RUNNER_TEMP}/management-services.yaml"
+
+          diff_exit=0
+          kubectl --context "${MGMT_CONTEXT}" diff \
+            --field-manager=opsia-dev-deploy \
+            --filename "${RUNNER_TEMP}/management-services.yaml" || diff_exit=$?
+          case "${diff_exit}" in
+            0|1) ;;
+            *) echo "management Service server-side diff failed" >&2; exit "${diff_exit}" ;;
+          esac
+          kubectl --context "${MGMT_CONTEXT}" apply \
+            --field-manager=opsia-dev-deploy \
+            --filename "${RUNNER_TEMP}/management-services.yaml"
+
+          api_gateway_service="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get service api-gateway --output json
+          )"
+          jq -e '
+            [.spec.ports[] | {port, targetPort}] | sort_by(.port)
+            == [
+              {"port": 80, "targetPort": "http"},
+              {"port": 8000, "targetPort": "http"}
+            ]
+          ' >/dev/null <<<"${api_gateway_service}"
+          console_service="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get service console-dev --output json
+          )"
+          jq -e '
+            [.spec.ports[] | {port, targetPort}]
+            == [{"port": 80, "targetPort": "http"}]
+          ' >/dev/null <<<"${console_service}"
+          unset api_gateway_service console_service diff_exit
+
+      - name: Reconcile agent API proxy runtime
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        run: |
+          set -euo pipefail
+          proxy_config="${RUNNER_TEMP}/agent-api-proxy-config.yaml"
+          proxy_resources="${RUNNER_TEMP}/agent-api-proxy-resources.yaml"
+
+          uv run python scripts/select_kubernetes_resources.py \
+            --input "${RUNNER_TEMP}/management.yaml" \
+            --kind ConfigMap \
+            --name agent-api-proxy-config \
+            >"${proxy_config}"
+          {
+            cat "${proxy_config}"
+            printf '%s\n' '---'
+            uv run python scripts/select_kubernetes_resources.py \
+              --input "${RUNNER_TEMP}/management.yaml" \
+              --kind Deployment \
+              --name agent-api-proxy
+            printf '%s\n' '---'
+            uv run python scripts/select_kubernetes_resources.py \
+              --input "${RUNNER_TEMP}/management.yaml" \
+              --kind PodDisruptionBudget \
+              --name agent-api-proxy
+            printf '%s\n' '---'
+            uv run python scripts/select_kubernetes_resources.py \
+              --input "${RUNNER_TEMP}/management.yaml" \
+              --kind Service \
+              --name agent-api-proxy
+          } >"${proxy_resources}"
+
+          diff_exit=0
+          kubectl --context "${MGMT_CONTEXT}" diff \
+            --field-manager=opsia-dev-deploy \
+            --filename "${proxy_resources}" || diff_exit=$?
+          case "${diff_exit}" in
+            0|1) ;;
+            *) echo "agent API proxy server-side diff failed" >&2; exit "${diff_exit}" ;;
+          esac
+          kubectl --context "${MGMT_CONTEXT}" apply \
+            --field-manager=opsia-dev-deploy \
+            --filename "${proxy_resources}"
+
+          proxy_config_sha256="$(sha256sum "${proxy_config}" | awk '{print $1}')"
+          [[ "${proxy_config_sha256}" =~ ^[0-9a-f]{64}$ ]]
+          proxy_patch="$(
+            jq -cn \
+              --arg checksum "${proxy_config_sha256}" \
+              '{spec:{template:{metadata:{annotations:{"opsia.dev/config-sha256":$checksum}}}}}'
+          )"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            patch deployment agent-api-proxy --type merge --patch "${proxy_patch}"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            rollout status deployment/agent-api-proxy --timeout=300s
+
+          installed_checksum="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get deployment agent-api-proxy \
+              --output jsonpath='{.spec.template.metadata.annotations.opsia\.dev/config-sha256}'
+          )"
+          test "${installed_checksum}" = "${proxy_config_sha256}"
+          unset proxy_config proxy_resources proxy_config_sha256 proxy_patch installed_checksum diff_exit
+
+      - name: Enforce live auth bypass zero
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            set env deployment/api-gateway DEV_AUTH_BYPASS=0 CONSOLE_ORIGIN=http://console-dev.management.svc.cluster.local:80
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            rollout status deployment/api-gateway --timeout=300s
+          uv run python scripts/verify_dev_auth_bypass.py live \
+            --context "${MGMT_CONTEXT}" \
+            --namespace "${MGMT_NS}"
+
+      - name: Run fail-closed database migration
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        env:
+          DEPLOY_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          kubectl set image \
+            --filename deploy/management/migration-job.yaml \
+            migration="${DEPLOY_IMAGE}" \
+            --local \
+            --output yaml >"${RUNNER_TEMP}/migration-job.yaml"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            delete job management-database-migration --ignore-not-found --wait=true
+          kubectl --context "${MGMT_CONTEXT}" apply \
+            --filename "${RUNNER_TEMP}/migration-job.yaml"
+          deadline=$((SECONDS + 900))
+          while (( SECONDS < deadline )); do
+            succeeded="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get job management-database-migration \
+              -o jsonpath='{.status.succeeded}' 2>/dev/null || true)"
+            failed="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get job management-database-migration \
+              -o jsonpath='{.status.failed}' 2>/dev/null || true)"
+            if [[ "${succeeded}" == "1" ]]; then
+              break
+            fi
+            if [[ -n "${failed}" && "${failed}" != "0" ]]; then
+              kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+                logs job/management-database-migration --all-containers --tail=300 || true
+              kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+                describe job management-database-migration || true
+              exit 1
+            fi
+            sleep 2
+          done
+          if [[ "${succeeded:-}" != "1" ]]; then
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              logs job/management-database-migration --all-containers --tail=300 || true
+            exit 1
+          fi
+
+      - name: Bootstrap fixed dev administrator
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        env:
+          DEPLOY_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          cleanup() {
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              delete job management-admin-bootstrap --ignore-not-found --wait=true >/dev/null 2>&1 || true
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              delete secret management-admin-bootstrap --ignore-not-found --wait=true >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          cleanup
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            create secret generic management-admin-bootstrap \
+            --from-literal="AUTH_PASSWORD=${AUTH_PASSWORD}" \
+            --dry-run=client \
+            --output yaml \
+            | kubectl --context "${MGMT_CONTEXT}" apply --filename -
+          kubectl set image \
+            --filename deploy/management/admin-bootstrap-job.yaml \
+            bootstrap="${DEPLOY_IMAGE}" \
+            --local \
+            --output yaml >"${RUNNER_TEMP}/admin-bootstrap-job.yaml"
+          kubectl --context "${MGMT_CONTEXT}" apply \
+            --filename "${RUNNER_TEMP}/admin-bootstrap-job.yaml"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            wait --for=condition=complete job/management-admin-bootstrap --timeout=300s
+
+      - name: Synchronize fixed dev runtime identity
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        run: |
+          set -euo pipefail
+          admin_id="$(python3 - <<'PY'
+          import os
+          import uuid
+
+          project_slug = os.environ["PROJECT_SLUG"].strip()
+          identifier = os.environ["AUTH_EMAIL"].strip().lower()
+          print("user-" + str(uuid.uuid5(uuid.NAMESPACE_URL, f"{project_slug}:{identifier}")))
+          PY
+          )"
+          [[ "${admin_id}" =~ ^user-[0-9a-f-]{36}$ ]]
+          echo "DEV_ADMIN_USER_ID=${admin_id}" >>"${GITHUB_ENV}"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            patch configmap management-runtime-config --type merge \
+            --patch "{\"data\":{\"TRUSTED_PROXY_AUTH_USER_ID\":\"${admin_id}\",\"CONTROL_ALLOWED_NAMESPACES\":\"sandbox,color-turf\",\"POD_EXEC_ALLOWED_NAMESPACES\":\"sandbox,color-turf\",\"TARGET_DEFAULT_CONTROL_NAMESPACES\":\"sandbox,color-turf\"}}"
+
+          if [[ -n "${LLM_API_KEY}" ]]; then
+            llm_provider_encoded="$(printf '%s' "${LLM_PROVIDER}" | base64 | tr -d '\n')"
+            llm_model_encoded="$(printf '%s' "${LLM_MODEL}" | base64 | tr -d '\n')"
+            llm_key_encoded="$(printf '%s' "${LLM_API_KEY}" | base64 | tr -d '\n')"
+            llm_patch="$(jq -cn \
+              --arg provider "${llm_provider_encoded}" \
+              --arg model "${llm_model_encoded}" \
+              --arg key "${llm_key_encoded}" \
+              '{data:{LLM_PROVIDER:$provider,LLM_MODEL:$model,LLM_API_KEY:$key}}')"
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              patch secret management-runtime-secret --type merge --patch "${llm_patch}" \
+              >/dev/null
+          fi
+          unset admin_id llm_provider_encoded llm_model_encoded llm_key_encoded llm_patch
+
+      - name: Pin target agent image in runtime config
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        env:
+          TARGET_AGENT_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          [[ "${TARGET_AGENT_IMAGE}" =~ ^[A-Za-z0-9._:/-]+@sha256:[0-9a-f]{64}$ ]]
+          [[ "${AGENT_API_BASE_URL}" =~ ^https://[^/?#[:space:]]+/api$ ]]
+          gitops_image_before="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            get configmap management-runtime-config \
+            --output jsonpath='{.data.GITOPS_WEBHOOK_IMAGE}')"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            patch configmap management-runtime-config --type merge \
+            --patch "{\"data\":{\"PUBLIC_MANAGEMENT_BASE_URL\":\"${AGENT_API_BASE_URL}\",\"TARGET_AGENT_IMAGE\":\"${TARGET_AGENT_IMAGE}\"}}"
+          installed_management_base_url="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            get configmap management-runtime-config \
+            --output jsonpath='{.data.PUBLIC_MANAGEMENT_BASE_URL}')"
+          installed_target_image="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            get configmap management-runtime-config \
+            --output jsonpath='{.data.TARGET_AGENT_IMAGE}')"
+          gitops_image_after="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            get configmap management-runtime-config \
+            --output jsonpath='{.data.GITOPS_WEBHOOK_IMAGE}')"
+          test "${installed_management_base_url}" = "${AGENT_API_BASE_URL}"
+          test "${installed_target_image}" = "${TARGET_AGENT_IMAGE}"
+          test "${gitops_image_after}" = "${gitops_image_before}"
+          unset gitops_image_before gitops_image_after installed_management_base_url installed_target_image
+
+      - name: Roll out immutable service digest
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        env:
+          DEPLOY_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/rollout_image_digest.py \
+            --plan "${RUNNER_TEMP}/service-rollback-plan.json" \
+            --manifest "${RUNNER_TEMP}/management-rendered.yaml" \
+            --reconcile-existing-specs \
+            --context "${MGMT_CONTEXT}" \
+            --image "${DEPLOY_IMAGE}" \
+            --timeout 600s
+
+      - name: Reconcile canonical console runtime config
+        if: steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          console_config="${RUNNER_TEMP}/console-runtime-config.yaml"
+          uv run python scripts/select_kubernetes_resources.py \
+            --input deploy/management/console-dev.yaml \
+            --kind ConfigMap \
+            --name console-dev-nginx \
+            >"${console_config}"
+
+          diff_exit=0
+          kubectl --context "${MGMT_CONTEXT}" diff \
+            --field-manager=opsia-dev-deploy \
+            --filename "${console_config}" || diff_exit=$?
+          case "${diff_exit}" in
+            0|1) ;;
+            *) echo "console ConfigMap server-side diff failed" >&2; exit "${diff_exit}" ;;
+          esac
+          kubectl --context "${MGMT_CONTEXT}" apply \
+            --field-manager=opsia-dev-deploy \
+            --filename "${console_config}"
+
+          desired_template="$(uv run python - "${console_config}" <<'PY'
+          import sys
+          from pathlib import Path
+
+          import yaml
+
+          document = yaml.safe_load(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          print(document["data"]["default.conf.template"], end="")
+          PY
+          )"
+          live_template="$(kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            get configmap console-dev-nginx \
+            --output jsonpath='{.data.default\.conf\.template}')"
+          test "${live_template}" = "${desired_template}"
+          unset console_config desired_template live_template diff_exit
+
+      - name: Roll out immutable console digest
+        id: console_rollout
+        if: steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        env:
+          CONSOLE_DEPLOY_IMAGE: ${{ steps.console_image.outputs.image }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/rollout_image_digest.py \
+            --plan "${RUNNER_TEMP}/console-rollback-plan.json" \
+            --manifest deploy/management/console-dev.yaml \
+            --reconcile-existing-specs \
+            --spec-diff-out "${RUNNER_TEMP}/console-spec-diff.json" \
+            --context "${MGMT_CONTEXT}" \
+            --image "${CONSOLE_DEPLOY_IMAGE}" \
+            --timeout 600s
+
+      - name: Upload console spec reconciliation evidence
+        if: >-
+          always() &&
+          steps.release_lease.outputs.mode == 'deploy' &&
+          steps.console_rollout.outcome != 'skipped'
+        uses: actions/upload-artifact@v4
+        with:
+          name: console-spec-reconciliation-${{ env.SOURCE_SHA }}
+          path: ${{ runner.temp }}/console-spec-diff.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Verify live auth bypass policy after rollout
+        if: steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run python scripts/verify_dev_auth_bypass.py live \
+            --context "${MGMT_CONTEXT}" \
+            --namespace "${MGMT_NS}"
+
+      - name: Run post-deploy smoke
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        env:
+          PRE_DEPLOY_FRONTEND_BUNDLE: ${{ steps.pre_smoke.outputs.frontend_bundle }}
+          REQUIRE_FRONTEND_BUNDLE_CHANGE: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+          EXPECTED_SERVICE_IMAGE: ${{ steps.image.outputs.image }}
+          EXPECTED_CONSOLE_IMAGE: ${{ steps.console_image.outputs.image }}
+          SERVICE_ROLLBACK_PLAN: ${{ runner.temp }}/service-rollback-plan.json
+          CONSOLE_ROLLBACK_PLAN: ${{ runner.temp }}/console-rollback-plan.json
+          AUTH_COOKIE_JAR_OUT: ${{ runner.temp }}/browser-auth-cookie.jar
+        run: |
+          set -euo pipefail
+          EXPECTED_ALEMBIC_HEAD="$(uv run alembic heads | awk '{print $1}')"
+          export EXPECTED_ALEMBIC_HEAD
+          RUN_SMOKE=1 SMOKE_COMMIT_SHA="${SOURCE_SHA}" bash scripts/post-deploy-smoke.sh
+
+      - name: Run post-deploy console smoke
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'CONSOLE'
+        shell: bash
+        env:
+          PRE_DEPLOY_FRONTEND_BUNDLE: ${{ steps.pre_smoke.outputs.frontend_bundle }}
+          EXPECTED_CONSOLE_IMAGE: ${{ steps.console_image.outputs.image }}
+          CONSOLE_ROLLBACK_PLAN: ${{ runner.temp }}/console-rollback-plan.json
+        run: bash scripts/post-deploy-console-smoke.sh
+
+      - name: Verify already released public SHA
+        if: steps.release_lease.outputs.mode == 'verify'
+        shell: bash
+        run: |
+          set -euo pipefail
+          source scripts/lib/public-edge.sh
+          wait_for_public_edge_release "${BASE_URL}" "" "${SOURCE_SHA}"
+
+      - name: Run authenticated browser route smoke
+        id: browser_smoke
+        env:
+          AUTH_COOKIE_JAR: ${{ runner.temp }}/browser-auth-cookie.jar
+        shell: bash
+        run: |
+          set -euo pipefail
+          forward_log="$(mktemp)"
+          forward_pid=""
+          cleanup_browser_forward() {
+            if [[ -n "${forward_pid}" ]] && kill -0 "${forward_pid}" 2>/dev/null; then
+              kill "${forward_pid}" 2>/dev/null || true
+              wait "${forward_pid}" 2>/dev/null || true
+            fi
+            rm -f -- "${forward_log}"
+          }
+          trap cleanup_browser_forward EXIT
+
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" port-forward \
+            --address 127.0.0.1 service/console-dev :80 \
+            >"${forward_log}" 2>&1 &
+          forward_pid="$!"
+          console_port=""
+          for attempt in $(seq 1 60); do
+            console_port="$(
+              sed -nE \
+                's/^Forwarding from 127[.]0[.]0[.]1:([0-9]+) -> [0-9]+$/\1/p' \
+                "${forward_log}" | head -n 1
+            )"
+            if [[ "${console_port}" =~ ^[1-9][0-9]*$ ]]; then
+              break
+            fi
+            if ! kill -0 "${forward_pid}" 2>/dev/null; then
+              cat "${forward_log}" >&2
+              exit 1
+            fi
+            sleep 0.5
+          done
+          if ! [[ "${console_port}" =~ ^[1-9][0-9]*$ ]]; then
+            cat "${forward_log}" >&2
+            echo "console port-forward did not become ready after ${attempt} attempts" >&2
+            exit 1
+          fi
+
+          BASE_URL="http://127.0.0.1:${console_port}" \
+            npm --prefix frontend run smoke:routes
+
+      - name: Capture service crash diagnostics
+        if: failure() && steps.browser_smoke.outcome == 'failure' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        run: |
+          set -uo pipefail
+          redact_diagnostics() {
+            uv run python scripts/redact_diagnostic_stream.py
+          }
+
+          pods_json="$(
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get pods --selector app=api-gateway --output json 2>/dev/null
+          )" || pods_json='{"items":[]}'
+          mapfile -t pod_rows < <(
+            jq -r '.items[] | [.metadata.name, .metadata.uid] | @tsv' <<<"${pods_json}"
+          )
+
+          echo "::group::api-gateway rollout state"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            get deployment api-gateway --output json 2>&1 \
+            | jq -c '{
+                metadata: {
+                  name: .metadata.name,
+                  generation: .metadata.generation,
+                  observedGeneration: .status.observedGeneration
+                },
+                spec: {
+                  replicas: .spec.replicas,
+                  strategy: .spec.strategy
+                },
+                status: {
+                  availableReplicas: .status.availableReplicas,
+                  readyReplicas: .status.readyReplicas,
+                  replicas: .status.replicas,
+                  unavailableReplicas: .status.unavailableReplicas,
+                  updatedReplicas: .status.updatedReplicas,
+                  conditions: [
+                    .status.conditions[]? | {
+                      type,
+                      status,
+                      reason,
+                      lastTransitionTime
+                    }
+                  ]
+                }
+              }' \
+            | redact_diagnostics || true
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            rollout status deployment/api-gateway --timeout=5s 2>&1 \
+            | redact_diagnostics || true
+          echo "::endgroup::"
+
+          if (( ${#pod_rows[@]} == 0 )); then
+            echo "api-gateway diagnostics: no matching pods"
+          fi
+
+          for pod_row in "${pod_rows[@]}"; do
+            IFS=$'\t' read -r pod_name pod_uid <<<"${pod_row}"
+            [[ "${pod_name}" =~ ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$ ]] || continue
+            [[ "${pod_uid}" =~ ^[0-9a-f-]{36}$ ]] || continue
+
+            echo "::group::api-gateway pod ${pod_name} state"
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get pod "${pod_name}" --output json 2>&1 \
+              | jq -c '{
+                  metadata: {
+                    name: .metadata.name,
+                    uid: .metadata.uid,
+                    creationTimestamp: .metadata.creationTimestamp
+                  },
+                  status: {
+                    phase: .status.phase,
+                    reason: (.status.reason // null),
+                    containerStatuses: [
+                      .status.containerStatuses[]? | {
+                        name,
+                        ready,
+                        restartCount,
+                        state: {
+                          waiting: (
+                            if .state.waiting
+                            then {reason: .state.waiting.reason}
+                            else null
+                            end
+                          ),
+                          terminated: (
+                            if .state.terminated
+                            then {
+                              reason: .state.terminated.reason,
+                              exitCode: .state.terminated.exitCode,
+                              signal: .state.terminated.signal,
+                              startedAt: .state.terminated.startedAt,
+                              finishedAt: .state.terminated.finishedAt
+                            }
+                            else null
+                            end
+                          ),
+                          running: (
+                            if .state.running
+                            then {startedAt: .state.running.startedAt}
+                            else null
+                            end
+                          )
+                        },
+                        lastState: {
+                          terminated: (
+                            if .lastState.terminated
+                            then {
+                              reason: .lastState.terminated.reason,
+                              exitCode: .lastState.terminated.exitCode,
+                              signal: .lastState.terminated.signal,
+                              startedAt: .lastState.terminated.startedAt,
+                              finishedAt: .lastState.terminated.finishedAt
+                            }
+                            else null
+                            end
+                          )
+                        }
+                      }
+                    ]
+                  }
+                }' \
+              | redact_diagnostics || true
+            echo "::endgroup::"
+
+            echo "::group::api-gateway pod ${pod_name} describe"
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              describe pod "${pod_name}" 2>&1 \
+              | redact_diagnostics || true
+            echo "::endgroup::"
+
+            echo "::group::api-gateway pod ${pod_name} previous logs"
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              logs pod/"${pod_name}" --all-containers=true --previous \
+              --tail=500 --timestamps=true 2>&1 \
+              | redact_diagnostics || true
+            echo "::endgroup::"
+
+            echo "::group::api-gateway pod ${pod_name} current logs"
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              logs pod/"${pod_name}" --all-containers=true --tail=500 \
+              --timestamps=true 2>&1 \
+              | redact_diagnostics || true
+            echo "::endgroup::"
+
+            echo "::group::api-gateway pod ${pod_name} related events"
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              get events \
+              --field-selector "involvedObject.uid=${pod_uid}" \
+              --sort-by=.lastTimestamp --output json 2>&1 \
+              | jq -c '{
+                  items: [
+                    .items[]? | {
+                      type,
+                      reason,
+                      message,
+                      firstTimestamp,
+                      lastTimestamp,
+                      count,
+                      source: .source.component
+                    }
+                  ]
+                }' \
+              | redact_diagnostics || true
+            echo "::endgroup::"
+          done
+          unset pods_json pod_rows pod_row pod_name pod_uid
+
+      - name: Remove browser authentication handoff
+        if: always()
+        run: rm -f -- "${RUNNER_TEMP}/browser-auth-cookie.jar"
+
+      - name: Upgrade existing target agent policies
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        shell: bash
+        env:
+          DEPLOY_IMAGE: ${{ steps.image.outputs.image }}
+        run: |
+          set -euo pipefail
+          kubectl set image \
+            --filename deploy/management/target-policy-upgrade-job.yaml \
+            upgrade="${DEPLOY_IMAGE}" \
+            --local \
+            --output yaml >"${RUNNER_TEMP}/target-policy-upgrade-job.yaml"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            delete job target-policy-upgrade --ignore-not-found --wait=true
+          kubectl --context "${MGMT_CONTEXT}" apply \
+            --filename "${RUNNER_TEMP}/target-policy-upgrade-job.yaml"
+          if ! kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            wait --for=condition=complete job/target-policy-upgrade --timeout=300s; then
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              logs job/target-policy-upgrade --all-containers --tail=500 || true
+            kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+              describe job target-policy-upgrade || true
+            exit 1
+          fi
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            logs job/target-policy-upgrade --all-containers --tail=500
+
+      - name: Record successful dev SHA in cluster
+        if: steps.release_lease.outputs.mode == 'deploy' && env.DEPLOYMENT_SCOPE == 'FULL'
+        id: status
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            create configmap opsia-deploy-status \
+            --from-literal="dev_sha=${SOURCE_SHA}" \
+            --dry-run=client \
+            --output yaml \
+            | kubectl --context "${MGMT_CONTEXT}" apply --filename -
+
+      - name: Record successful console SHA in cluster
+        if: >-
+          steps.release_lease.outputs.mode == 'deploy' &&
+          (env.DEPLOYMENT_SCOPE == 'FULL' || env.DEPLOYMENT_SCOPE == 'CONSOLE')
+        id: console_status
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            create configmap opsia-console-deploy-status \
+            --from-literal="console_sha=${SOURCE_SHA}" \
+            --dry-run=client \
+            --output yaml \
+            | kubectl --context "${MGMT_CONTEXT}" apply --filename -
+
+      - name: Retire legacy console deployment
+        if: success() && steps.release_lease.outputs.mode == 'deploy'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            delete deployment/console service/console --ignore-not-found --wait=true
+
+      - name: Restore previous release after failure
+        if: >-
+          failure() &&
+          steps.release_lease.outputs.mode == 'deploy' &&
+          steps.console_capture.outcome == 'success'
+        shell: bash
+        run: |
+          set -uo pipefail
+          rollback_failed=0
+          uv run python scripts/revert_image_digests.py \
+            --plan "${RUNNER_TEMP}/console-rollback-plan.json" \
+            --context "${MGMT_CONTEXT}" \
+            --timeout 600s \
+            --apply || rollback_failed=1
+          if [[ "${DEPLOYMENT_SCOPE}" == "FULL" ]]; then
+            uv run python scripts/revert_image_digests.py \
+              --plan "${RUNNER_TEMP}/service-rollback-plan.json" \
+              --context "${MGMT_CONTEXT}" \
+              --timeout 600s \
+              --apply || rollback_failed=1
+          fi
+          exit "${rollback_failed}"
+
+      - name: Finalize deployment lease
+        if: always() && steps.release_lease.outputs.mode == 'deploy'
+        shell: bash
+        env:
+          RELEASE_JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          case "${RELEASE_JOB_STATUS}" in
+            success) lease_state="successful" ;;
+            failure) lease_state="failed" ;;
+            *) lease_state="expired" ;;
+          esac
+          holder="${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}"
+          patch="$(jq -cn \
+            --arg holder "${holder}" \
+            --arg state "${lease_state}" \
+            --arg finished_epoch "$(date -u +%s)" \
+            '[
+              {op:"test",path:"/data/holder",value:$holder},
+              {op:"replace",path:"/data/state",value:$state},
+              {op:"add",path:"/data/finished_epoch",value:$finished_epoch}
+            ]')"
+          kubectl --context "${MGMT_CONTEXT}" -n "${MGMT_NS}" \
+            patch configmap opsia-deploy-lease --type json --patch "${patch}"
+
+      - name: Restore bounded cluster access
+        if: always() && steps.cluster_access.outputs.modified == 'true'
+        shell: bash
+        env:
+          PREVIOUS_PUBLIC_ACCESS_CIDRS: ${{ steps.cluster_access.outputs.previous_cidrs }}
+        run: |
+          set -euo pipefail
+          jq -e '
+            type == "array"
+            and length > 0
+            and all(
+              type == "string"
+              and . != "0.0.0.0/0"
+              and . != "::/0"
+            )
+          ' >/dev/null <<<"${PREVIOUS_PUBLIC_ACCESS_CIDRS}"
+          cluster_network="$(
+            aws eks describe-cluster \
+              --region "${AWS_REGION}" \
+              --name "${EKS_CLUSTER}" \
+              --query 'cluster.resourcesVpcConfig' \
+              --output json
+          )"
+          resources_vpc_config="$(
+            jq -cn \
+              --argjson cidrs "${PREVIOUS_PUBLIC_ACCESS_CIDRS}" \
+              --argjson private_access "$(jq '.endpointPrivateAccess' <<<"${cluster_network}")" \
+              '{
+                endpointPublicAccess:true,
+                endpointPrivateAccess:$private_access,
+                publicAccessCidrs:$cidrs
+              }'
+          )"
+          update_id="$(
+            aws eks update-cluster-config \
+              --region "${AWS_REGION}" \
+              --name "${EKS_CLUSTER}" \
+              --resources-vpc-config "${resources_vpc_config}" \
+              --query 'update.id' \
+              --output text
+          )"
+          deadline=$((SECONDS + 900))
+          while true; do
+            update_status="$(
+              aws eks describe-update \
+                --region "${AWS_REGION}" \
+                --name "${EKS_CLUSTER}" \
+                --update-id "${update_id}" \
+                --query 'update.status' \
+                --output text
+            )"
+            case "${update_status}" in
+              Successful) break ;;
+              Failed|Cancelled)
+                echo "EKS access restoration ended with ${update_status}" >&2
+                exit 1
+                ;;
+            esac
+            if (( SECONDS >= deadline )); then
+              echo "EKS access restoration timed out" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          restored="$(
+            aws eks describe-cluster \
+              --region "${AWS_REGION}" \
+              --name "${EKS_CLUSTER}" \
+              --query 'cluster.resourcesVpcConfig.publicAccessCidrs' \
+              --output json
+          )"
+          jq -e --argjson expected "${PREVIOUS_PUBLIC_ACCESS_CIDRS}" \
+            'sort == ($expected | sort)' >/dev/null <<<"${restored}"

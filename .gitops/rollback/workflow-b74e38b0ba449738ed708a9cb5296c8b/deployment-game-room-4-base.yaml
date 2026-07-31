@@ -1,0 +1,133 @@
+kind: Deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: game-server
+      opsia.dev/room-id: room-4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    spec:
+      containers:
+      - env:
+        - name: ROOM_ID
+          value: room-4
+        - name: OPSIA_MAP_NAME
+          value: woods
+        - name: OPSIA_ROOM_PROFILE
+          value: woods
+        - name: OPSIA_HANDOFF_ROLE
+          value: active-candidate
+        - name: OPSIA_ROLE
+          value: auto
+        - name: OPSIA_GAME_BUILD_REVISION
+          value: stable
+        - name: ROOM_EPOCH
+          value: '1'
+        - name: OPSIA_WORKLOAD_NAME
+          value: game-room-4
+        - name: OPSIA_RESOURCE_KIND
+          value: Deployment
+        - name: REDIS_URL
+          value: redis://cache:6379/0
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+              apiVersion: v1
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+              apiVersion: v1
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+              apiVersion: v1
+        - name: STRICT_MODE
+          value: 'false'
+        - name: OPSIA_ROOM
+          value: 'true'
+        - name: OPSIA_BOT_STARTER_GUNS
+          value: mp5,mac10,vector,hk416,ak47,scar,mosin,m870,m9
+        - name: OPSIA_INFINITE
+          value: 'true'
+        - name: SURVEV_CLIENT_DIR
+          value: /app/upstream-survev/client/dist
+        - name: REQUIRE_SESSION_GATEWAY
+          value: 'true'
+        - name: SESSION_GATEWAY_SHARED_SECRET
+          valueFrom:
+            secretKeyRef:
+              key: shared-secret
+              name: demo-game-session-gateway
+        - name: REQUIRE_CONTROL_TOKEN
+          value: 'true'
+        - name: OPS_CONTROL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: demo-game-control
+        name: game-server
+        image: ghcr.io/jungle-303-04/demo-game/game-server:276977d3628e8cc5c7ce8c362add3b4111c7883e
+        ports:
+        - name: http
+          containerPort: 8001
+        resources:
+          limits:
+            cpu: '3'
+            memory: 4Gi
+          requests:
+            cpu: '1'
+            memory: 2Gi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          periodSeconds: 10
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 2
+          failureThreshold: 30
+          initialDelaySeconds: 5
+        imagePullPolicy: Always
+      terminationGracePeriodSeconds: 30
+    metadata:
+      labels:
+        app: game-server
+        opsia.dev/fleet: live
+        opsia.dev/room-id: room-4
+        opsia.dev/game-role: active
+        game.opsia.dev/room-id: room-4
+        opsia.dev/rollout-role: active-candidate
+        opsia.dev/room-profile: woods
+        app.kubernetes.io/part-of: demo-game
+        opsia.dev/recovery-continuity: protected
+      annotations:
+        prometheus.io/path: /metrics
+        prometheus.io/port: '8001'
+        opsia.dev/room-epoch: '1'
+        prometheus.io/scrape: 'true'
+  minReadySeconds: 15
+metadata:
+  name: game-room-4
+  labels:
+    app: game-server
+    opsia.dev/fleet: live
+    opsia.dev/room-id: room-4
+    opsia.dev/game-role: active
+    game.opsia.dev/room-id: room-4
+    opsia.dev/rollout-role: active-candidate
+    opsia.dev/room-profile: woods
+    app.kubernetes.io/part-of: demo-game
+    opsia.dev/recovery-continuity: protected
+  namespace: sandbox
+apiVersion: apps/v1

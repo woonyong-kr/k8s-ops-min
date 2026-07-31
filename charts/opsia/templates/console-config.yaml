@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "opsia.fullname" . }}-console
+  labels:
+    {{- include "opsia.labels" . | nindent 4 }}
+    app.kubernetes.io/component: console
+data:
+  security-headers.inc: |
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    add_header Content-Security-Policy "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'" always;
+  default.conf: |
+    server {
+      listen 8080;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+      client_max_body_size 2m;
+
+      include /etc/nginx/conf.d/security-headers.inc;
+
+      location = /metrics {
+        return 404;
+      }
+
+      location = /api/metrics {
+        return 404;
+      }
+
+      location ^~ /api/install/ {
+        access_log off;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Kubeheal-Internal-Auth "";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:8000/install/;
+      }
+
+      location /api/live/ {
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Kubeheal-Internal-Auth "";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_pass http://127.0.0.1:8001/live/;
+      }
+
+      location = /api/agent/inventory/snapshots {
+        client_max_body_size 16m;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Kubeheal-Internal-Auth "";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:8000/agent/inventory/snapshots;
+      }
+
+      location /api/ {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Kubeheal-Internal-Auth "";
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_pass http://127.0.0.1:8000/;
+      }
+
+      location /assets/ {
+        include /etc/nginx/conf.d/security-headers.inc;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+      }
+
+      location / {
+        include /etc/nginx/conf.d/security-headers.inc;
+        expires -1;
+        add_header Cache-Control "no-store";
+        try_files $uri $uri/ /index.html;
+      }
+    }

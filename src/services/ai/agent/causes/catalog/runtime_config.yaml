@@ -1,0 +1,92 @@
+# RCA 원인 룰 카탈로그 — ConfigMap / runtime config 계열
+# 근거:
+# - rca_ai_safepr_platform_data_catalog.xlsx / Incident Evidence Bundles
+# - Kubernetes CreateContainerConfigError, ConfigMap key/reference, env/mount 설정 오류 패턴
+rules:
+  - id: "runtime_config_error"
+    symptoms:
+      - "ConfigMap not found"
+      - "CreateContainerConfigError"
+      - "Invalid environment config"
+    required_sources: ["kubernetes", "logs", "metadata"]
+    candidates:
+      - candidate_id: "missing_configmap_reference"
+        title: "ConfigMap 참조 누락"
+        description: "Pod가 참조하는 ConfigMap이 없거나 namespace가 맞지 않아 컨테이너 config 생성이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "Pod.spec.envFrom.configMapRef 또는 volume.configMap 참조 확인"
+          - "event에 configmap not found 또는 CreateContainerConfigError 확인"
+          - "최근 ConfigMap rename/delete 또는 manifest 변경 여부 확인"
+        signals:
+          - id: "missing_configmap_signal"
+            any_of:
+              - event_pattern: "configmap"
+              - event_pattern: "not found"
+              - event_pattern: "CreateContainerConfigError"
+              - log_pattern: "configmap not found"
+
+      - candidate_id: "config_key_missing"
+        title: "ConfigMap key 누락"
+        description: "ConfigMap 객체는 있지만 필요한 key가 없어 env 주입 또는 mount 구성이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "env.valueFrom.configMapKeyRef key와 ConfigMap data key 비교"
+          - "event에 couldn't find key 또는 optional=false 오류 확인"
+          - "최근 ConfigMap template, Helm values, Kustomize patch 변경 여부 확인"
+        signals:
+          - id: "config_key_missing_signal"
+            any_of:
+              - event_pattern: "couldn't find key"
+              - event_pattern: "could not find key"
+              - event_pattern: "key not found"
+              - log_pattern: "missing config key"
+
+      - candidate_id: "invalid_env_value"
+        title: "잘못된 환경변수 값"
+        description: "환경변수 값 형식, 필수 값 누락, endpoint/port 오타 때문에 애플리케이션 시작 또는 연결이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "앱 로그에 invalid env, missing required config, parse error 확인"
+          - "ConfigMap/Secret reference와 실제 runtime env 이름 비교"
+          - "최근 values 변경 이후 동일 증상이 시작됐는지 확인"
+        signals:
+          - id: "invalid_env_value_signal"
+            any_of:
+              - log_pattern: "invalid env"
+              - log_pattern: "missing required config"
+              - log_pattern: "invalid configuration"
+              - log_pattern: "failed to parse"
+              - log_pattern: "environment variable"
+
+      - candidate_id: "config_volume_mount_failed"
+        title: "Config volume mount 실패"
+        description: "ConfigMap 기반 volume projection 또는 mount 경로 설정 문제로 컨테이너 시작이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+          - "metadata:referenced_config_objects"
+        checks:
+          - "event에 MountVolume.SetUp failed for volume과 configmap 관련 문구 확인"
+          - "volumeMounts.mountPath/subPath와 ConfigMap key 이름 비교"
+          - "readOnly/config projection 설정 변경 여부 확인"
+        signals:
+          - id: "config_volume_mount_signal"
+            any_of:
+              - event_pattern: "MountVolume.SetUp failed"
+              - event_pattern: "configmap"
+              - event_pattern: "subPath"
+              - log_pattern: "config volume"

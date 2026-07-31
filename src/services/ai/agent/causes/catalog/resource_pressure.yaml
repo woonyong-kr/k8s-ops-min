@@ -1,0 +1,196 @@
+# RCA 원인 룰 카탈로그 — CPU / Memory / Disk / PID resource pressure 계열
+#
+# 근거 자료:
+# - rca_ai_safepr_platform_data_catalog.xlsx / Incident Evidence Bundles
+# - Google Sheet gid=104 RCA rule 후보 목록
+rules:
+  - id: "oom_memory_pressure"
+    symptoms:
+      - "OOMKilled / memory pressure"
+      - "OOMKilled"
+      - "Memory Pressure"
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "memory_limit_too_low"
+        title: "메모리 limit 과소 설정"
+        description: "컨테이너 memory limit이 실제 working set보다 낮아 OOMKilled가 발생했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "lastState.terminated.reason=OOMKilled 또는 exitCode=137 확인"
+          - "memory working set이 limit에 근접했는지 확인"
+          - "limit/request 상향이 node capacity와 정책상 가능한지 확인"
+        signals:
+          - id: "memory_limit_oom_signal"
+            any_of:
+              - fact: "terminated_reason=OOMKilled"
+              - fact: "exit_code=137"
+              - event_pattern: "oom"
+              - log_pattern: "out of memory"
+      - candidate_id: "memory_leak"
+        title: "메모리 누수"
+        description: "시간이 지나며 memory usage가 지속적으로 증가해 컨테이너가 OOMKilled됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "incident window 전후 memory usage 증가 추세 확인"
+          - "heap, allocation, leak 관련 로그 확인"
+          - "최근 app release 이후 같은 패턴이 시작됐는지 확인"
+        signals:
+          - id: "memory_leak_log_signal"
+            any_of:
+              - log_pattern: "memory leak"
+              - log_pattern: "heap"
+              - log_pattern: "allocation"
+      - candidate_id: "traffic_spike"
+        title: "트래픽 증가로 인한 리소스 압박"
+        description: "요청량 증가로 CPU/memory 사용량이 급증해 readiness 저하나 OOM이 발생했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "request rate, latency, CPU/memory 사용량이 같은 시간대에 증가했는지 확인"
+          - "HPA/replica 수가 트래픽 증가를 따라가지 못했는지 확인"
+          - "단순 limit 상향보다 scale 정책이 필요한지 확인"
+        signals:
+          - id: "traffic_spike_signal"
+            any_of:
+              - log_pattern: "too many requests"
+              - log_pattern: "rate limit"
+              - log_pattern: "backpressure"
+              - log_pattern: "request rate"
+              - log_pattern: "traffic spike"
+              - log_pattern: "traffic surge"
+              - log_pattern: "queue full"
+              - log_pattern: "server overloaded"
+              - log_pattern: "429"
+      - candidate_id: "node_memory_pressure"
+        title: "노드 메모리 압박"
+        description: "개별 컨테이너 문제가 아니라 Node MemoryPressure 또는 eviction으로 Pod가 영향을 받았을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+        checks:
+          - "Node condition MemoryPressure=True 또는 eviction 이벤트 확인"
+          - "node memory available/usage ratio 확인"
+          - "동일 node의 다른 Pod 영향 여부 확인"
+        signals:
+          - id: "node_memory_pressure_signal"
+            any_of:
+              - event_pattern: "memorypressure"
+              - event_pattern: "evicted"
+              - event_pattern: "node was low on resource"
+      - candidate_id: "bad_release_memory_regression"
+        title: "배포 이후 메모리 사용량 회귀"
+        description: "최근 배포된 버전에서 memory usage가 증가해 OOM 또는 memory pressure가 발생했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+          - "metadata:current_workload_snapshots"
+        checks:
+          - "새 image/revision의 Pod에서만 memory 증가 또는 OOM이 발생하는지 확인"
+          - "이전 revision 대비 memory baseline이 악화됐는지 확인"
+          - "rollback 또는 resource 조정 중 어느 route가 안전한지 검토"
+        signals:
+          - id: "memory_regression_signal"
+            any_of:
+              - fact: "terminated_reason=OOMKilled"
+              - fact: "exit_code=137"
+              - log_pattern: "out of memory"
+
+  - id: "cpu_saturation"
+    symptoms: ["CPU Saturation"]
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "cpu_limit_or_throttling"
+        title: "CPU limit 또는 throttling"
+        description: "CPU limit이 낮거나 throttling이 발생해 latency/readiness 문제가 생겼을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "container CPU usage와 CPU limit/request 비교"
+          - "CPU throttling metric 증가 확인"
+          - "로그에 throttled, cfs quota, deadline exceeded 문구가 있는지 확인"
+          - "limit 조정이 node capacity와 정책상 가능한지 확인"
+        signals:
+          - id: "cpu_throttling_log_signal"
+            any_of:
+              - log_pattern: "cpu throttling"
+              - log_pattern: "cpu throttled"
+              - log_pattern: "throttled"
+              - log_pattern: "cfs throttled"
+              - log_pattern: "cfs quota"
+              - log_pattern: "cpu quota"
+              - log_pattern: "deadline exceeded"
+              - log_pattern: "context deadline exceeded"
+              - log_pattern: "request timed out"
+
+  - id: "node_disk_pressure"
+    symptoms: ["Disk Pressure", "Ephemeral Storage 부족"]
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "node_disk_pressure"
+        title: "노드 디스크 압박"
+        description: "Node DiskPressure 또는 filesystem 사용량 증가로 Pod가 축출되거나 실행이 불안정해졌을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Node condition DiskPressure=True 또는 eviction 이벤트 확인"
+          - "node filesystem usage ratio 확인"
+          - "로그/임시 파일 증가가 특정 workload와 연결되는지 확인"
+        signals:
+          - id: "disk_pressure_signal"
+            any_of:
+              - event_pattern: "diskpressure"
+              - event_pattern: "ephemeral-storage"
+              - event_pattern: "evicted"
+              - log_pattern: "no space left"
+      - candidate_id: "ephemeral_storage_exhausted"
+        title: "Ephemeral storage 고갈"
+        description: "컨테이너 임시 저장소 사용량이 제한을 초과해 Pod가 축출됐을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "ephemeral-storage request/limit과 eviction 이벤트 확인"
+          - "로그에 임시 파일 또는 cache 증가 정황이 있는지 확인"
+          - "storage limit 조정 또는 app cleanup 중 어떤 조치가 적절한지 확인"
+        signals:
+          - id: "ephemeral_storage_signal"
+            any_of:
+              - event_pattern: "ephemeral-storage"
+              - log_pattern: "no space left"
+              - log_pattern: "disk full"
+
+  - id: "pid_pressure"
+    symptoms: ["PID Pressure"]
+    required_sources: ["kubernetes", "metrics", "logs"]
+    candidates:
+      - candidate_id: "process_id_exhaustion"
+        title: "Process ID 고갈"
+        description: "노드 또는 컨테이너의 PID 사용량이 높아 프로세스 생성이 실패했을 가능성이 있습니다."
+        expected_evidence:
+          - "kubernetes:cluster_resource_state"
+          - "metrics:telemetry_metrics"
+          - "logs:related_logs"
+        checks:
+          - "Node condition PIDPressure=True 또는 관련 event 확인"
+          - "process/thread 생성 실패 로그 확인"
+          - "fork 폭증이나 runaway process 여부 확인"
+        signals:
+          - id: "pid_pressure_signal"
+            any_of:
+              - event_pattern: "pidpressure"
+              - log_pattern: "resource temporarily unavailable"
+              - log_pattern: "cannot fork"

@@ -1,0 +1,60 @@
+# fault: probe-fail — 앱은 8080에서 정상 기동하지만 readinessProbe가 9090(잘못된 포트)을 본다.
+# 기대 증상: pod Running이지만 Ready=False 지속, Unhealthy(readiness probe failed) 이벤트,
+# Service endpoint에서 제외되어 ready endpoint 0 (Ingress 502/503 클래스의 백엔드 readiness 실패).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-api
+  namespace: sandbox
+  labels:
+    app: inventory-api
+    scenario: probe-fail
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-api
+  template:
+    metadata:
+      labels:
+        app: inventory-api
+        scenario: probe-fail
+        app.kubernetes.io/part-of: shop-demo
+    spec:
+      containers:
+        - name: inventory-api
+          image: quay.io/brancz/prometheus-example-app:v0.5.0
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9090
+            initialDelaySeconds: 3
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-api
+  namespace: sandbox
+  labels:
+    app: inventory-api
+    scenario: probe-fail
+    app.kubernetes.io/part-of: shop-demo
+spec:
+  selector:
+    app: inventory-api
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http

@@ -1,0 +1,60 @@
+# GitHub 폴링 fallback — 상주 Deployment 내부 루프.
+#
+# 이유:
+# - Kubernetes CronJob은 표준적으로 초 단위 schedule을 지원하지 않는다.
+# - 30초 감지는 같은 바이너리의 내부 interval 루프로 수행한다(POLL_ONCE 미설정).
+# - GitHub webhook/내부 Git write fast-path가 주 경로이고, 이 워커는 외부 변경/누락 보정용이다.
+# - replica 1개만 둔다. 중복은 git-pull-worker의 last_seen_commit_sha/ledger가 흡수한다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: github-poll-worker
+  namespace: management
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: github-poll-worker
+  template:
+    metadata:
+      labels:
+        app: github-poll-worker
+    spec:
+      priorityClassName: gitops-control-critical
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: poller
+          image: 183548421506.dkr.ecr.ap-northeast-2.amazonaws.com/kubernetes-ops-service@sha256:132cbc945004812ae3367c21a3408da8f3c9ab1a01b5870ffdea1157c83f5d0a
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          command: ["python", "src/services/gitops/github-poll-worker/app.py"]
+          envFrom:
+            - configMapRef:
+                name: management-runtime-config
+            - secretRef:
+                name: management-runtime-secret
+          env:
+            - name: POLL_INTERVAL_SECONDS
+              value: "30"
+            - name: MALLOC_ARENA_MAX
+              value: "2"
+            - name: MALLOC_TRIM_THRESHOLD_
+              value: "65536"

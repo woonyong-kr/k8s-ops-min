@@ -1,0 +1,224 @@
+kind: Deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: management-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    spec:
+      volumes:
+      - name: kube-api-access
+        projected:
+          sources:
+          - serviceAccountToken:
+              path: token
+              expirationSeconds: 3600
+          - configMap:
+              name: kube-root-ca.crt
+              items:
+              - key: ca.crt
+                path: ca.crt
+          defaultMode: 420
+      containers:
+      - env:
+        - name: REDIS_URL
+          value: redis://cache:6379
+        - name: NAMESPACE
+          value: sandbox
+        - name: GAME_DEPLOYMENT_PREFIX
+          value: game-room
+        - name: MAX_ROOMS
+          valueFrom:
+            configMapKeyRef:
+              key: maxRooms
+              name: ops-policy
+        - name: INITIAL_ROOMS
+          valueFrom:
+            configMapKeyRef:
+              key: desiredRooms
+              name: ops-policy
+        - name: DESIRED_ROOM_PROFILES
+          valueFrom:
+            configMapKeyRef:
+              key: roomProfiles
+              name: ops-policy
+        - name: GAME_ENDPOINT_TEMPLATE
+          value: http://game-room-{ordinal}:8001
+        - name: SESSION_GATEWAY_INTERNAL_URL
+          value: http://session-gateway:8083
+        - name: GAME_IMAGE_REPOSITORY
+          value: ghcr.io/jungle-303-04/demo-game/game-server
+        - name: CANARY_GAME_ENDPOINT
+          value: http://game-room-canary:8001
+        - name: CANARY_BOT_RUNNER_URL
+          value: http://game-room-canary-bot:8084
+        - name: CANARY_VALIDATION_BOT_COUNT
+          value: '100'
+        - name: REQUIRE_CANARY_APPROVAL
+          value: 'true'
+        - name: OPSIA_EVENT_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              key: opsiaEventEndpoint
+              name: ops-policy
+        - name: OPSIA_WORKSPACE_ID
+          valueFrom:
+            configMapKeyRef:
+              key: opsiaWorkspaceId
+              name: ops-policy
+        - name: OPSIA_CLUSTER_ID
+          valueFrom:
+            configMapKeyRef:
+              key: opsiaClusterId
+              name: ops-policy
+        - name: OPSIA_APPLICATION_ID
+          valueFrom:
+            configMapKeyRef:
+              key: opsiaApplicationId
+              name: ops-policy
+        - name: OPSIA_AGENT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: demo-game-opsia-agent
+              optional: true
+        - name: NODE_EXTRA_CA_CERTS
+          value: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        - name: REQUIRE_CONTROL_TOKEN
+          value: 'true'
+        - name: OPS_CONTROL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: demo-game-control
+        name: room-orchestrator
+        image: ghcr.io/jungle-303-04/demo-game/room-orchestrator:276977d3628e8cc5c7ce8c362add3b4111c7883e
+        ports:
+        - name: registry
+          containerPort: 8082
+        resources:
+          limits:
+            cpu: 250m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - name: kube-api-access
+          readOnly: true
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: registry
+            scheme: HTTP
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+          successThreshold: 1
+          initialDelaySeconds: 2
+        imagePullPolicy: Always
+      - env:
+        - name: REDIS_URL
+          value: redis://cache:6379/0
+        - name: OPSIA_ROOM_DIRECTORY_URL
+          value: http://127.0.0.1:8082
+        - name: SESSION_GATEWAY_INTERNAL_URL
+          value: http://session-gateway:8083
+        - name: OPSIA_MIN_BOTS_PER_ROOM
+          value: '60'
+        - name: OPSIA_BOT_TACTICAL_BRAIN
+          value: 'false'
+        - name: OPSIA_BOT_LIGHTWEIGHT_COMBAT
+          value: 'true'
+        - name: OPSIA_BOT_RECONCILE_INTERVAL_MS
+          value: '2000'
+        - name: OPSIA_BOT_RECONCILE_BATCH_SIZE
+          value: '5'
+        - name: REQUIRE_CONTROL_TOKEN
+          value: 'true'
+        - name: OPS_CONTROL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: demo-game-control
+        name: bot-runner
+        image: ghcr.io/jungle-303-04/demo-game/bot-runner:276977d3628e8cc5c7ce8c362add3b4111c7883e
+        ports:
+        - name: bots
+          containerPort: 8084
+        resources:
+          limits:
+            cpu: '2'
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: bots
+            scheme: HTTP
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+          successThreshold: 1
+          initialDelaySeconds: 2
+        imagePullPolicy: Always
+      - env:
+        - name: ORCHESTRATOR_URL
+          value: http://127.0.0.1:8082
+        - name: BOT_RUNNER_URL
+          value: http://127.0.0.1:8084
+        - name: API_SERVER_URL
+          value: http://login-gateway-api:8081
+        - name: ADMISSION_GATEWAY_URL
+          value: http://login-gateway
+        - name: REQUIRE_CONTROL_TOKEN
+          value: 'true'
+        - name: OPS_CONTROL_TOKEN
+          valueFrom:
+            secretKeyRef:
+              key: token
+              name: demo-game-control
+        name: ops-console
+        image: ghcr.io/jungle-303-04/demo-game/ops-console:276977d3628e8cc5c7ce8c362add3b4111c7883e
+        ports:
+        - name: console
+          containerPort: 8085
+        resources:
+          limits:
+            cpu: '1'
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: console
+            scheme: HTTP
+          periodSeconds: 10
+          timeoutSeconds: 1
+          failureThreshold: 3
+          successThreshold: 1
+          initialDelaySeconds: 2
+        imagePullPolicy: Always
+      serviceAccountName: management-server
+      automountServiceAccountToken: false
+    metadata:
+      labels:
+        app: management-server
+        app.kubernetes.io/part-of: demo-game
+metadata:
+  name: management-server
+  labels:
+    app: management-server
+    app.kubernetes.io/part-of: demo-game
+  namespace: sandbox
+apiVersion: apps/v1
