@@ -13,10 +13,10 @@ MCP 서버는 DB 에 직접 붙지 않는다. 붙으면 API 가 가진 권한 �
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Protocol
 from urllib.parse import quote
 
+from .server import TOOLS_BY_NAME
 from .session import Session
 from .sts import ExchangedToken, TokenExchangeError, TokenExchanger
 
@@ -32,36 +32,6 @@ class UpstreamError(Exception):
         super().__init__(code)
         self.code = code
         self.status = status
-
-
-@dataclass(frozen=True)
-class Route:
-    """도구 하나가 어느 엔드포인트로 가고 인자가 어떤 쿼리로 바뀌는지.
-
-    인자 이름을 그대로 쿼리로 넘기지 않는다. 도구 인자는 모델이 읽는 이름이고
-    쿼리 파라미터는 API 의 이름이다. 둘을 같게 강제하면 어느 한쪽이 부자연스러워지고,
-    이름이 어긋난 채 방치되면 도구는 한 번도 성공하지 못한다.
-    """
-
-    path: str
-    query_map: dict[str, str]
-    path_args: tuple[str, ...] = ()
-
-
-ROUTES: dict[str, Route] = {
-    "list_data_sources": Route("/sources", {"limit": "limit", "cursor": "cursor"}),
-    "search_assets": Route(
-        "/assets", {"query": "q", "source": "source", "limit": "limit", "cursor": "cursor"}
-    ),
-    "get_asset_schema": Route("/assets/{asset_id}/schema", {}, ("asset_id",)),
-    "get_asset_lineage": Route("/assets/{asset_id}/lineage", {}, ("asset_id",)),
-    "list_quality_issues": Route(
-        "/quality/issues", {"severity": "severity", "limit": "limit", "cursor": "cursor"}
-    ),
-    "get_run_status": Route(
-        "/runs", {"logical_date": "logical_date", "limit": "limit", "cursor": "cursor"}
-    ),
-}
 
 
 class CatalogApiClient:
@@ -80,7 +50,7 @@ class CatalogApiClient:
     def call(
         self, tool_name: str, arguments: dict[str, Any], *, session: Session
     ) -> dict[str, Any]:
-        route = ROUTES.get(tool_name)
+        route = TOOLS_BY_NAME.get(tool_name)
         if route is None:
             raise UpstreamError("unknown_tool")
 

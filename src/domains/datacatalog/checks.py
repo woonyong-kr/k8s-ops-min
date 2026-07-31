@@ -16,7 +16,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-from domains.datacatalog.models import CHECK_SEVERITY
+from packages.contracts.catalog.vocabulary import CHECK_SEVERITY, CHECK_TYPES
 
 SQL_ROOT = Path(__file__).resolve().parents[3] / "sql" / "quality"
 
@@ -33,6 +33,12 @@ CHECK_FILES: dict[str, str] = {
 }
 
 LOOKUP_FILES = ("90_latest_state", "91_lineage_trace")
+
+# 검사 종류를 계약에 없는 값으로 적으면 심각도 조회에서 KeyError 가 나는데,
+# 그건 배치가 돌기 시작한 뒤다. 임포트 시점에 걸러 낸다.
+assert set(CHECK_FILES.values()) <= set(CHECK_TYPES), (
+    f"계약에 없는 검사 종류: {sorted(set(CHECK_FILES.values()) - set(CHECK_TYPES))}"
+)
 
 
 def load_sql(name: str) -> str:

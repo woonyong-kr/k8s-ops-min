@@ -82,7 +82,7 @@ flowchart LR
 - 관측 60만 행 기준 검사 질의 인덱스 설계 (검사 전체 424.5ms → 150.0ms, 드리프트 110.9ms → 2.5ms)
 - 관측 470만 행 / 3.4GB 까지 부하 특성 측정 (합성 데이터 기준. 합계 2,590ms, 병목 질의 1종이 80% 차지, 개선안 1.76배 검증)
 - 오탐 검증 포함 15항목 자동 검증 (정상 데이터에서 모든 검사 0행 확인)
-- 카탈로그 계층 테스트 95종 (MCP 신뢰 경계 21 · 프로토콜 8 · 조회 API 11 · 결과 적재 키 11 · 문서·코드 대조 17 · 그 외 27)
+- 카탈로그 계층 테스트 94종 (MCP 신뢰 경계 17 · 응답 경계 11 · 프로토콜 8 · 조회 API 12 · 결과 적재 키 13 · 문서·코드 대조 17 · 그 외 16)
 
 → [검사 SQL 열 개](docs/sql-quality-checks.md) · [측정과 한계](docs/load-and-design-limits.md) · 확인 `make catalog-sql` `make catalog-bench`
 
@@ -109,7 +109,7 @@ flowchart LR
 make catalog-up        # PostgreSQL · MinIO · Airflow 기동
 make catalog-run       # 배치 1회 실행
 make catalog-verify    # 검증 15항목      → 15/15 통과
-make catalog-test      # 카탈로그 테스트   → 95 passed
+make catalog-test      # 카탈로그 테스트   → 94 passed
 make catalog-bench     # 인덱스 전후 비교   → 424.5ms → 150.0ms
 ```
 

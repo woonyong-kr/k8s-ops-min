@@ -92,12 +92,8 @@ def test_미해결_이슈는_최신_실행_것만_센다(client):
     body = client.get("/v1/catalog/quality/issues").json()
     assert body["page"]["total_estimated"] == 2
     assert {r["subject_key"] for r in body["data"]} == {"spec.replicas", "metadata.labels.app"}
-
-
-def test_같은_자산의_두_위반이_따로_보인다(client):
-    body = client.get("/v1/catalog/quality/issues").json()
-    assets = [r["asset_id"] for r in body["data"]]
-    assert assets == ["ops.a", "ops.a"]
+    # 같은 자산의 두 위반이 각각 보인다. 유일 제약이 자산 단위였을 때는 1건이었다.
+    assert [r["asset_id"] for r in body["data"]] == ["ops.a", "ops.a"]
 
 
 def test_런_목록을_날짜로_거른다(client):

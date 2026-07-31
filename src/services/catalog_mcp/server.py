@@ -21,8 +21,10 @@ from __future__ import annotations
 import json
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
+
+from packages.contracts.catalog.vocabulary import QUALITY_SEVERITIES
 
 MAX_ITEMS = 50
 MAX_BYTES = 64 * 1024
@@ -30,17 +32,33 @@ MAX_BYTES = 64 * 1024
 API_BASE = os.environ.get("CATALOG_API_BASE", "http://localhost:8000/v1/catalog")
 
 
+MAX_ARG_LENGTH = 256
+# 원천 문자열을 자르는 길이. 모델 컨텍스트를 한 값이 독차지하지 못하게 한다.
+MAX_TEXT_LENGTH = 512
+
+
 @dataclass(frozen=True)
 class Tool:
+    """도구 하나의 정의와 그 도구가 향하는 곳.
+
+    경로와 인자 매핑을 여기 함께 둔다. 스키마는 여기, 경로는 저기로 나누면
+    도구를 추가할 때 한쪽만 고치게 되고 그 순간 도구는 조용히 실패한다.
+
+    query_map 은 도구 인자 이름을 API 쿼리 이름으로 옮긴다. 둘을 같게 강제하면
+    한쪽이 부자연스러워진다 — 모델이 읽는 이름과 API 의 이름은 목적이 다르다.
+    """
+
     name: str
     description: str
     path: str
     input_schema: dict[str, Any]
+    query_map: dict[str, str] = field(default_factory=dict)
+    path_args: tuple[str, ...] = ()
 
 
 _SOURCE_ENUM = ["kubernetes", "prometheus", "loki", "tempo", "ops"]
 _LIMIT = {"type": "integer", "minimum": 1, "maximum": MAX_ITEMS}
-_CURSOR = {"type": "string", "maxLength": 512}
+_CURSOR = {"type": "string", "maxLength": MAX_TEXT_LENGTH}
 
 
 TOOLS: tuple[Tool, ...] = (
@@ -53,6 +71,7 @@ TOOLS: tuple[Tool, ...] = (
             "properties": {"limit": _LIMIT, "cursor": _CURSOR},
             "additionalProperties": False,
         },
+        query_map={"limit": "limit", "cursor": "cursor"},
     ),
     Tool(
         name="search_assets",
@@ -68,14 +87,16 @@ TOOLS: tuple[Tool, ...] = (
             },
             "additionalProperties": False,
         },
+        query_map={"query": "q", "source": "source", "limit": "limit", "cursor": "cursor"},
     ),
     Tool(
         name="get_asset_schema",
         description="자산의 계약 이력. 이 자산 스키마가 언제 바뀌었는지 답한다.",
         path="/assets/{asset_id}/schema",
+        path_args=("asset_id",),
         input_schema={
             "type": "object",
-            "properties": {"asset_id": {"type": "string", "maxLength": 256}},
+            "properties": {"asset_id": {"type": "string", "maxLength": MAX_ARG_LENGTH}},
             "required": ["asset_id"],
             "additionalProperties": False,
         },
@@ -84,9 +105,10 @@ TOOLS: tuple[Tool, ...] = (
         name="get_asset_lineage",
         description="자산의 upstream·downstream 경로. 이 데이터가 어디서 왔는지 답한다.",
         path="/assets/{asset_id}/lineage",
+        path_args=("asset_id",),
         input_schema={
             "type": "object",
-            "properties": {"asset_id": {"type": "string", "maxLength": 256}},
+            "properties": {"asset_id": {"type": "string", "maxLength": MAX_ARG_LENGTH}},
             "required": ["asset_id"],
             "additionalProperties": False,
         },
@@ -98,12 +120,13 @@ TOOLS: tuple[Tool, ...] = (
         input_schema={
             "type": "object",
             "properties": {
-                "severity": {"type": "string", "enum": ["error", "warning"]},
+                "severity": {"type": "string", "enum": list(QUALITY_SEVERITIES)},
                 "limit": _LIMIT,
                 "cursor": _CURSOR,
             },
             "additionalProperties": False,
         },
+        query_map={"severity": "severity", "limit": "limit", "cursor": "cursor"},
     ),
     Tool(
         name="get_run_status",
@@ -118,6 +141,7 @@ TOOLS: tuple[Tool, ...] = (
             },
             "additionalProperties": False,
         },
+        query_map={"logical_date": "logical_date", "limit": "limit", "cursor": "cursor"},
     ),
 )
 
@@ -130,10 +154,11 @@ UNTRUSTED_FIELDS = frozenset(
 
 
 class ToolError(Exception):
-    def __init__(self, code: str, correlation_id: str | None = None) -> None:
+    """인자 검증 실패. correlation_id 는 이 예외를 받는 dispatch 가 붙인다."""
+
+    def __init__(self, code: str) -> None:
         super().__init__(code)
         self.code = code
-        self.correlation_id = correlation_id
 
 
 def validate_arguments(tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -164,7 +189,7 @@ def validate_arguments(tool_name: str, arguments: dict[str, Any]) -> dict[str, A
         if kind == "string":
             if not isinstance(value, str):
                 raise ToolError("invalid_argument")
-            if len(value) > spec.get("maxLength", 256):
+            if len(value) > spec.get("maxLength", MAX_ARG_LENGTH):
                 raise ToolError("argument_too_long")
             if "enum" in spec and value not in spec["enum"]:
                 raise ToolError("invalid_argument")
@@ -203,7 +228,7 @@ def _sanitize(value: Any) -> Any:
     if not isinstance(value, str):
         return value
     cleaned = "".join(c if ord(c) >= 32 else " " for c in value)
-    return cleaned[:512]
+    return cleaned[:MAX_TEXT_LENGTH]
 
 
 def bound_response(

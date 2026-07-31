@@ -25,31 +25,28 @@ from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, Text, UniqueCo
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
+from packages.contracts.catalog.vocabulary import (
+    CHECK_SEVERITY,
+    CHECK_TYPES,
+    COLLECTION_RUN_STATUSES,
+    DAG_RUN_STATUSES,
+    QUALITY_SEVERITIES,
+    QUALITY_STATUSES,
+)
 from packages.storage.base import Base, created_at_column, text_column
 
-# 상태 정의 ---------------------------------------------------------------
+# 상태 어휘는 계약 모듈이 단일 정의입니다. 여기서 다시 적으면 MCP 도구 스키마·
+# 조회 API 와 값이 어긋나고, 어긋난 뒤에는 어느 쪽이 맞는지 알 수 없습니다.
+__all__ = [
+    "CHECK_SEVERITY",
+    "CHECK_TYPES",
+    "COLLECTION_RUN_STATUSES",
+    "DAG_RUN_STATUSES",
+    "HEALTHY_COLLECTION_STATUSES",
+    "QUALITY_SEVERITIES",
+    "QUALITY_STATUSES",
+]
 
-DAG_RUN_STATUSES = ("SUCCESS", "PARTIAL", "FAILED", "INCOMPLETE")
-"""DAG 실행 단위 상태.
-
-INCOMPLETE 는 수집은 끝났으나 downstream 이 완료되지 않은 상태다.
-이 값이 없으면 적재 0건인 실행이 SUCCESS 로 남는다.
-"""
-
-COLLECTION_RUN_STATUSES = (
-    "SUCCESS",
-    "NO_DATA",
-    "TRUNCATED",
-    "FAILED",
-    "NO_SOURCE_DATA",
-)
-"""소스별 수집 상태.
-
-NO_DATA 는 정상 실행이며 실패가 아니다. FAILED 와 합치면 재처리가 매일
-전량을 다시 긁는다.
-NO_SOURCE_DATA 는 과거 구간 재처리인데 원본이 없어 재생할 수 없는 경우다.
-없는 데이터를 현재 값으로 채우는 것보다 없다고 남기는 편이 낫다.
-"""
 
 HEALTHY_COLLECTION_STATUSES = ("SUCCESS", "NO_DATA")
 """성공률 집계에 성공으로 세는 상태.
@@ -58,26 +55,7 @@ TRUNCATED 는 설계된 정상 동작이지만 상시화되면 범위 조정이 
 성공에 넣지 않고 별도 지표로 센다.
 """
 
-QUALITY_STATUSES = ("passed", "failed")
-QUALITY_SEVERITIES = ("error", "warning")
-
-CHECK_TYPES = (
-    "SOURCE_COVERAGE",
-    "REQUIRED_FIELD",
-    "SCHEMA_DRIFT",
-    "FRESHNESS",
-    "LINEAGE_BREAK",
-    "RUN_CONSISTENCY",
-)
-
-CHECK_SEVERITY: dict[str, str] = {
-    "SOURCE_COVERAGE": "error",
-    "REQUIRED_FIELD": "error",
-    "SCHEMA_DRIFT": "error",
-    "FRESHNESS": "warning",
-    "LINEAGE_BREAK": "error",
-    "RUN_CONSISTENCY": "error",
-}
+# 어휘는 계약 모듈이 단일 정의다. MCP 서버와 조회 API 도 같은 값을 읽는다.
 
 
 def dag_run_id_for(dag_id: str, logical_date: str) -> str:

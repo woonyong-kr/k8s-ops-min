@@ -22,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from packages.contracts.catalog.reason_codes import Reason, ReasonCode, bound_reasons
+from packages.contracts.catalog.vocabulary import severity_pattern
 
 router = APIRouter(prefix="/v1/catalog", tags=["catalog"])
 
@@ -248,7 +249,7 @@ def get_asset_lineage(conn: Conn, asset_id: Annotated[str, Path(max_length=256)]
 @router.get("/quality/issues")
 def list_quality_issues(
     conn: Conn,
-    severity: str | None = Query(None, pattern="^(error|warning)$"),
+    severity: str | None = Query(None, pattern=severity_pattern()),
     limit: Limit = DEFAULT_LIMIT,
     cursor: str | None = None,
 ):

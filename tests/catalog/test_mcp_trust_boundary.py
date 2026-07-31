@@ -285,23 +285,7 @@ def test_경로_인자는_이스케이프된다():
     assert transport.api_calls[0]["url"].endswith("/assets/ops%2Fnormalized%20evidence/lineage")
 
 
-# 8. 절단과 커서가 겹칠 때 ---------------------------------------------------
-
-
-def test_바이트_상한으로_자르면_상위_커서를_넘기지_않는다():
-    """상위 커서는 이 페이지 뒤를 가리킨다. 그대로 넘기면 방금 버린 행을 건너뛴다."""
-    from services.catalog_mcp.server import bound_response
-
-    fields = ("qualified_name", "transformation", "observed_value",
-              "expected_value", "finding", "name")
-    items = [{"asset_id": f"a{i}", **{f: "x" * 600 for f in fields}} for i in range(50)]
-    payload = bound_response(items, upstream_cursor="eyJvZmZzZXQiOiA1MH0=")
-
-    assert payload["returned_count"] < 50
-    assert "next_cursor" not in payload
-    assert payload["remainder_unreachable"] is True
-    assert payload["dropped_count"] == 50 - payload["returned_count"]
-    assert "limit" in payload["hint"]
+# 8. 감사 로그 보존 ---------------------------------------------------------
 
 
 def test_감사_로그는_무한히_쌓이지_않는다():

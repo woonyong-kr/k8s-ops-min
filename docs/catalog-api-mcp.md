@@ -221,7 +221,7 @@ flowchart LR
 ## 검증
 
 ```bash
-make catalog-test        # 카탈로그 계층 95종
+make catalog-test        # 카탈로그 계층 94종
 make catalog-mcp         # 도구 목록과 인자 스키마
 make catalog-mcp-serve   # stdio MCP 서버 기동 (주체 토큰 필요)
 make catalog-api         # 조회 API 기동
