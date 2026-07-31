@@ -44,7 +44,7 @@ payload가 한도를 넘기기 시작했습니다. 처음엔 터진 곳만 막�
 | 시각 | 커밋 | 무엇을 했나 |
 |---|---|---|
 | 04:28 | `fix: bound metadata evidence` | endpoint slices·service selectors·workload snapshots에 **각각** 한도 추가 |
-| 05:27 | `fix: bound evidence payload` | **`collection_limits.py` 신규.** kubernetes·prometheus provider에 적용 |
+| 05:27 | `fix: bound evidence payload` | **[`collection_limits.py`](../../src/services/target/cluster-agent/providers/collection_limits.py) 신규.** kubernetes·prometheus provider에 적용 |
 | 05:39 | `fix: harden evidence payload` | 한도 강화 + 테스트 3파일 |
 | 06:01 | `fix: bound loki and tempo` | loki·tempo까지 확대 + 테스트 |
 

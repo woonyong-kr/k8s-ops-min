@@ -41,6 +41,8 @@ Python은 질의를 실행하고 결과를 `quality_results`에 적재하는 역
 
 ### 01. 소스 커버리지
 
+→ [`sql/quality/01_source_coverage.sql`](../../sql/quality/01_source_coverage.sql)
+
 ```sql
 -- 등록된 소스와 실제 실행을 대조한다.
 --
@@ -106,6 +108,8 @@ WHERE (enabled AND runs_in_window = 0)
 
 ### 02. 필수 필드 누락
 
+→ [`sql/quality/02_required_field.sql`](../../sql/quality/02_required_field.sql)
+
 ```sql
 -- 자산 계약에 required로 등록된 필드가 실제 행에 없는 경우를 찾는다.
 --
@@ -145,6 +149,8 @@ ORDER BY violation_count DESC;
 ```
 
 ### 03. 스키마 드리프트
+
+→ [`sql/quality/03_schema_drift.sql`](../../sql/quality/03_schema_drift.sql)
 
 ```sql
 -- 등록 계약과 실제 관측 필드를 양방향으로 대조한다.
@@ -195,6 +201,8 @@ WHERE o.field_path IS NULL
 
 ### 04. 버전을 올리지 않은 변경
 
+→ [`sql/quality/04_unversioned_change.sql`](../../sql/quality/04_unversioned_change.sql)
+
 ```sql
 -- 스키마가 바뀌면 버전을 올리는 것이 규칙이다. 규칙을 지키지 않은 변경이 진짜 문제다.
 --
@@ -218,6 +226,8 @@ HAVING COUNT(DISTINCT o.schema_hash) > 1;
 `schema_observations`는 `(asset_id, schema_version, schema_hash)`가 유일 키인 append-only 테이블입니다. 같은 계약이 반복 관측되면 행이 늘지 않고, **계약이 바뀌면 행이 하나 생깁니다.**
 
 ### 05. 최신성 위반
+
+→ [`sql/quality/05_freshness.sql`](../../sql/quality/05_freshness.sql)
 
 ```sql
 -- 자산 단위로 마지막 관측 시각을 본다.
@@ -262,6 +272,8 @@ WHERE l.last_observed_at IS NULL
 
 ### 06. 리니지 단절
 
+→ [`sql/quality/06_lineage_break.sql`](../../sql/quality/06_lineage_break.sql)
+
 ```sql
 -- 세 가지를 함께 잡는다.
 --   1) 정규화 자산인데 upstream 간선이 없다
@@ -295,6 +307,8 @@ WHERE r.finished_at < (:logical_ts - INTERVAL '7 days');
 ```
 
 ### 07. 실행 정합성
+
+→ [`sql/quality/07_run_consistency.sql`](../../sql/quality/07_run_consistency.sql)
 
 ```sql
 -- 실행이 실제보다 좋게 기록된 경우를 찾는다.
@@ -358,6 +372,8 @@ WHERE d.logical_date = :logical_date
 
 ### 08. 중복 적재 후보
 
+→ [`sql/quality/08_duplicate_candidates.sql`](../../sql/quality/08_duplicate_candidates.sql)
+
 ```sql
 -- 같은 대상을 같은 관측 시각으로 두 번 적재한 경우를 찾는다.
 --
@@ -392,6 +408,8 @@ ORDER BY duplicate_count DESC;
 검사가 아닙니다. `quality_results`에 적재하지 않습니다.
 
 ### 90. 리소스별 최신 상태
+
+→ [`sql/quality/90_latest_state.sql`](../../sql/quality/90_latest_state.sql)
 
 ```sql
 -- 리소스별로 가장 최근 관측 행 하나를 고른다.
@@ -434,6 +452,8 @@ WHERE rn = 1;
 `latest_is_incomplete`가 이 질의의 핵심입니다. **최신 행이 불완전하다는 사실을 감추지 않고 함께 반환합니다.**
 
 ### 91. 리니지 역추적
+
+→ [`sql/quality/91_lineage_trace.sql`](../../sql/quality/91_lineage_trace.sql)
 
 ```sql
 -- 정규화 자산에서 원본 자산까지 경로를 거슬러 올라간다.
