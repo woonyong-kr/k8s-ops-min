@@ -17,7 +17,7 @@
 
 `.git`, cache, 실행 중 생성되는 `.catalog-archive`, 정리 대기 디렉터리는 비교에서 제외하고 SHA-256으로 내용을 대조했습니다. 공개 저장소 정리 때문에 legacy ECR account ID만 placeholder로 바꾼 배포 문서도 수정 파일에 포함됩니다. 개수는 기여도의 근거가 아니라 원본 보존 여부를 확인하는 값입니다.
 
-원본 저장소에는 이력 정리와 rebase로 중복된 커밋이 있습니다. 따라서 커밋 수나 총 변경 줄 수는 성과로 사용하지 않습니다. 현재 파일의 blame, 대표 커밋의 diff, 실행 가능한 테스트를 함께 봅니다.
+원본 저장소에는 이력 정리와 rebase로 중복된 커밋이 있습니다. 그래서 커밋 수나 총 변경 줄 수는 성과로 사용하지 않습니다. 현재 파일의 blame, 대표 커밋의 diff, 실행 가능한 테스트를 함께 봅니다.
 
 ## 직접 구현으로 확인한 범위
 
@@ -45,7 +45,7 @@
 - `tests/test_inventory_coverage.py`: 원본 blame 384 / 416줄
 - 대표 커밋 [`d29d3c429`](https://github.com/minmings111/Kyro-jungle-final/commit/d29d3c42963335756cf14212f05533e9ea54e57b): 9개 파일, +1,068/-64
 
-이 커밋은 소스별 수집 범위와 잘림 상태를 계산하고, 불완전한 스냅샷이 삭제 권위로 사용되지 않게 만듭니다. 실제 사용자 데이터가 삭제됐다는 운영 사고는 Git만으로 증명되지 않습니다. 따라서 이력서에는 “삭제 사고를 해결했다”가 아니라 “불완전한 수집 결과가 삭제 근거로 쓰일 수 있는 경로를 차단했다”고 씁니다.
+이 커밋은 소스별 수집 범위와 잘림 상태를 계산하고, 불완전한 스냅샷이 삭제 권위로 사용되지 않게 만듭니다. 실제 사용자 데이터가 삭제됐다는 운영 사고는 Git만으로 증명되지 않습니다. 그래서 이력서에는 “삭제 사고를 해결했다”가 아니라 “불완전한 수집 결과가 삭제 근거로 쓰일 수 있는 경로를 차단했다”고 씁니다.
 
 ### ConfigMap·Secret 참조 조회 API
 
@@ -56,13 +56,13 @@
 
 이 API는 저장된 manifest 전체를 반환하지 않고 Deployment가 참조하는 ConfigMap·Secret의 식별자와 사용 위치만 새 응답 모델로 만듭니다. Secret 값과 평문 환경변수는 응답에 포함되지 않는 테스트가 있습니다.
 
-현재 구현은 `secretKeyRef.key` 같은 참조 키 이름은 허용합니다. 따라서 “Secret 값은 반환하지 않는다”는 말은 가능하지만 “Secret과 관련된 이름을 전혀 노출하지 않는다”는 말은 사실이 아닙니다. 저장소 원본에도 값이 남아 있으므로 수집 시점 비밀정보 제거 경험으로 확대해서는 안 됩니다.
+현재 구현은 `secretKeyRef.key` 같은 참조 키 이름은 허용합니다. 그래서 “Secret 값은 반환하지 않는다”는 말은 가능하지만 “Secret과 관련된 이름을 전혀 노출하지 않는다”는 말은 사실이 아닙니다. 저장소 원본에도 값이 남아 있으므로 수집 시점 비밀정보 제거 경험으로 확대해서는 안 됩니다.
 
 ### FastAPI·PostgreSQL의 세로 구현
 
-대표 커밋 [`e5de71d49`](https://github.com/minmings111/Kyro-jungle-final/commit/e5de71d49): 사용자별 노드 별칭 기능을 위해 Alembic migration, SQLAlchemy model·repository, FastAPI router·계약, 프론트 연결, 테스트를 함께 구현했다.
+대표 커밋 [`e5de71d49`](https://github.com/minmings111/Kyro-jungle-final/commit/e5de71d49): 사용자별 노드 별칭 기능을 위해 Alembic migration, SQLAlchemy model·repository, FastAPI router·계약, 프론트 연결, 테스트를 함께 구현했습니다.
 
-따라서 “FastAPI를 사용해 봤다”보다 다음 주장이 정확하다.
+그래서 “FastAPI를 사용해 봤다”보다 다음 주장이 정확하다.
 
 > 사용자별 노드 별칭을 저장하는 PostgreSQL 스키마와 migration을 설계하고, repository와 FastAPI read/write API, 화면 연결, 테스트까지 한 기능 단위로 구현했다.
 
@@ -74,7 +74,7 @@
 - gateway 연결 [`ab3fbf3e7`](https://github.com/minmings111/Kyro-jungle-final/commit/ab3fbf3e7fbeb0cbcaea45e3fcd5a5ed08e165b0)
 - AI runtime 연결 [`0071a9095`](https://github.com/minmings111/Kyro-jungle-final/commit/0071a9095601f6f1dc193e27a79c6d7dee9285fa)
 
-구현과 연결 이력은 있습니다. 그러나 최종 Golden Path의 수용 조건과 실제 사용자 검증 범위에서는 제외됐다. “MCP 서버를 구현하고 권한·입력 경계를 테스트했다”는 말은 가능하지만, “AI 장애 분석을 MCP로 완성했다”거나 사용 효과를 주장해서는 안 됩니다.
+구현과 연결 이력은 있습니다. 그러나 최종 Golden Path의 수용 조건과 실제 사용자 검증 범위에서는 제외됐습니다. “MCP 서버를 구현하고 권한·입력 경계를 테스트했다”는 말은 가능하지만, “AI 장애 분석을 MCP로 완성했다”거나 사용 효과를 주장해서는 안 됩니다.
 
 ## 팀 성과로만 말할 범위
 

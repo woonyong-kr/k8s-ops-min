@@ -94,7 +94,7 @@ CloudWatch의 노드그룹별 EC2 인터페이스 합계는 전송 방향을 좁
 1. management 내부에서 논리 단계마다 serialize → NATS → consumer → DB를 반복했을 가능성
 2. game 노드에서 infra 노드로 게임 데이터면 트래픽을 전달했을 가능성
 
-따라서 문제를 “서비스 숫자” 하나로 축약하면 game→infra 경로를 놓칩니다. 개선 기준도 두 갈래여야 합니다.
+그래서 문제를 “서비스 숫자” 하나로 축약하면 game→infra 경로를 놓칩니다. 개선 기준도 두 갈래여야 합니다.
 
 ## 5. 무엇을 바꿨나
 
@@ -169,6 +169,7 @@ game→infra는 프로세스 통합으로 해결할 문제가 아닙니다. 다�
 | NATS JetStream | **373.955ms** | **2,674 events/s** | localhost Docker |
 | 차이 | **96.74% 감소** | **30.7배** | 전송 계층만 |
 
-이 실험은 같은 프로세스 안의 논리 단계를 NATS로 왕복시킬 이유가 있는지 판단하는 microbenchmark입니다. PostgreSQL, handler, 외부 API, Kubernetes CNI, Cross-AZ는 포함하지 않았습니다. 따라서 “전체 시스템이 82K events/s를 처리한다” 또는 “AWS 비용이 96.74% 줄었다”고 쓰면 안 됩니다.
+이 실험은 같은 프로세스 안의 논리 단계를 NATS로 왕복시킬 이유가 있는지 판단하는 microbenchmark입니다. PostgreSQL, handler, 외부 API, Kubernetes CNI, Cross-AZ는 포함하지 않았습니다. 그래서 “전체 시스템이 82K events/s를 처리한다” 또는 “AWS 비용이 96.74% 줄었다”고 쓰면 안 됩니다.
 
-재현 코드는 [`benchmarks/event_bus_transport.py`](../benchmarks/event_bus_transport.py)에 있으며, 청구서는 [증거 묶음](evidence/network-cost/README.md)에 있습니다.
+재현 코드는 [`benchmarks/event_bus_transport.py`](../benchmarks/event_bus_transport.py)에 있으며, 청구서은 [증거 묶음](evidence/network-cost/README.md)에 있습니다.
+

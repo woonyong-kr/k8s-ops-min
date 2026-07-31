@@ -79,7 +79,7 @@ Kyro는 **수집하는 순간**의 완전성을 다뤘습니다. [수집 완전�
 
 ## 데이터 모델
 
-이 다이어그램이 **유일한 정의**입니다. 다른 문서는 여기를 참조합니다.
+이 다이어그램이 **유일한 정의\*\*입니다. 다른 문서는 여기를 참조합니다.
 
 ```mermaid
 erDiagram
@@ -224,7 +224,7 @@ erDiagram
 | `observed_rows` | `(run_id, asset_id, row_key)` | 재시도 시 관측 행이 복제된다 |
 | `observed_fields` | `(row_id, field_path)` | 필드가 중복된다 |
 
-`quality_results.severity`와 `first_seen_dag_run_id`도 컬럼으로 둡니다. 심각도를 저장하지 않으면 [실행 정합성 검사](sql-quality-checks.md#07-실행-정합성)가 warning까지 위반으로 승격시켜 모든 실행이 붉어진다. `first_seen_dag_run_id`가 없으면 한 번 발생한 영구 위반이 이후 모든 실행을 오염시킨다.
+`quality_results.severity`와 `first_seen_dag_run_id`도 컬럼으로 둡니다. 심각도를 저장하지 않으면 [실행 정합성 검사](sql-quality-checks.md#07-실행-정합성)가 warning까지 위반으로 승격시켜 모든 실행이 붉어집니다. `first_seen_dag_run_id`가 없으면 한 번 발생한 영구 위반이 이후 모든 실행을 오염시킵니다.
 
 ### 검사 대상과 카탈로그
 

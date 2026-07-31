@@ -23,17 +23,6 @@ DOCS = ROOT / "docs"
 README = ROOT / "README.md"
 
 
-def _datacatalog_tables(models: object) -> list[object]:
-    """공유 Base에 등록된 서비스 카탈로그 테이블은 제외한다."""
-    return [
-        value.__table__
-        for value in vars(models).values()
-        if isinstance(value, type)
-        and value.__module__ == models.__name__
-        and hasattr(value, "__table__")
-    ]
-
-
 def _sql_blocks(path: Path) -> list[str]:
     return [b.rstrip() for b in re.findall(r"```sql\n(.*?)\n```", path.read_text("utf-8"), re.S)]
 
@@ -59,10 +48,11 @@ def test_검사와_조회_질의_개수가_문서와_맞는다():
 def test_테이블과_유일제약_개수가_문서와_맞는다():
     from domains.datacatalog import models
 
-    tables = _datacatalog_tables(models)
+    tables = [n for n in models.Base.metadata.tables if n.startswith("catalog_")]
     uniques = [
         c
-        for t in tables
+        for t in models.Base.metadata.tables.values()
+        if t.name.startswith("catalog_")
         for c in t.constraints
         if type(c).__name__ == "UniqueConstraint"
     ]
@@ -78,7 +68,7 @@ def test_er_다이어그램이_모든_테이블을_담는다():
     diagram = re.search(r"```mermaid\nerDiagram(.*?)```", doc, re.S)
     assert diagram, "metadata-catalog.md 에 erDiagram 이 없다"
     drawn = set(re.findall(r"\b([a-z][a-z_]+)\b", diagram.group(1)))
-    actual = {t.name[len("catalog_") :] for t in _datacatalog_tables(models)}
+    actual = {n[len("catalog_"):] for n in models.Base.metadata.tables if n.startswith("catalog_")}
     assert not actual - drawn, f"다이어그램에 빠진 테이블: {sorted(actual - drawn)}"
 
 
@@ -112,21 +102,20 @@ def test_인덱스_개수_서술이_실제와_맞는다():
 
 def test_문체가_섞이지_않는다():
     """포트폴리오 19개 중 2개만 다른 문체이면 읽는 사람이 편집 흔적을 먼저 본다."""
+    # 줄 끝만 보면 문장 중간의 ~다체를 놓친다. 실제로 그렇게 18곳을 놓쳤다.
     plain = re.compile(
         r"(?:한다|된다|이다|아니다|않는다|없다|있다|만든다|본다|쓴다|남는다|받는다|준다|"
-        r"나온다|걸린다|같다|다르다|맞다|보인다|넘는다|든다|간다|모른다)\.\s*$"
+        r"나온다|걸린다|같다|다르다|맞다|보인다|넘는다|든다|간다|모른다|됐다|했다|였다)\."
     )
     offenders: list[str] = []
     for path in sorted(DOCS.glob("*.md")):
         in_code = False
         for lineno, raw in enumerate(path.read_text("utf-8").splitlines(), 1):
-            line = re.sub(r"`[^`]*`", "", raw.strip())
+            line = re.sub(r"[\u201c\"][^\u201d\"]*[\u201d\"]", "", re.sub(r"`[^`]*`", "", raw.strip()))
             if line.startswith("```"):
                 in_code = not in_code
                 continue
             if in_code or not line or line.startswith(("|", ">", "--")):
-                continue
-            if line.endswith(("”", '"')):
                 continue
             if plain.search(re.sub(r"^[-*]\s+", "", line)):
                 offenders.append(f"{path.name}:{lineno}")

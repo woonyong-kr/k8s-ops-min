@@ -92,7 +92,7 @@ Dagster가 더 맞을 수도 있었다. 이 프로젝트는 데이터 **자산**
 
 `raw_snapshots` 테이블에는 `s3_uri`와 `content_hash`를 두었습니다. 현재 `s3_uri` 값은 `file://...`이고 실제 객체 저장소 client는 없습니다. 정규화 행에서 로컬 원본까지 [리니지](sql-quality-checks.md#91-리니지-역추적)로 역추적하는 모델만 구현돼 있습니다.
 
-`docker-compose.catalog.yml`에 MinIO 서비스가 정의돼 있지만 pipeline이 이를 호출하지 않습니다. 따라서 “MinIO로 전체 파이프라인을 재현했다”고 쓰지 않습니다.
+`docker-compose.catalog.yml`에 MinIO 서비스가 정의돼 있지만 pipeline이 이를 호출하지 않습니다. 그래서 “MinIO로 전체 파이프라인을 재현했다”고 쓰지 않습니다.
 
 ---
 

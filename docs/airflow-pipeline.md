@@ -8,7 +8,7 @@
 
 Airflow는 기존 실시간 장애 수집기를 대체하지 않습니다. 이미 수집된 snapshot을 논리 날짜별로 재처리하고, 등록 스키마와 실제 관측 스키마를 대조하고, 품질 결과를 발행하는 배치에 사용합니다.
 
-처음에는 mapped extract와 downstream이 source를 각각 읽었고, Airflow 2.10의 SQLAlchemy 1.4와 카탈로그의 SQLAlchemy 2.x가 충돌해 DAG import도 실패했다. extract가 보관한 snapshot을 downstream이 다시 읽도록 고쳤고, 카탈로그 task를 별도 Python 환경으로 격리해 `dags test`를 통과했다. 종료 후 검증은 원본 팀 프로젝트의 개인 구현 성과와 분리합니다.
+처음에는 mapped extract와 downstream이 source를 각각 읽었고, Airflow 2.10의 SQLAlchemy 1.4와 카탈로그의 SQLAlchemy 2.x가 충돌해 DAG import도 실패했습니다. extract가 보관한 snapshot을 downstream이 다시 읽도록 고쳤고, 카탈로그 task를 별도 Python 환경으로 격리해 `dags test`를 통과했습니다. 종료 후 검증은 원본 팀 프로젝트의 개인 구현 성과와 분리합니다.
 
 ## 실시간 수집기를 바꾸지 않는 이유
 
@@ -117,11 +117,11 @@ Airflow 내부 의존성을 SQLAlchemy 2로 강제 업그레이드하면 schedul
 
 현재 `archive_raw_snapshot()`은 `.catalog-archive/{date}/{source}.json` 로컬 파일에 씁니다. `s3_uri` 컬럼에도 실제 값은 `file://...`입니다.
 
-`docker-compose.catalog.yml`에 MinIO가 있지만 pipeline은 MinIO client를 사용하지 않습니다. 따라서 현재 상태를 “S3/MinIO 원본 보관을 구현했다”고 말할 수 없습니다. 객체 저장소는 목표 구조일 뿐입니다.
+`docker-compose.catalog.yml`에 MinIO가 있지만 pipeline은 MinIO client를 사용하지 않습니다. 그래서 현재 상태를 “S3/MinIO 원본 보관을 구현했다”고 말할 수 없습니다. 객체 저장소는 목표 구조일 뿐입니다.
 
 ### sequential runner와 DAG가 같은 의미가 아닙니다
 
-[`scripts/catalog_run.py`](../scripts/catalog_run.py)는 source를 한 번만 읽고 `archive → normalize → load → lineage → check` 순서로 실행합니다. 로직 함수를 Airflow 밖에서 시험할 수 있다는 장점은 있지만, 현재 DAG의 중복 조회와 task 재시도 의미까지 검증하지는 않습니다.
+[`scripts/catalog_run.py`](../scripts/catalog_run.py)는 원천을 한 번만 읽고 `archive → normalize → load → lineage → check` 순서로 실행합니다. 로직을 Airflow 밖에서 시험할 수 있습니다. 다만 DAG 의 중복 조회와 task 재시도 의미까지는 검증하지 않습니다.
 
 ## 상태 모델
 

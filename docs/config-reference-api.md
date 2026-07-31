@@ -127,7 +127,8 @@ API는 기존 gateway에 연결되어 있고 세션 인증과 inventory 접근 �
 | 일부 namespace만 관측했는데 전체로 판단 | coverage 사유와 `partial` 확인 |
 | reason code가 응답을 밀어냄 | 코드 개수 상한 확인 |
 
-대표 구현 커밋은 [`05c60fdd9`](https://github.com/minmings111/Kyro-jungle-final/commit/05c60fdd9bfd4a6c42f59cbcb33b22d037dd5577), 경계 보강은 [`6c082d12a`](https://github.com/minmings111/Kyro-jungle-final/commit/6c082d12af40bc4c97bb08df503434b17d4fb860)입니다.
+구현: [`05c60fdd9`](https://github.com/minmings111/Kyro-jungle-final/commit/05c60fdd9bfd4a6c42f59cbcb33b22d037dd5577)
+경계 보강: [`6c082d12a`](https://github.com/minmings111/Kyro-jungle-final/commit/6c082d12af40bc4c97bb08df503434b17d4fb860)
 
 ## 정확한 주장 범위
 
@@ -145,7 +146,7 @@ API는 기존 gateway에 연결되어 있고 세션 인증과 inventory 접근 �
 - 모든 Kubernetes workload 종류를 지원합니다.
 - 상한 너머 결과도 페이지네이션으로 조회할 수 있습니다.
 
-현재 projection은 `secretKeyRef.key`와 `env_name` 같은 참조 맥락을 반환합니다. 값은 아니지만 이름 자체가 민감할 수 있습니다. 또한 읽기 API가 값을 반환하지 않을 뿐, upstream snapshot 저장소에는 원본이 남아 있습니다. 수집 시점 최소화와 저장 암호화는 이 작업의 범위 밖입니다.
+현재 projection은 `secretKeyRef.key`와 `env_name` 같은 참조 맥락을 반환합니다. 값은 아니지만 이름 자체가 민감할 수 있습니다. 그리고 읽기 API가 값을 반환하지 않을 뿐, upstream snapshot 저장소에는 원본이 남아 있습니다. 수집 시점 최소화와 저장 암호화는 이 작업의 범위 밖입니다.
 
 initContainer 참조를 수집하지만 응답에는 app container와 구분하는 `container_type`이 없습니다. 이 역시 현재 계약의 한계입니다.
 
