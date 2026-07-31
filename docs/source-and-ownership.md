@@ -62,7 +62,7 @@
 
 대표 커밋 [`e5de71d49`](https://github.com/minmings111/Kyro-jungle-final/commit/e5de71d49): 사용자별 노드 별칭 기능을 위해 Alembic migration, SQLAlchemy model·repository, FastAPI router·계약, 프론트 연결, 테스트를 함께 구현했습니다.
 
-그래서 “FastAPI를 사용해 봤다”보다 다음 주장이 정확하다.
+그래서 “FastAPI를 사용해 봤다”보다 다음 주장이 정확합니다.
 
 > 사용자별 노드 별칭을 저장하는 PostgreSQL 스키마와 migration을 설계하고, repository와 FastAPI read/write API, 화면 연결, 테스트까지 한 기능 단위로 구현했다.
 

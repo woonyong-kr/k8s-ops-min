@@ -66,6 +66,6 @@
 - [카탈로그 구현 계획과 진행 상태](catalog-implementation-plan.md) — 무엇이 완료·부분·계획인가
 - [Data Foundation 연결](data-foundation-fit.md) — 채용 공고 항목과 실제 작업의 대응
 - [근거의 적용 범위](evidence-scope.md) — 로그를 무엇으로 걸렀나
-- [이력서 문장 초안](resume-sentences.md) — 지원서용. 저장소 문서에는 두지 않습니다
+- [이력서 문장과 표현 규칙](resume-sentences.md) — 안전한 문장, 아직 쓰면 안 되는 문장, 무엇을 어떻게 부를지
 - [커밋으로 복원한 판단 변화](development-timeline.md)
 - [포트폴리오 문서 색인 (구버전)](portfolio-README.md) — `docs/README.md` 로 대체됨

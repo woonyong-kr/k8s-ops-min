@@ -102,11 +102,9 @@ def test_인덱스_개수_서술이_실제와_맞는다():
 
 def test_문체가_섞이지_않는다():
     """포트폴리오 19개 중 2개만 다른 문체이면 읽는 사람이 편집 흔적을 먼저 본다."""
-    # 줄 끝만 보면 문장 중간의 ~다체를 놓친다. 실제로 그렇게 18곳을 놓쳤다.
-    plain = re.compile(
-        r"(?:한다|된다|이다|아니다|않는다|없다|있다|만든다|본다|쓴다|남는다|받는다|준다|"
-        r"나온다|걸린다|같다|다르다|맞다|보인다|넘는다|든다|간다|모른다|됐다|했다|였다)\."
-    )
+    # 존댓말은 "…니다." 로 끝난다. 어미를 열거하면 반드시 빠뜨린다 —
+    # 실제로 "쓰인다" "구조체다" 같은 것을 놓쳐 64곳이 남아 있었다.
+    plain = re.compile(r"(?:(?<!니)다|아니다)\.")
     offenders: list[str] = []
     for path in sorted(DOCS.glob("*.md")):
         in_code = False
@@ -117,6 +115,6 @@ def test_문체가_섞이지_않는다():
                 continue
             if in_code or not line or line.startswith(("|", ">", "--")):
                 continue
-            if plain.search(re.sub(r"^[-*]\s+", "", line)):
+            if plain.search(line):
                 offenders.append(f"{path.name}:{lineno}")
     assert not offenders, "본문 문체가 ~습니다체와 섞였다: " + ", ".join(offenders[:10])
