@@ -14,10 +14,13 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
+
+if TYPE_CHECKING:
+    from domains.datacatalog.sources import CatalogSource
 
 from domains.datacatalog.models import (
     HEALTHY_COLLECTION_STATUSES,
@@ -53,7 +56,7 @@ class ExtractOutcome:
 def extract_source(
     source_id: str,
     logical_date: str,
-    fixture_root: Path,
+    source: "CatalogSource",
     archive_root: Path,
     *,
     today: str,
@@ -88,10 +91,9 @@ def extract_source(
     # 원본이 없으면 원천에서 가져온다. 과거 날짜라도 최초 실행이면
     # 이 경로다. 다만 원천은 과거 상태를 갖고 있지 않으므로, 이때 받은 것은
     # 현재 상태에 과거 날짜를 붙인 것이다. 그 한계는 문서에 적어 두었다.
-    fixture = fixture_root / f"{source_id}.json"
-    if not fixture.exists():
+    payloads = source.fetch(source_id, logical_date)
+    if not payloads:
         return ExtractOutcome(source_id=source_id, status="NO_DATA")
-    payloads = json.loads(fixture.read_text(encoding="utf-8"))
     return ExtractOutcome(
         source_id=source_id,
         status="SUCCESS" if payloads else "NO_DATA",

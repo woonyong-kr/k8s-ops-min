@@ -68,26 +68,69 @@ SLA 가 1시간인 자산이 있는데 배치가 하루에 한 번 돌면, 위�
 
 이 관계를 정하지 않고 주기를 하루로 뒀습니다. 01·05·06 을 기존 스케줄러로 옮기면 이 문제도 함께 풀립니다.
 
-## 한 가지 더 — 수집을 두 번 합니다
+## 수집을 두 번 하던 것은 고쳤습니다
 
-[`scripts/catalog_run.py`](../../scripts/catalog_run.py) 는 extract → normalize → load → check 를 스스로 전부 합니다. 그런데 cluster-agent 가 이미 30초마다 같은 원천을 수집하고 있습니다.
+### 무엇이 문제였나
 
-지금은 fixture 로 돌려서 드러나지 않지만, 실제 클러스터에 붙이면 **같은 원천을 두 경로가 각각 긁는 구조**가 됩니다.
+[`scripts/catalog_run.py`](../../scripts/catalog_run.py) 가 extract → normalize → load → check 를 스스로 전부 했습니다. 그런데 cluster-agent 가 이미 30초마다 같은 원천을 수집하고 있습니다.
+
+버그는 아니었습니다. fixture 에서 읽는 코드는 **실제 입력이 붙기 전의 자리 표시**였습니다. 문제는 [엔지니어링 로그](10-engineering-log.md)에 이렇게 적어 둔 것입니다.
+
+> 기존 수집 API를 입력으로만 사용합니다.
+
+**코드는 그렇게 하고 있지 않았습니다.** 구현이 문서를 따라가지 못한 상태를 그대로 뒀습니다. 자리 표시를 완성된 연결처럼 서술한 것이 실제 잘못입니다.
+
+### 왜 고쳐야 했나
+
+원천을 두 경로가 각각 긁으면 세 가지가 깨집니다.
+
+**판정과 검사가 다른 시점을 봅니다.** cluster-agent 가 04:00에 본 것과 배치가 04:05에 본 것은 다를 수 있습니다. 그러면 "검사가 통과했다"가 "판정에 쓰인 데이터가 통과했다"를 뜻하지 않게 됩니다. 카탈로그가 무엇을 보증하는지가 흐려집니다.
+
+**과거 날짜를 다시 처리할 수 없습니다.** 이게 가장 큽니다. 원천은 과거 상태를 갖고 있지 않습니다. 어제 날짜로 배치를 돌리면서 원천을 조회하면 **현재 값에 어제 날짜 도장을 찍게 됩니다.** 반면 수집 결과 저장소에는 `observed_at` 이 남아 있어 그 시점의 관측을 그대로 가져올 수 있습니다.
+
+**원천 부하가 두 배입니다.** 검사하려고 클러스터를 한 번 더 조회하는 셈입니다.
+
+### 어떻게 고쳤나
+
+입력을 어댑터로 분리했습니다. → [`src/domains/datacatalog/sources.py`](../../src/domains/datacatalog/sources.py)
+
+| 어댑터 | 무엇을 읽나 | 언제 쓰나 |
+|---|---|---|
+| `CollectedSource` | `cluster_inventory_resources` · `evidence_windows` | 수집 결과 테이블이 있을 때 |
+| `FixtureSource` | 고정 관측 파일 | 로컬 재현 |
+
+`source_tables_present()` 로 두 테이블이 있는지 확인해 자동으로 고릅니다. 실행 결과에 `source_mode` 를 함께 반환하므로, **fixture 로 떨어졌다는 사실을 호출한 쪽이 압니다.** 조용히 떨어지면 로컬에서만 도는 배치를 실제로 도는 것으로 착각하게 됩니다.
+
+```bash
+$ python3 scripts/catalog_run.py --logical-date 2026-08-09
+{ "source_mode": "collected", "status": "SUCCESS",
+  "sources": { "kubernetes": "SUCCESS", "prometheus": "SUCCESS", ... } }
+
+$ python3 scripts/catalog_run.py --logical-date 2026-08-09 --source-mode fixture
+{ "source_mode": "fixture", "status": "SUCCESS", ... }
+```
+
+### 확인
+
+수집 결과 테이블에 5행씩 넣고 배치를 돌려, 카탈로그에 적재된 행이 그 테이블에서 온 것인지 봤습니다.
 
 ```
-[지금]
-cluster-agent ──30초──▶ 수집·정규화 ──▶ 원인 판정
-catalog batch ──하루──▶ 수집·정규화 ──▶ 검사 8종        ← 같은 원천을 또 긁음
-
-[가야 할 구조]
-cluster-agent ──30초──▶ 수집·정규화 ──┬─▶ 원인 판정
-                                      ├─▶ 02·03 검사 (즉시)
-                                      └─▶ 카탈로그 적재
-              ──주기(최소 SLA 이하)──▶ 01·05·06 검사
-catalog batch ──하루──▶ 04·08 검사 (누적 스캔)
+소스별 적재 건수          row_key
+kubernetes   5           uid-k-0 … uid-k-4     ← cluster_inventory_resources.uid
+loki         5           loki-0  … loki-4      ← evidence_windows.evidence_key
+prometheus   5
+tempo        5
 ```
 
-카탈로그는 수집기를 다시 만드는 계층이 아니라 **이미 수집된 것을 검증하는 계층**입니다. 지금 구현은 그 원칙과 어긋나 있습니다.
+어댑터 단위 테스트 9종은 [`tests/catalog/test_sources.py`](../../tests/catalog/test_sources.py) 에 있습니다. `kubernetes` 질의에 `evidence_windows` 가 섞이지 않는지, `uid` 가 없을 때 `namespace/name` 으로 떨어지는지, 하루치만 읽는지를 확인합니다.
+
+```
+pytest tests/catalog -q   →   24 passed
+```
+
+### 아직 남은 것
+
+`CollectedSource` 는 **실제 클러스터가 붙은 환경에서 돌려 보지 않았습니다.** 수집 결과 테이블을 직접 만들어 넣고 확인한 것이라, 운영 데이터의 실제 모양과 다를 수 있습니다. 특히 `summary` 와 `raw` 중 어느 쪽을 계약의 근거로 삼을지는 실제 데이터를 보고 정해야 합니다.
 
 ## 왜 지금 안 옮겼나
 
@@ -97,9 +140,9 @@ catalog batch ──하루──▶ 04·08 검사 (누적 스캔)
 
 옮기는 순서는 이렇게 잡고 있습니다.
 
-1. 02·03 을 수집 시점으로 — 지연이 가장 큰 손해를 만드는 둘
-2. 05 를 SLA 기반 주기로 — 주기와 SLA 의 관계를 코드로 고정
-3. 카탈로그 적재를 수집 결과 소비로 — 이중 수집 제거
+1. ~~카탈로그 입력을 수집 결과 소비로~~ — **완료.** 위 절 참고
+2. 02·03 을 수집 시점으로 — 지연이 가장 큰 손해를 만드는 둘
+3. 05 를 SLA 기반 주기로 — 주기와 SLA 의 관계를 코드로 고정
 4. 01·06·07 이동
 5. 배치에는 04·08 만 남김
 

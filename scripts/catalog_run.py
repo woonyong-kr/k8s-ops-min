@@ -26,6 +26,12 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from sqlalchemy import create_engine, text  # noqa: E402
 
+from domains.datacatalog.sources import (  # noqa: E402
+    CollectedSource,
+    FixtureSource,
+    source_tables_present,
+)
+
 from domains.datacatalog import checks, pipeline  # noqa: E402
 
 DEFAULT_DSN = os.environ.get(
@@ -113,6 +119,7 @@ def run_once(
     fail_downstream: bool,
     today: str,
     only_sources: frozenset[str] = frozenset(),
+    source_mode: str = "auto",
 ) -> dict[str, object]:
     """only_sources 를 주면 그 소스만 다시 수집한다.
 
@@ -132,10 +139,19 @@ def run_once(
         dag_run_id = pipeline.open_dag_run(conn, logical_date, now)
 
         # 1. extract — 소스별 독립. 하나가 실패해도 나머지는 진행한다.
+        # 카탈로그는 원천을 다시 조회하지 않는다. 이미 수집된 결과를 읽는다.
+        # 수집 결과 테이블이 없는 로컬 환경에서만 fixture 로 떨어진다.
+        if source_mode == "collected" or (
+            source_mode == "auto" and source_tables_present(conn)
+        ):
+            catalog_source = CollectedSource(conn)
+        else:
+            catalog_source = FixtureSource(fixture_root)
+
         targets = tuple(s for s in SOURCES if not only_sources or s in only_sources)
         outcomes = [
             pipeline.extract_source(
-                source, logical_date, fixture_root, archive_root,
+                source, logical_date, catalog_source, archive_root,
                 today=today, fail_sources=fail_sources,
             )
             for source in targets
@@ -169,6 +185,7 @@ def run_once(
 
     return {
         "dag_run_id": dag_run_id,
+        "source_mode": catalog_source.mode,
         "status": status,
         "sources": {o.source_id: o.status for o in outcomes},
         "findings": len(findings),
@@ -183,6 +200,12 @@ def main() -> int:
     parser.add_argument("--fail", default="", help="강제 실패시킬 소스 (쉼표 구분)")
     parser.add_argument("--fail-downstream", action="store_true")
     parser.add_argument("--only", default="", help="이 소스만 다시 수집 (쉼표 구분)")
+    parser.add_argument(
+        "--source-mode",
+        default="auto",
+        choices=("auto", "collected", "fixture"),
+        help="입력 출처. auto 는 수집 결과 테이블이 있으면 그것을, 없으면 fixture 를 쓴다",
+    )
     parser.add_argument("--today", default=datetime.now(UTC).date().isoformat())
     args = parser.parse_args()
 
@@ -194,6 +217,7 @@ def main() -> int:
         args.fail_downstream,
         args.today,
         frozenset(s for s in args.only.split(",") if s),
+        args.source_mode,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
     return 0
