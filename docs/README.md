@@ -52,7 +52,7 @@
 만들면서 생각이 달라진 지점들입니다. 결과보다 과정에 관심 있으시면 여기가 더 유용할 수 있습니다.
 
 - [엔지니어링 로그 — 처음 생각과 달라진 지점들](engineering-log.md)
-- [아키텍처 비용 회고 — Deployment 를 47개로 나눈 대가](architecture-cost-postmortem.md)
+- [아키텍처 비용 회고 — 서비스를 47개로 쪼갠 결정이 청구서에 어떻게 나타났나](architecture-cost-postmortem.md)
 - [기술 리서치 — 쓰지 않기로 한 것들과 그 근거](tech-research.md)
 - [범위 판단 — 만들었다가 걷어낸 것](scope-decisions.md)
 

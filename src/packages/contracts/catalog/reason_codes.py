@@ -15,16 +15,37 @@ from enum import StrEnum
 
 
 class ReasonCode(StrEnum):
+    """열거에 있는 값은 전부 어딘가에서 실제로 나온다.
+
+    한때 PARTIAL_CHECK_COVERAGE · RESULT_TRUNCATED · NO_SOURCE_DATA 도 있었다.
+    정의만 있고 내보내는 곳이 없었다. 닫힌 열거를 주는 이유가 소비자가 switch 를
+    쓸 수 있게 하기 위해서인데, 아무도 내보내지 않는 값은 소비자에게 도달할 수
+    없는 분기를 만들게 한다. 그래서 뺐다.
+
+    NO_SOURCE_DATA 는 "과거 날짜인데 원본이 없어 재생 불가" 를 뜻하려던 값이다.
+    지금 두 원천은 모두 저장된 것을 logical_date 로 걸러 읽으므로 그 상태가
+    생기지 않는다. 원천을 직접 조회하는 수집기가 생기면 그때 다시 넣는다.
+    """
+
     # 수집
     SOURCE_FAILED = "SOURCE_FAILED"
     SOURCE_TRUNCATED = "SOURCE_TRUNCATED"
-    NO_SOURCE_DATA = "NO_SOURCE_DATA"
     # 검사
     NEVER_RUN = "NEVER_RUN"
-    PARTIAL_CHECK_COVERAGE = "PARTIAL_CHECK_COVERAGE"
     # 응답
-    RESULT_TRUNCATED = "RESULT_TRUNCATED"
     REASON_CODES_TRUNCATED = "REASON_CODES_TRUNCATED"
+
+
+COLLECTION_STATUS_REASONS: dict[str, ReasonCode] = {
+    "FAILED": ReasonCode.SOURCE_FAILED,
+    "TRUNCATED": ReasonCode.SOURCE_TRUNCATED,
+}
+"""수집 상태를 응답 사유로 옮기는 표.
+
+이 표가 없을 때 조회 API 는 FAILED 와 TRUNCATED 를 한데 묶어 전부
+SOURCE_FAILED 로 내보냈다. 잘림을 실패로 합치지 않겠다는 것이 이 프로젝트의
+출발점인데, 정작 응답에서 다시 합치고 있었다.
+"""
 
 
 @dataclass(frozen=True)

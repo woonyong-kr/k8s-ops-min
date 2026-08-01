@@ -7,7 +7,7 @@ SHELL := bash
 PY ?= .venv/bin/python
 
 .PHONY: help sync lint format test demo-fail-source demo-drift demo-duplicate \
-        catalog-up catalog-down catalog-schema catalog-seed catalog-run \
+        catalog-up catalog-down catalog-schema catalog-reset catalog-seed catalog-run \
         catalog-verify catalog-sql catalog-mcp catalog-mcp-serve catalog-api catalog-test \
         controller-check benchmark-event-bus benchmark-event-bus-compare \
         evidence-screenshots portfolio-verify clean
@@ -38,6 +38,15 @@ catalog-down: ## 카탈로그 로컬 스택 종료
 
 catalog-schema: ## 카탈로그 테이블 생성
 	PYTHONPATH=src $(PY) scripts/catalog_schema.py
+
+catalog-reset: ## 카탈로그 테이블을 지우고 다시 만든다 (로컬 전용)
+	PYTHONPATH=src $(PY) -c "import sys; sys.path.insert(0,'src'); \
+	import os; from sqlalchemy import create_engine; \
+	import domains.datacatalog.models; from packages.storage.base import Base; \
+	e=create_engine(os.environ.get('CATALOG_DATABASE_URL','postgresql+psycopg://postgres@127.0.0.1:5433/catalog'),future=True); \
+	t=[v for k,v in Base.metadata.tables.items() if k.startswith('catalog_')]; \
+	Base.metadata.drop_all(e,tables=t); Base.metadata.create_all(e,tables=t); \
+	print(f'{len(t)}개 테이블 재생성')"
 
 catalog-seed: ## 검증용 fixture 적재
 	PYTHONPATH=src $(PY) scripts/catalog_run.py --logical-date $(shell date -u +%F) --fixture normal

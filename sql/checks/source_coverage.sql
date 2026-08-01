@@ -44,10 +44,15 @@ SELECT
         WHEN enabled AND runs_in_window = 0                      THEN 'ENABLED_BUT_SILENT'
         WHEN NOT enabled AND runs_in_window > 0                  THEN 'DISABLED_BUT_RUNNING'
         WHEN runs_in_window > 0 AND healthy = 0                  THEN 'NEVER_HEALTHY'
-        WHEN runs_in_window > 0
-             AND healthy::numeric / runs_in_window < 0.8         THEN 'DEGRADED'
+        -- 상시 잘림을 DEGRADED 보다 먼저 본다. TRUNCATED 는 healthy 에 안 들어가므로
+        -- 잘림이 절반을 넘으면 healthy 비율은 반드시 0.8 아래다. 순서를 반대로 두면
+        -- DEGRADED 가 항상 먼저 잡아서 CHRONICALLY_TRUNCATED 는 어떤 입력에서도
+        -- 나오지 않는다. 둘을 나눈 이유가 "잘림은 실패가 아니라 범위 조정 신호" 인데
+        -- 순서 하나로 그 구분이 사라진다.
         WHEN runs_in_window > 0
              AND truncated::numeric / runs_in_window > 0.5       THEN 'CHRONICALLY_TRUNCATED'
+        WHEN runs_in_window > 0
+             AND healthy::numeric / runs_in_window < 0.8         THEN 'DEGRADED'
     END AS finding
 FROM windowed
 WHERE (enabled AND runs_in_window = 0)

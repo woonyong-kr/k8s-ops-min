@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """정합성 검사 SQL 을 실행하고 결과를 출력한다.
 
-검사 6종과 조회 2종을 구분해서 보여준다. 조회 도구는 위반 집합을
+검사 질의와 조회 질의를 구분해서 보여준다. 조회 질의는 위반 집합을
 반환하지 않으므로 quality_results 에 적재하지 않는다.
+
+개수를 문장에 적지 않는다. 한때 "검사 6종" 이라 적어 두고 8개를 출력했다.
 """
 from __future__ import annotations
 
@@ -27,7 +29,7 @@ with engine.begin() as conn:
     asset_id = conn.execute(text("SELECT asset_id FROM catalog_data_assets LIMIT 1")).scalar()
     full = {**params, "run_id": run_id, "asset_id": asset_id}
 
-    print("=== 검사 6종 ===")
+    print(f"=== 검사 {len(CHECK_FILES)}종 ===")
     for name in CHECK_FILES:
         sql = load_sql(name)
         bind = {k: v for k, v in full.items() if f":{k}" in sql}
@@ -37,7 +39,7 @@ with engine.begin() as conn:
         for r in rows[:3]:
             print(f"      {dict(r)}")
 
-    print("\n=== 조회 도구 2종 ===")
+    print(f"\n=== 조회 질의 {len(LOOKUP_FILES)}종 ===")
     for name in LOOKUP_FILES:
         sql = load_sql(name)
         bind = {k: v for k, v in full.items() if f":{k}" in sql}

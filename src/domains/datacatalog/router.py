@@ -1,6 +1,6 @@
 """카탈로그 조회 API.
 
-설계 근거: docs/portfolio/catalog-api-mcp.md
+설계 근거: docs/catalog-api-mcp.md
 
 모든 응답이 같은 envelope 을 쓴다. data / page / evidence 셋이다.
 
@@ -14,15 +14,26 @@ from __future__ import annotations
 
 import base64
 import json
-from pathlib import Path as FsPath
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-from packages.contracts.catalog.reason_codes import Reason, ReasonCode, bound_reasons
-from packages.contracts.catalog.vocabulary import severity_pattern
+from domains.datacatalog.checks import load_sql
+from packages.contracts.catalog.reason_codes import (
+    COLLECTION_STATUS_REASONS,
+    Reason,
+    ReasonCode,
+    bound_reasons,
+)
+from packages.contracts.catalog.vocabulary import (
+    DEGRADED_DAG_STATUSES,
+    HEALTHY_COLLECTION_STATUSES,
+    UNHEALTHY_COLLECTION_STATUSES,
+    severity_pattern,
+    sql_in_list,
+)
 
 router = APIRouter(prefix="/v1/catalog", tags=["catalog"])
 
@@ -87,15 +98,21 @@ def latest_evidence(conn: Connection) -> dict[str, Any]:
         }
 
     reasons: list[Reason] = []
-    if row["status"] in ("PARTIAL", "INCOMPLETE", "FAILED"):
-        failed = conn.execute(
+    if row["status"] in DEGRADED_DAG_STATUSES:
+        # 상태 목록을 질의에 직접 적으면 어휘가 늘 때 여기만 옛 목록으로 남는다.
+        # 사유가 남은 행도 같이 본다 — NO_DATA 인데 과거 원본이 없어 복원을
+        # 포기한 경우가 그렇다. 상태는 정상 범위지만 그날은 비어 있다.
+        degraded = conn.execute(
             text(
-                "SELECT source_id FROM catalog_collection_runs "
-                "WHERE dag_run_id = :d AND status IN ('FAILED','TRUNCATED')"
+                "SELECT source_id, status FROM catalog_collection_runs "
+                f"WHERE dag_run_id = :d AND status IN ({sql_in_list(UNHEALTHY_COLLECTION_STATUSES)})"
             ),
             {"d": row["dag_run_id"]},
-        ).scalars().all()
-        reasons = [Reason(ReasonCode.SOURCE_FAILED, source=s) for s in failed]
+        ).mappings().all()
+        reasons = [
+            Reason(COLLECTION_STATUS_REASONS[str(r["status"])], source=str(r["source_id"]))
+            for r in degraded
+        ]
 
     codes, truncated = bound_reasons(reasons)
     return {
@@ -260,12 +277,8 @@ def get_asset_lineage(principal: Principal,
     간선이 언제 확인됐는지 함께 반환한다. run_id 를 저장만 하고 조인하지
     않으면 "이 관계가 언제 확인된 것인가"에 답할 수 없다.
     """
-    sql = (
-        FsPath(__file__).resolve().parents[3]
-        / "sql" / "lookups" / "lineage_trace.sql"
-    ).read_text(encoding="utf-8")
     rows = conn.execute(
-        text(sql), {"asset_id": asset_id, "logical_ts": _now(conn)}
+        text(load_sql("lineage_trace")), {"asset_id": asset_id, "logical_ts": _now(conn)}
     ).mappings().all()
     data = [dict(r) for r in rows]
     return envelope(conn, data, limit=len(data), offset=0, total=len(data))
@@ -288,11 +301,8 @@ def list_resource_state(
     관측이 있었다는 사실이 사라진다.
     """
     offset = decode_cursor(cursor)
-    sql = (
-        FsPath(__file__).resolve().parents[3] / "sql" / "lookups" / "latest_state.sql"
-    ).read_text(encoding="utf-8")
     rows = conn.execute(
-        text(sql), {"cluster_id": cluster_id, "logical_ts": _now(conn)}
+        text(load_sql("latest_state")), {"cluster_id": cluster_id, "logical_ts": _now(conn)}
     ).mappings().all()
     data = [
         {**dict(r), "observed_at": r["observed_at"].isoformat()}
@@ -358,12 +368,16 @@ def list_runs(
     ).scalar_one()
     rows = conn.execute(
         text(
-            """
+            f"""
             SELECT d.dag_run_id, d.logical_date, d.status, d.started_at, d.finished_at,
-                   count(c.run_id)                                          AS source_count,
-                   count(*) FILTER (WHERE c.status IN ('SUCCESS','NO_DATA')) AS healthy,
-                   count(*) FILTER (WHERE c.status = 'FAILED')               AS failed,
-                   sum(c.attempt)                                            AS attempts
+                   count(c.run_id) AS source_count,
+                   count(*) FILTER (
+                       WHERE c.status IN ({sql_in_list(HEALTHY_COLLECTION_STATUSES)})
+                   ) AS healthy,
+                   count(*) FILTER (
+                       WHERE c.status IN ({sql_in_list(UNHEALTHY_COLLECTION_STATUSES)})
+                   ) AS unhealthy,
+                   sum(c.attempt) AS attempts
             FROM catalog_dag_runs d
             LEFT JOIN catalog_collection_runs c ON c.dag_run_id = d.dag_run_id
             WHERE (CAST(:d AS text) IS NULL OR d.logical_date = CAST(:d AS date))

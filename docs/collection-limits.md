@@ -62,7 +62,7 @@ INVENTORY_RESOURCE_MAX_LIMIT     = 1000  # 명시적으로 요청해야 최대�
 
 ## 10분 — 코드와 검증
 
-같은 로직이 네 곳에 흩어지는 것을 보고 공통 모듈로 뽑았습니다. 그 과정은 [엔지니어링 로그](engineering-log.md#2-한도를-네-번-조인-새벽)에 커밋 단위로 있습니다.
+같은 로직이 네 곳에 흩어지는 것을 보고 공통 모듈로 뽑았습니다. 그 과정은 [엔지니어링 로그](engineering-log.md)에 커밋 단위로 있습니다.
 
 → [`src/services/target/cluster-agent/providers/collection_limits.py`](../src/services/target/cluster-agent/providers/collection_limits.py)
 

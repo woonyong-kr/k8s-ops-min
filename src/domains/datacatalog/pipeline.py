@@ -3,7 +3,7 @@
 DAG 는 이 함수들을 호출하기만 한다. Airflow 없이도 테스트할 수 있도록
 오케스트레이션과 로직을 분리했다.
 
-설계 근거는 docs/portfolio/airflow-pipeline.md 에 있다.
+설계 근거는 docs/05-airflow-pipeline.md 에 있다.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 from domains.datacatalog.models import (
     HEALTHY_COLLECTION_STATUSES,
+    UNHEALTHY_COLLECTION_STATUSES,
     collection_run_id_for,
     dag_run_id_for,
 )
@@ -56,7 +57,7 @@ class ExtractOutcome:
 def extract_source(
     source_id: str,
     logical_date: str,
-    source: CatalogSource,
+    source: "CatalogSource",
     archive_root: Path,
     *,
     today: str,
@@ -68,8 +69,9 @@ def extract_source(
     재생한다. backfill 이 원천을 다시 조회하면, 원천은 과거 상태를 갖고
     있지 않으므로 현재 상태에 과거 날짜 도장을 찍게 된다.
 
-    원본이 없는 과거 날짜는 재생할 수 없으므로 NO_SOURCE_DATA 로 남긴다.
-    없는 데이터를 현재 값으로 채우는 것보다 없다고 남기는 편이 낫다.
+    보관 원본이 없으면 원천에 묻는다. 지금 쓰는 두 원천은 둘 다 저장된 것을
+    읽으므로 원천 API 를 다시 때리지는 않는다. 날짜를 구분하는지는 원천마다
+    다르고, 그 차이는 아래 주석에 적었다.
     """
     if source_id in fail_sources:
         return ExtractOutcome(source_id=source_id, status="FAILED")
@@ -88,12 +90,12 @@ def extract_source(
             content_hash=_digest(payloads),
         )
 
-    # 원본이 없으면 원천에서 가져온다. 과거 날짜라도 최초 실행이면
-    # 이 경로다. 다만 원천은 과거 상태를 갖고 있지 않으므로, 이때 받은 것은
-    # 현재 상태에 과거 날짜를 붙인 것이다. 그 한계는 문서에 적어 두었다.
+    # 보관 원본이 없으면 원천에서 가져온다. 과거 날짜라도 최초 실행이면 이 경로다.
+    # CollectedSource 는 질의에 logical_date 가 들어가므로 과거를 물으면 과거가
+    # 온다. FixtureSource 는 날짜를 구분하지 않는 고정 파일이라 같은 값을 준다 —
+    # 로컬 재현을 결정적으로 만들기 위한 것이고, 그래서 시연 결과를 원천의
+    # 과거 상태로 읽어서는 안 된다.
     payloads = source.fetch(source_id, logical_date)
-    if not payloads:
-        return ExtractOutcome(source_id=source_id, status="NO_DATA")
     return ExtractOutcome(
         source_id=source_id,
         status="SUCCESS" if payloads else "NO_DATA",
@@ -446,7 +448,8 @@ def resolve_dag_run_status(
         status = "FAILED"
     elif not downstream_complete:
         status = "INCOMPLETE"
-    elif any(r in ("FAILED", "TRUNCATED") for r in rows):
+    # 목록을 여기 다시 적으면 상태가 하나 늘 때 이 판정만 옛 목록으로 남는다.
+    elif any(r in UNHEALTHY_COLLECTION_STATUSES for r in rows):
         status = "PARTIAL"
     else:
         status = "SUCCESS"

@@ -1,6 +1,6 @@
 """데이터 카탈로그 테이블 — 자산·계약 이력·리니지·품질 결과.
 
-설계 근거는 docs/portfolio/metadata-catalog.md 에 있다.
+설계 근거는 docs/metadata-catalog.md 에 있다.
 
 기존 domains/catalog 는 서비스 카탈로그이고 이 도메인과 무관하다.
 
@@ -21,7 +21,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import Boolean, Date, ForeignKey, Index, Integer, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Date,
+    ForeignKey,
+    Index,
+    Integer,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -30,8 +38,10 @@ from packages.contracts.catalog.vocabulary import (
     CHECK_TYPES,
     COLLECTION_RUN_STATUSES,
     DAG_RUN_STATUSES,
+    HEALTHY_COLLECTION_STATUSES,
     QUALITY_SEVERITIES,
     QUALITY_STATUSES,
+    UNHEALTHY_COLLECTION_STATUSES,
 )
 from packages.storage.base import Base, created_at_column, text_column
 
@@ -43,17 +53,11 @@ __all__ = [
     "COLLECTION_RUN_STATUSES",
     "DAG_RUN_STATUSES",
     "HEALTHY_COLLECTION_STATUSES",
+    "UNHEALTHY_COLLECTION_STATUSES",
     "QUALITY_SEVERITIES",
     "QUALITY_STATUSES",
 ]
 
-
-HEALTHY_COLLECTION_STATUSES = ("SUCCESS", "NO_DATA")
-"""성공률 집계에 성공으로 세는 상태.
-
-TRUNCATED 는 설계된 정상 동작이지만 상시화되면 범위 조정이 필요하므로
-성공에 넣지 않고 별도 지표로 센다.
-"""
 
 # 어휘는 계약 모듈이 단일 정의다. MCP 서버와 조회 API 도 같은 값을 읽는다.
 

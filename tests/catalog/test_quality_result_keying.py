@@ -173,3 +173,43 @@ def test_중복_검사가_두_단계여도_같은_것을_잡는다(conn):
     assert found[0]["resource_uid"] == "uid-dup"
     assert found[0]["run_count"] == 2
     assert str(found[0]["observed_day"]).startswith("2026-06-01")
+
+
+def test_두_단계_질의는_적재_창_밖의_중복을_놓친다(conn):
+    """이건 통과해야 할 동작이 아니라 알고 있는 사각지대다.
+
+    두 단계로 바꾸면서 후보를 "최근 2일 안에 적재된 것"으로 좁혔다. 원본과
+    복제본이 둘 다 그보다 오래전에 적재됐으면 후보에 들어오지 않는다.
+    전량 GROUP BY 는 잡던 경우다. 1.76배를 얻는 대신 내준 것이 이것이다.
+
+    검사를 매일 돌리는 한 중복이 생긴 날 안에 창 안으로 들어오므로 실제로
+    새는 경우는 배치가 이틀 넘게 멈춘 뒤 재개될 때다. 그때는 창을 넓혀
+    한 번 돌려야 한다. 사각지대가 좁혀지거나 넓어지면 이 검사가 알려 준다.
+    """
+    from domains.datacatalog.checks import load_sql
+
+    conn.execute(text("DELETE FROM catalog_normalized_evidence WHERE evidence_id LIKE 'old-%'"))
+    # 같은 날 관측, 서로 다른 run. 위 검사와 모양이 같고 다른 것은 적재 시각뿐이다.
+    # 관측 시각을 몇 초 어긋나게 두는 이유는 유일 제약이 (cluster_id, source_id,
+    # resource_uid, observed_at) 이기 때문이다. 완전히 같은 시각은 DB 가 이미 막는다.
+    for eid, run, observed in (
+        ("old-1", "run-x", "2026-06-01T00:00:01+00"),
+        ("old-2", "run-y", "2026-06-01T00:00:07+00"),
+    ):
+        conn.execute(
+            text(
+                "INSERT INTO catalog_normalized_evidence (evidence_id, asset_id, run_id, "
+                "cluster_id, source_id, resource_uid, collection_status, observed_at, ingested_at) "
+                "VALUES (:e,'ops.normalized_evidence',:r,'c1','loki','uid-old','SUCCESS',"
+                ":o,'2026-07-01T00:00:00+00')"
+            ),
+            {"e": eid, "r": run, "o": observed},
+        )
+
+    found = conn.execute(
+        text(load_sql("duplicate_candidates")), {"logical_ts": NOW}
+    ).mappings().all()
+
+    assert not [r for r in found if r["resource_uid"] == "uid-old"], (
+        "적재 창이 넓어졌다면 이 검사와 문서의 한계 서술을 같이 고쳐야 한다"
+    )

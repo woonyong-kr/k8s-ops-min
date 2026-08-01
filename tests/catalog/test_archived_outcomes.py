@@ -27,7 +27,7 @@ class _Connection:
         return _Rows(self.rows)
 
 
-def test_downstream_loads_the_archived_snapshot_without_source_read(tmp_path: Path) -> None:
+def test_다운스트림은_원천을_다시_읽지_않고_보관본을_쓴다(tmp_path: Path) -> None:
     archive = tmp_path / "loki.json"
     payload = [{"asset_id": "logs", "row_key": "1", "payload": {"severity": "ERROR"}}]
     archive.write_text(json.dumps(payload), encoding="utf-8")
@@ -57,7 +57,7 @@ def test_downstream_loads_the_archived_snapshot_without_source_read(tmp_path: Pa
     assert outcomes[1].payloads == []
 
 
-def test_downstream_rejects_an_archive_backend_it_cannot_read() -> None:
+def test_읽을_수_없는_보관_방식은_거부한다() -> None:
     conn = _Connection(
         [
             {

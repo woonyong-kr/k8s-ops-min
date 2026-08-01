@@ -53,12 +53,15 @@ def catalog_reconciliation_daily():
         from sqlalchemy import create_engine
 
         from domains.datacatalog import pipeline
+        from domains.datacatalog.sources import FixtureSource
 
         now = datetime.now(UTC)
+        # 세 번째 인자는 경로가 아니라 CatalogSource 다. 어댑터로 감싸지 않으면
+        # 보관 원본이 없는 날짜에서 source.fetch() 가 AttributeError 로 죽는다.
         outcome = pipeline.extract_source(
             source_id,
             run_date,
-            Path(fixture_root),
+            FixtureSource(Path(fixture_root)),
             Path(archive_root),
             today=now.date().isoformat(),
         )

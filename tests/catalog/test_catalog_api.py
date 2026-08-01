@@ -186,3 +186,38 @@ def test_배선이_검증기를_갈아끼울_수_있다(engine):
     with TestClient(app) as c:
         c.headers["Authorization"] = "Bearer bob-token"
         assert c.get("/v1/catalog/sources").status_code == 403
+
+
+# 사유 코드 --------------------------------------------------------------
+#
+# 한때 FAILED 와 TRUNCATED 를 한 질의로 뽑아 전부 SOURCE_FAILED 로 내보냈다.
+# 잘림을 실패로 합치지 않겠다는 것이 이 프로젝트의 출발점인데 응답에서 다시
+# 합치고 있었다. 아래 셋은 그 회귀를 막는다.
+
+
+def _degraded_run(engine, *, source_status: str) -> None:
+    """PARTIAL 실행 하나와 그 아래 원천 결과 하나를 만든다."""
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM catalog_collection_runs"))
+        conn.execute(text("UPDATE catalog_dag_runs SET status='PARTIAL' WHERE dag_run_id='dag-1'"))
+        conn.execute(
+            text(
+                "INSERT INTO catalog_collection_runs (run_id, dag_run_id, source_id, "
+                "logical_date, status, attempt, finished_at, created_at) "
+                "VALUES ('cr-1','dag-1','loki','2026-07-20',:st,1,:t,:t)"
+            ),
+            {"st": source_status, "t": NOW},
+        )
+
+
+# 잘림은 실패가 아니다. 한때 둘을 한 질의로 뽑아 전부 SOURCE_FAILED 로 내보냈다.
+@pytest.mark.parametrize(
+    ("source_status", "expected"),
+    [("TRUNCATED", "SOURCE_TRUNCATED"), ("FAILED", "SOURCE_FAILED")],
+)
+def test_원천_결과가_사유_코드로_그대로_옮겨진다(client, engine, source_status, expected):
+    _degraded_run(engine, source_status=source_status)
+
+    evidence = client.get("/v1/catalog/sources").json()["evidence"]
+
+    assert evidence["reason_codes"] == [{"code": expected, "source": "loki"}]
