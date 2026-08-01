@@ -178,4 +178,3 @@ game→infra는 프로세스 통합으로 해결할 문제가 아닙니다. 다�
 이 실험은 같은 프로세스 안의 논리 단계를 NATS로 왕복시킬 이유가 있는지 판단하는 microbenchmark입니다. PostgreSQL, handler, 외부 API, Kubernetes CNI, Cross-AZ는 포함하지 않았습니다. 그래서 “전체 시스템이 82K events/s를 처리한다” 또는 “AWS 비용이 96.74% 줄었다”고 쓰면 안 됩니다.
 
 재현 코드는 [`benchmarks/event_bus_transport.py`](../benchmarks/event_bus_transport.py)에 있으며, 원본 자료는 [증거 묶음](evidence/network-cost/README.md)에 있습니다.
-

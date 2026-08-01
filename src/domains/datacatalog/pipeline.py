@@ -57,7 +57,7 @@ class ExtractOutcome:
 def extract_source(
     source_id: str,
     logical_date: str,
-    source: "CatalogSource",
+    source: CatalogSource,
     archive_root: Path,
     *,
     today: str,

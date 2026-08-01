@@ -51,7 +51,3 @@ _to_delete/
 # 세션 전송용 임시 파일
 *.tar.gz
 _to_delete/
-
-_to_delete/
-*.tar.gz
-private/

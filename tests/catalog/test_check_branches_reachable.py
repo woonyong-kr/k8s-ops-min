@@ -11,14 +11,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
 
 from domains.datacatalog.checks import load_sql
 
-NOW = datetime(2026, 7, 20, 3, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 7, 20, 3, 0, tzinfo=UTC)
 DATE = NOW.date()
 
 
