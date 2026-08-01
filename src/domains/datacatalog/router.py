@@ -17,7 +17,7 @@ import json
 from pathlib import Path as FsPath
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
@@ -131,7 +131,27 @@ def get_connection() -> Connection:  # pragma: no cover - 앱 배선에서 주�
     raise NotImplementedError("애플리케이션 배선에서 오버라이드한다")
 
 
+def require_read_scope(
+    authorization: Annotated[str | None, Header()] = None,
+) -> str:
+    """읽기 권한을 확인한다.
+
+    MCP 가 권한을 좁힌 토큰을 보내도, 받는 쪽이 검사하지 않으면 좁힌 의미가 없다.
+    "토큰을 보냈다" 와 "토큰으로 판정했다" 는 다르고, 후자가 없으면 전자는 장식이다.
+
+    검증기는 배선에서 주입한다. 여기서 JWT 를 직접 파싱하면 이 라우터가 인증
+    방식에 묶이고, 방식이 바뀔 때마다 조회 코드를 고쳐야 한다.
+    """
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail={"code": "missing_token"})
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail={"code": "missing_token"})
+    return token
+
+
 Conn = Annotated[Connection, Depends(get_connection)]
+Principal = Annotated[str, Depends(require_read_scope)]
 Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT)]
 
 
@@ -139,7 +159,8 @@ Limit = Annotated[int, Query(ge=1, le=MAX_LIMIT)]
 
 
 @router.get("/sources")
-def list_sources(conn: Conn, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None):
+def list_sources(principal: Principal,
+    conn: Conn, limit: Limit = DEFAULT_LIMIT, cursor: str | None = None):
     offset = decode_cursor(cursor)
     total = conn.execute(text("SELECT count(*) FROM catalog_data_sources")).scalar_one()
     rows = conn.execute(
@@ -155,6 +176,7 @@ def list_sources(conn: Conn, limit: Limit = DEFAULT_LIMIT, cursor: str | None = 
 
 @router.get("/assets")
 def search_assets(
+    principal: Principal,
     conn: Conn,
     q: str | None = Query(None, max_length=128),
     source: str | None = Query(None, max_length=64),
@@ -187,7 +209,8 @@ def search_assets(
 
 
 @router.get("/assets/{asset_id}")
-def get_asset(conn: Conn, asset_id: Annotated[str, Path(max_length=256)]):
+def get_asset(principal: Principal,
+    conn: Conn, asset_id: Annotated[str, Path(max_length=256)]):
     row = conn.execute(
         text("SELECT * FROM catalog_data_assets WHERE asset_id = :a"), {"a": asset_id}
     ).mappings().first()
@@ -197,7 +220,8 @@ def get_asset(conn: Conn, asset_id: Annotated[str, Path(max_length=256)]):
 
 
 @router.get("/assets/{asset_id}/schema")
-def get_asset_schema(conn: Conn, asset_id: Annotated[str, Path(max_length=256)]):
+def get_asset_schema(principal: Principal,
+    conn: Conn, asset_id: Annotated[str, Path(max_length=256)]):
     """계약 이력.
 
     append-only 인 schema_observations 를 읽는다. asset_fields 는 upsert 되므로
@@ -229,7 +253,8 @@ def get_asset_schema(conn: Conn, asset_id: Annotated[str, Path(max_length=256)])
 
 
 @router.get("/assets/{asset_id}/lineage")
-def get_asset_lineage(conn: Conn, asset_id: Annotated[str, Path(max_length=256)]):
+def get_asset_lineage(principal: Principal,
+    conn: Conn, asset_id: Annotated[str, Path(max_length=256)]):
     """리니지 역추적.
 
     간선이 언제 확인됐는지 함께 반환한다. run_id 를 저장만 하고 조인하지
@@ -237,7 +262,7 @@ def get_asset_lineage(conn: Conn, asset_id: Annotated[str, Path(max_length=256)]
     """
     sql = (
         FsPath(__file__).resolve().parents[3]
-        / "sql" / "quality" / "91_lineage_trace.sql"
+        / "sql" / "lookups" / "lineage_trace.sql"
     ).read_text(encoding="utf-8")
     rows = conn.execute(
         text(sql), {"asset_id": asset_id, "logical_ts": _now(conn)}
@@ -246,8 +271,39 @@ def get_asset_lineage(conn: Conn, asset_id: Annotated[str, Path(max_length=256)]
     return envelope(conn, data, limit=len(data), offset=0, total=len(data))
 
 
+@router.get("/resources/state")
+def list_resource_state(
+    principal: Principal,
+    conn: Conn,
+    cluster_id: Annotated[str, Query(max_length=128)],
+    limit: Limit = DEFAULT_LIMIT,
+    cursor: str | None = None,
+):
+    """리소스별 마지막 관측 상태.
+
+    "이 리소스 지금 믿어도 되나"에 답한다. 자산 단위 최신성(05번 검사)과 다르다 —
+    자산이 살아 있어도 그 안의 리소스 하나가 며칠째 안 들어올 수 있다.
+
+    최신 관측이 불완전하면 그 사실을 함께 준다. 완전한 것만 골라 주면 더 새로운
+    관측이 있었다는 사실이 사라진다.
+    """
+    offset = decode_cursor(cursor)
+    sql = (
+        FsPath(__file__).resolve().parents[3] / "sql" / "lookups" / "latest_state.sql"
+    ).read_text(encoding="utf-8")
+    rows = conn.execute(
+        text(sql), {"cluster_id": cluster_id, "logical_ts": _now(conn)}
+    ).mappings().all()
+    data = [
+        {**dict(r), "observed_at": r["observed_at"].isoformat()}
+        for r in rows[offset : offset + limit]
+    ]
+    return envelope(conn, data, limit=limit, offset=offset, total=len(rows))
+
+
 @router.get("/quality/issues")
 def list_quality_issues(
+    principal: Principal,
     conn: Conn,
     severity: str | None = Query(None, pattern=severity_pattern()),
     limit: Limit = DEFAULT_LIMIT,
@@ -281,6 +337,7 @@ def list_quality_issues(
 
 @router.get("/runs")
 def list_runs(
+    principal: Principal,
     conn: Conn,
     logical_date: str | None = Query(None, pattern=r"^\d{4}-\d{2}-\d{2}$"),
     limit: Limit = DEFAULT_LIMIT,

@@ -51,7 +51,7 @@ GET  /v1/catalog/runs                        실행 이력 + 소스별 지표
 
 세 가지를 지켰습니다.
 
-**`evidence`가 항상 붙습니다.** `run_status`가 `PARTIAL`이면 **이 조회 결과 자체가 부분 데이터**라는 뜻입니다. 카탈로그가 "이슈 0건"이라고 답해도, 그 검사가 일부 소스를 못 봤다면 0건의 의미가 다릅니다. [수집 완전성 계약](collection-contract.md)의 원칙이 한 단계 위로 올라갑니다. 수집 결과의 완전성뿐 아니라 **검사 결과의 완전성**도 전달합니다.
+**`evidence`가 항상 붙습니다.** `run_status`가 `PARTIAL`이면 **이 조회 결과 자체가 부분 데이터**라는 뜻입니다. 카탈로그가 "이슈 0건"이라고 답해도, 그 검사가 일부 원천를 못 봤다면 0건의 의미가 다릅니다. [수집 완전성 계약](collection-contract.md)의 원칙이 한 단계 위로 올라갑니다. 수집 결과의 완전성뿐 아니라 **검사 결과의 완전성**도 전달합니다.
 
 **`reason_codes`가 구조체입니다.** 처음에는 `"SOURCE_FAILED:loki"` 같은 문자열이었습니다. 소비자가 전부 `split(":")`을 쓰게 되고, 그 문자열은 LLM이 읽는 제어 필드이기도 합니다. 코드와 대상을 분리했습니다. 코드 목록은 [`contracts/catalog/reason_codes.py`](../src/packages/contracts/catalog/reason_codes.py)에 닫힌 열거로 둡니다.
 
@@ -198,7 +198,7 @@ flowchart LR
 세션당 도구 호출          200회 / 시간
 ```
 
-초과하면 절단하고 **절단 사실·원본 개수·다음 커서를 함께 반환합니다.** 모델이 잘린 목록을 전체로 착각하면 "이슈가 3건뿐"이라고 답합니다.
+초과하면 잘림하고 **잘림 사실·원본 개수·다음 커서를 함께 반환합니다.** 모델이 잘린 목록을 전체로 착각하면 "이슈가 3건뿐"이라고 답합니다.
 
 세션 예산을 둔 이유는, 항목 제한만 있으면 에이전트가 50건씩 반복 호출해 전체를 열거하기 때문입니다.
 
@@ -212,7 +212,7 @@ flowchart LR
 | `session_id` | 에이전트 세션 |
 | `tool` | 호출 도구 |
 | `result_count` / `result_bytes` | 반환 규모 |
-| `truncated` | 절단 여부 |
+| `truncated` | 잘림 여부 |
 | `correlation_id` | API 호출과 연결 |
 | `outcome` | ok · 또는 거부 사유 코드 |
 
@@ -221,7 +221,7 @@ flowchart LR
 ## 검증
 
 ```bash
-make catalog-test        # 카탈로그 계층 94종
+make catalog-test        # 카탈로그 계층 100종
 make catalog-mcp         # 도구 목록과 인자 스키마
 make catalog-mcp-serve   # stdio MCP 서버 기동 (주체 토큰 필요)
 make catalog-api         # 조회 API 기동
@@ -239,7 +239,7 @@ make catalog-api         # 조회 API 기동
 | 토큰 과다 권한 | 교환 결과의 `aud`·`scope`·TTL 검증. 셋 중 하나라도 요청보다 넓으면 거부 | `test_mcp_trust_boundary.py::test_교환_결과가_요청보다_넓으면_거부한다` (4 케이스) |
 | **토큰 전달 오류** | **Alice 세션의 subject_token 이 교환되어 아웃바운드 `Authorization` 에 실리는지 확인. Bob 자산 요청은 상위 `403` 을 그대로 실패로** | `test_mcp_trust_boundary.py::test_alice_세션은_alice_토큰을_교환해_전달한다` · `test_bob_자산_요청은_상위_403_을_그대로_실패로_만든다` |
 | 교환 실패 시 우회 | 교환에 실패하면 원본 토큰으로 물러서지 않고 상위 호출 자체를 하지 않음 | `test_mcp_trust_boundary.py::test_교환에_실패하면_원본_토큰으로_물러서지_않는다` |
-| 큰 응답이 컨텍스트를 밀어냄 | 절단 후 원본 개수·커서 부착 | `test_mcp_boundary.py::test_큰_응답은_절단되고_절단_사실이_남는다` |
+| 큰 응답이 컨텍스트를 밀어냄 | 잘림 후 원본 개수·커서 부착 | `test_mcp_boundary.py::test_큰_응답은_절단되고_절단_사실이_남는다` |
 | 세션 단위 열거 | 예산 초과 시 `session_budget_exhausted` + `retry_after_seconds`. 인자 검증 실패는 예산을 깎지 않음 | `test_mcp_trust_boundary.py::test_예산을_넘기면_거부하고_retry_after_를_준다` · `test_인자_검증_실패는_예산을_깎지_않는다` |
 | 주입 문자열이 지시로 읽힘 | `untrusted` 블록 밖으로 새지 않음 | `test_mcp_boundary.py::test_원천에서_온_값은_untrusted_로_분리된다` |
 | 내부 오류 노출 | 상위 500 본문에 드라이버명·경로·내부 IP 가 있어도 `correlation_id` 만 반환 | `test_mcp_trust_boundary.py::test_상위_오류에_내부_정보가_섞이지_않는다` |
@@ -263,7 +263,7 @@ make catalog-api         # 조회 API 기동
 ## 이 작업이 증명하는 것
 
 - **FastAPI 조회 API 설계** — 응답 규격, 페이지네이션, 상태 코드, 오류 처리
-- AI가 사용할 수 있는 **도구 서버(MCP) 구현** — stdio JSON-RPC, 도구 6종, 세션 예산, 감사 로그
+- AI가 사용할 수 있는 **도구 서버(MCP) 구현** — stdio JSON-RPC, 도구 7종, 세션 예산, 감사 로그
 - 토큰 교환(RFC 8693)으로 **권한을 좁혀서 전달**하는 구현과 교환 결과 검증
 - 외부에서 들어온 문자열이 **모델에 지시로 읽히는 위험**을 어떻게 막았나
 

@@ -138,3 +138,38 @@ def test_first_seen_은_같은_check_type_의_다른_검사를_섞지_않는다(
         conn, "SCHEMA_DRIFT", "03_schema_drift", [("ops.evidence", "f1", "TYPE_CHANGED")]
     )
     assert found == {}
+
+
+def test_중복_검사가_두_단계여도_같은_것을_잡는다(conn):
+    """전체 GROUP BY 를 두 단계로 바꿨다. 빨라졌지만 놓치는 게 생기면 안 된다.
+
+    특히 원본이 오래됐고 복제본만 최근인 쌍 — 기간 조건을 GROUP BY 앞으로
+    내리면 이걸 놓친다. 두 단계 질의는 후보 키를 먼저 뽑으므로 잡는다.
+    """
+    from domains.datacatalog.checks import load_sql
+
+    conn.execute(text("DELETE FROM catalog_normalized_evidence WHERE evidence_id LIKE 'dup-%'"))
+    rows = [
+        ("dup-1", "2026-06-01T00:00:01+00", "2026-07-15T00:00:00+00", "run-a"),
+        ("dup-2", "2026-06-01T00:00:07+00", "2026-07-19T00:00:00+00", "run-b"),
+        ("dup-3", "2026-06-02T00:00:01+00", "2026-07-19T00:00:00+00", "run-c"),
+    ]
+    for eid, observed, ingested, run in rows:
+        conn.execute(
+            text(
+                "INSERT INTO catalog_normalized_evidence (evidence_id, asset_id, run_id, "
+                "cluster_id, source_id, resource_uid, collection_status, observed_at, ingested_at) "
+                "VALUES (:e,'ops.normalized_evidence',:r,'c1','loki','uid-dup','SUCCESS',:o,:i)"
+            ),
+            {"e": eid, "r": run, "o": observed, "i": ingested},
+        )
+
+    found = conn.execute(
+        text(load_sql("duplicate_candidates")), {"logical_ts": NOW}
+    ).mappings().all()
+
+    # 06-01 은 서로 다른 run 둘이 적재 -> 중복. 06-02 는 run 하나 -> 정상
+    assert len(found) == 1
+    assert found[0]["resource_uid"] == "uid-dup"
+    assert found[0]["run_count"] == 2
+    assert str(found[0]["observed_day"]).startswith("2026-06-01")

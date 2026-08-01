@@ -8,7 +8,7 @@
 
 이 회고는 개인 기여를 주장하는 문서가 아닙니다. 원본은 5인 팀 아키텍처이고, 통합 controller 는 프로젝트가 끝난 뒤 개인 작업으로 확장한 것입니다. 어디까지가 제 몫인지는 [기여와 근거](source-and-ownership.md)에 있습니다.
 
-## 1. 처음 무엇을 얻으려고 했나
+## 처음 무엇을 얻으려고 했나
 
 장애 감지부터 복구 검증까지를 typed event로 연결했습니다.
 
@@ -46,7 +46,7 @@ workspace_id      tenant·권한 경계
 
 이 결정은 “어떤 단계가 실패했는가”를 추적하고 재실행하는 데 유리했습니다. 문제는 논리적 이벤트 경계와 물리적 배포 경계를 동일시한 것입니다.
 
-## 2. 실제로 얼마나 나뉘었나
+## 실제로 얼마나 나뉘었나
 
 Git 각 날짜의 마지막 revision에서 `deploy/management/**`·`deploy/target/**`의 배포 문서와 `src/services/**/app.py` entrypoint를 셌습니다.
 
@@ -62,7 +62,7 @@ Git 각 날짜의 마지막 revision에서 `deploy/management/**`·`deploy/targe
 
 CloudTrail에서는 7월 4일 기존 management 1개와 target 2개를 만들고, 7월 18일 management/game/demo 3개로 교체한 기록을 확인했습니다. 교체 시점에는 기존과 신규 클러스터가 잠시 겹쳤습니다.
 
-## 3. AWS 청구서는 무엇을 보여줬나
+## AWS 청구서는 무엇을 보여줬나
 
 먼저 밝혀 둘 것이 있습니다. **같은 AWS 계정에서 팀의 다른 프로젝트(게임 서버 `battlegrounds-*` 노드그룹)가 함께 돌았습니다.** 아래 노드그룹별 수치에 그 트래픽이 섞여 있어, 29.68TB 전부를 이 시스템 탓으로 돌릴 수 없습니다.
 
@@ -91,7 +91,7 @@ CloudWatch의 노드그룹별 EC2 인터페이스 합계는 전송 방향을 좁
 
 `battlegrounds-game Out 4,895.28GiB`와 `battlegrounds-infra In 5,227.56GiB`의 반대 방향 전송량과 시계열이 맞물렸습니다. management도 In/Out이 비슷했습니다. EC2 NetworkIn/Out에는 same-AZ·Cross-AZ·인터넷·제어면 통신이 함께 들어가므로 서비스 경로나 비용 원인을 특정할 수 없습니다.
 
-## 4. “32개 워커가 원인”이라고 쓰지 않는 이유
+## “32개 워커가 원인”이라고 쓰지 않는 이유
 
 시간상 상관관계는 있습니다. 배포 문서가 46개로 늘어난 7월 15일 사용량이 1,933.50GB로 뛰었고, 신규 3개 클러스터와 battlegrounds 노드그룹이 운영된 7월 20~26일에 전체의 75.1%가 발생했습니다.
 
@@ -102,7 +102,7 @@ CloudWatch의 노드그룹별 EC2 인터페이스 합계는 전송 방향을 좁
 
 그래서 문제를 “서비스 숫자” 하나로 축약하면 game→infra 경로를 놓칩니다. 개선 기준도 두 갈래여야 합니다.
 
-## 5. 무엇을 바꿨나
+## 무엇을 바꿨나
 
 ### 관리면: 이벤트 계약은 유지하고 프로세스를 합쳤습니다
 
@@ -145,7 +145,7 @@ game→infra는 프로세스 통합으로 해결할 문제가 아닙니다. 다�
 - AZ별 bytes, subject별 messages/bytes, payload p50/p95/p99를 함께 계측
 - 일일 Regional-Bytes 예산과 이상 증가율 경보를 배포 게이트에 포함
 
-## 6. 이벤트를 얼마나 감당하도록 설계했나
+## 이벤트를 얼마나 감당하도록 설계했나
 
 코드에 있는 경계와 측정된 처리량을 구분합니다.
 
@@ -165,7 +165,7 @@ game→infra는 프로세스 통합으로 해결할 문제가 아닙니다. 다�
 
 더 중요한 사실은 원본 배포의 **실제 event/s, payload p95, consumer lag 이력이 보존되지 않았다는 점**입니다. AWS 29.68TB를 이벤트 수로 나누는 것도 불가능합니다. 이 결손 때문에 “초당 N건을 운영에서 처리했다”고는 말할 수 없습니다.
 
-## 7. 로컬에서 무엇을 검증했나
+## 로컬에서 무엇을 검증했나
 
 같은 `EventEnvelope`와 1,393B 직렬화 크기로, 1,000건을 5회 전달했습니다. warm-up은 결과에서 제외했습니다.
 
@@ -178,3 +178,4 @@ game→infra는 프로세스 통합으로 해결할 문제가 아닙니다. 다�
 이 실험은 같은 프로세스 안의 논리 단계를 NATS로 왕복시킬 이유가 있는지 판단하는 microbenchmark입니다. PostgreSQL, handler, 외부 API, Kubernetes CNI, Cross-AZ는 포함하지 않았습니다. 그래서 “전체 시스템이 82K events/s를 처리한다” 또는 “AWS 비용이 96.74% 줄었다”고 쓰면 안 됩니다.
 
 재현 코드는 [`benchmarks/event_bus_transport.py`](../benchmarks/event_bus_transport.py)에 있으며, 원본 자료는 [증거 묶음](evidence/network-cost/README.md)에 있습니다.
+

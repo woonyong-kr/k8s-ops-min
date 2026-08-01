@@ -12,7 +12,7 @@
 
 Python은 질의를 실행하고 결과를 `quality_results`에 적재하는 역할만 합니다.
 
-→ [`sql/quality/`](../sql/quality/)
+→ [`sql/checks/`](../sql/checks/)
 
 ---
 
@@ -22,26 +22,28 @@ Python은 질의를 실행하고 결과를 `quality_results`에 적재하는 역
 
 | 파일 | 유형 | [카탈로그 검사](metadata-catalog.md#정합성-검사) |
 |---|---|---|
-| `01_source_coverage.sql` | 검사 | `SOURCE_COVERAGE` |
-| `02_required_field.sql` | 검사 | `REQUIRED_FIELD` |
-| `03_schema_drift.sql` | 검사 | `SCHEMA_DRIFT` |
-| `04_unversioned_change.sql` | 검사 | `SCHEMA_DRIFT` (버전 미갱신 변경) |
-| `05_freshness.sql` | 검사 | `FRESHNESS` |
-| `06_lineage_break.sql` | 검사 | `LINEAGE_BREAK` |
-| `07_run_consistency.sql` | 검사 | `RUN_CONSISTENCY` |
-| `08_duplicate_candidates.sql` | 검사 | `RUN_CONSISTENCY` (중복 적재) |
-| `90_latest_state.sql` | 조회 | — |
-| `91_lineage_trace.sql` | 조회 | — |
+| `source_coverage.sql` | 검사 | `SOURCE_COVERAGE` |
+| `required_field.sql` | 검사 | `REQUIRED_FIELD` |
+| `schema_drift.sql` | 검사 | `SCHEMA_DRIFT` |
+| `unversioned_change.sql` | 검사 | `SCHEMA_DRIFT` (버전 미갱신 변경) |
+| `freshness.sql` | 검사 | `FRESHNESS` |
+| `lineage_break.sql` | 검사 | `LINEAGE_BREAK` |
+| `run_consistency.sql` | 검사 | `RUN_CONSISTENCY` |
+| `duplicate_candidates.sql` | 검사 | `RUN_CONSISTENCY` (중복 적재) |
+| `latest_state.sql` | 조회 | — |
+| `lineage_trace.sql` | 조회 | — |
 
-조회 도구는 `90번대`로 분리해 검사 실행 대상에서 뺐습니다.
+조회 도구는 `sql/lookups/` 로 분리해 검사 실행 대상에서 뺐습니다.
 
 ---
 
 ## 검사
 
-### 01. 소스 커버리지
+### 원천 커버리지
 
-→ [`sql/quality/01_source_coverage.sql`](../sql/quality/01_source_coverage.sql)
+`sql/checks/source_coverage.sql`
+
+→ [`sql/checks/source_coverage.sql`](../sql/checks/source_coverage.sql)
 
 ```sql
 -- 등록된 소스와 실제 실행을 대조한다.
@@ -51,10 +53,10 @@ Python은 질의를 실행하고 결과를 `quality_results`에 적재하는 역
 -- 조인 후 필터에서 탈락해, 침묵하는 소스와 존재하지 않는 소스가 같은 부재로 뭉개진다.
 --
 -- 성공 판정에 NO_DATA를 포함한다. NO_DATA는 "정상 실행, 신규 데이터 없음"이고
--- 04번 문서가 FAILED와 분리한 이유가 바로 그것이다. 실패로 세면 조용한 정상 소스가
+-- 배치 파이프라인 문서가 FAILED와 분리한 이유가 바로 그것이다. 실패로 세면 조용한 정상 소스가
 -- NEVER_SUCCEEDED(error)로 찍힌다.
 --
--- TRUNCATED도 실패가 아니다. 02번 문서에서 상한은 설계된 정상 동작이다.
+-- TRUNCATED도 실패가 아니다. 수집 한도 문서에서 상한은 설계된 정상 동작이다.
 -- 다만 상시화되면 범위 조정이 필요하므로 별도 지표로 센다.
 --
 -- last_run_date는 기간 밖 실행도 포함해야 한다. 기간 안에 실행이 없을 때
@@ -104,11 +106,13 @@ WHERE (enabled AND runs_in_window = 0)
 
 `ENABLED_BUT_SILENT`이 이 질의의 존재 이유입니다. 성공률이 떨어지는 것보다 **아무 소리도 안 나는 쪽이 더 위험합니다.**
 
-미등록 소스를 잡는 분기는 넣지 않았습니다. `collection_runs.source_id`에 외래키가 있어 **스키마가 그 상태를 허용하지 않습니다.** 검사할 수 없는 상태를 검사한다고 적으면 안 됩니다. 외래키를 푸는 편이 나은지는 아직 판단하지 않았습니다.
+미등록 원천를 잡는 분기는 넣지 않았습니다. `collection_runs.source_id`에 외래키가 있어 **스키마가 그 상태를 허용하지 않습니다.** 검사할 수 없는 상태를 검사한다고 적으면 안 됩니다. 외래키를 푸는 편이 나은지는 아직 판단하지 않았습니다.
 
-### 02. 필수 필드 누락
+### 필수 필드 누락
 
-→ [`sql/quality/02_required_field.sql`](../sql/quality/02_required_field.sql)
+`sql/checks/required_field.sql`
+
+→ [`sql/checks/required_field.sql`](../sql/checks/required_field.sql)
 
 ```sql
 -- 자산 계약에 required로 등록된 필드가 실제 행에 없는 경우를 찾는다.
@@ -148,9 +152,11 @@ GROUP BY asset_id, field_path
 ORDER BY violation_count DESC;
 ```
 
-### 03. 스키마 드리프트
+### 스키마 드리프트
 
-→ [`sql/quality/03_schema_drift.sql`](../sql/quality/03_schema_drift.sql)
+`sql/checks/schema_drift.sql`
+
+→ [`sql/checks/schema_drift.sql`](../sql/checks/schema_drift.sql)
 
 ```sql
 -- 등록 계약과 실제 관측 필드를 양방향으로 대조한다.
@@ -199,9 +205,11 @@ WHERE o.field_path IS NULL
    OR d.data_type IS DISTINCT FROM o.data_type;
 ```
 
-### 04. 버전을 올리지 않은 변경
+### 버전을 올리지 않은 변경
 
-→ [`sql/quality/04_unversioned_change.sql`](../sql/quality/04_unversioned_change.sql)
+`sql/checks/unversioned_change.sql`
+
+→ [`sql/checks/unversioned_change.sql`](../sql/checks/unversioned_change.sql)
 
 ```sql
 -- 스키마가 바뀌면 버전을 올리는 것이 규칙이다. 규칙을 지키지 않은 변경이 진짜 문제다.
@@ -225,9 +233,11 @@ HAVING COUNT(DISTINCT o.schema_hash) > 1;
 
 `schema_observations`는 `(asset_id, schema_version, schema_hash)`가 유일 키인 append-only 테이블입니다. 같은 계약이 반복 관측되면 행이 늘지 않고, **계약이 바뀌면 행이 하나 생깁니다.**
 
-### 05. 최신성 위반
+### 최신성 위반
 
-→ [`sql/quality/05_freshness.sql`](../sql/quality/05_freshness.sql)
+`sql/checks/freshness.sql`
+
+→ [`sql/checks/freshness.sql`](../sql/checks/freshness.sql)
 
 ```sql
 -- 자산 단위로 마지막 관측 시각을 본다.
@@ -270,9 +280,11 @@ WHERE l.last_observed_at IS NULL
 
 `NOW()`가 아니라 `:logical_ts`를 씁니다. 그리고 관측 집합도 같은 기준으로 자릅니다. **오른쪽 항만 고치고 데이터셋을 열어 두면 미래 데이터가 과거를 가립니다.**
 
-### 06. 리니지 단절
+### 리니지 단절
 
-→ [`sql/quality/06_lineage_break.sql`](../sql/quality/06_lineage_break.sql)
+`sql/checks/lineage_break.sql`
+
+→ [`sql/checks/lineage_break.sql`](../sql/checks/lineage_break.sql)
 
 ```sql
 -- 세 가지를 함께 잡는다.
@@ -306,9 +318,11 @@ JOIN catalog_collection_runs AS r ON r.run_id = e.run_id
 WHERE r.finished_at < (:logical_ts - INTERVAL '7 days');
 ```
 
-### 07. 실행 정합성
+### 실행 정합성
 
-→ [`sql/quality/07_run_consistency.sql`](../sql/quality/07_run_consistency.sql)
+`sql/checks/run_consistency.sql`
+
+→ [`sql/checks/run_consistency.sql`](../sql/checks/run_consistency.sql)
 
 ```sql
 -- 실행이 실제보다 좋게 기록된 경우를 찾는다.
@@ -370,9 +384,11 @@ WHERE d.logical_date = :logical_date
 
 `first_seen_dag_run_id`가 필요한 이유가 있습니다. 이 컬럼이 없으면 **한 번 발생한 영구 위반이 이후 모든 실행을 정합성 위반으로 만듭니다.** 검사들이 서로를 오염시켜 일주일이면 전부 붉어지고, 그 뒤로는 신호가 아니라 잡음이 됩니다.
 
-### 08. 중복 적재 후보
+### 중복 적재 후보
 
-→ [`sql/quality/08_duplicate_candidates.sql`](../sql/quality/08_duplicate_candidates.sql)
+`sql/checks/duplicate_candidates.sql`
+
+→ [`sql/checks/duplicate_candidates.sql`](../sql/checks/duplicate_candidates.sql)
 
 ```sql
 -- 같은 대상이 서로 다른 실행에서 다시 적재된 경우를 찾는다.
@@ -388,23 +404,46 @@ WHERE d.logical_date = :logical_date
 -- 날짜로 뭉개지 않고 그냥 시각만 빼면, 매일 관측되는 정상 리소스가 전부 걸린다.
 -- 오래 살아 있는 리소스는 실행 수만큼 행이 있는 것이 정상이기 때문이다.
 --
--- 기간 조건은 여전히 HAVING 에 둔다. WHERE 에 두면 GROUP BY 이전에 행이 걸러져서
--- 원본은 5일 전이고 복제본만 어제 들어온 쌍이 "1건짜리 그룹"으로 보인다.
+-- 두 단계로 나눈 이유:
+--
+-- 기간 조건을 GROUP BY 앞의 WHERE 에 두면 안 된다. 원본은 5일 전이고 복제본만
+-- 어제 들어온 쌍에서 원본이 먼저 걸러져 "1건짜리 그룹" 으로 보인다. 재시도와
+-- backfill 이 만드는 중복이 정확히 그 모양이라 잡아야 할 것을 놓친다.
+--
+-- 그렇다고 HAVING 에만 두면 매 실행이 테이블 전량을 읽는다. 관측 470만 행에서
+-- 결과가 0행인데 470,421행을 전부 읽고 전부 버렸다.
+--
+-- 그래서 최근 적재분에서 후보 키만 먼저 뽑고(recent), 그 키에 대해서만 전체
+-- 기간을 조회한다. 원본이 5일 전이어도 복제본이 최근에 들어왔으면 2단계에서
+-- 같은 그룹으로 묶이므로 놓치는 사례가 없다. 측정은 docs/load-and-design-limits.md 에 있다.
+WITH recent AS (
+    SELECT DISTINCT
+        cluster_id,
+        source_id,
+        resource_uid,
+        DATE_TRUNC('day', observed_at) AS observed_day
+    FROM catalog_normalized_evidence
+    WHERE ingested_at >= (:logical_ts - INTERVAL '2 days')
+)
 SELECT
-    cluster_id,
-    source_id,
-    resource_uid,
-    DATE_TRUNC('day', observed_at) AS observed_day,
-    COUNT(*)                   AS observation_count,
-    COUNT(DISTINCT run_id)     AS run_count,
-    MIN(observed_at)           AS first_observed_at,
-    MAX(observed_at)           AS last_observed_at,
-    MAX(ingested_at)           AS last_ingested_at,
-    ARRAY_AGG(DISTINCT run_id) AS from_runs
-FROM catalog_normalized_evidence
-GROUP BY cluster_id, source_id, resource_uid, DATE_TRUNC('day', observed_at)
-HAVING COUNT(DISTINCT run_id) > 1
-   AND MAX(ingested_at) >= (:logical_ts - INTERVAL '2 days')
+    e.cluster_id,
+    e.source_id,
+    e.resource_uid,
+    DATE_TRUNC('day', e.observed_at) AS observed_day,
+    COUNT(*)                     AS observation_count,
+    COUNT(DISTINCT e.run_id)     AS run_count,
+    MIN(e.observed_at)           AS first_observed_at,
+    MAX(e.observed_at)           AS last_observed_at,
+    MAX(e.ingested_at)           AS last_ingested_at,
+    ARRAY_AGG(DISTINCT e.run_id) AS from_runs
+FROM catalog_normalized_evidence AS e
+JOIN recent AS r
+  ON  r.cluster_id   = e.cluster_id
+  AND r.source_id    = e.source_id
+  AND r.resource_uid = e.resource_uid
+  AND r.observed_day = DATE_TRUNC('day', e.observed_at)
+GROUP BY e.cluster_id, e.source_id, e.resource_uid, DATE_TRUNC('day', e.observed_at)
+HAVING COUNT(DISTINCT e.run_id) > 1
 ORDER BY observation_count DESC;
 ```
 
@@ -416,9 +455,11 @@ ORDER BY observation_count DESC;
 
 검사가 아닙니다. `quality_results`에 적재하지 않습니다.
 
-### 90. 리소스별 최신 상태
+### 리원천별 최신 상태
 
-→ [`sql/quality/90_latest_state.sql`](../sql/quality/90_latest_state.sql)
+`sql/lookups/latest_state.sql`
+
+→ [`sql/lookups/latest_state.sql`](../sql/lookups/latest_state.sql)
 
 ```sql
 -- 리소스별로 가장 최근 관측 행 하나를 고른다.
@@ -428,7 +469,7 @@ ORDER BY observation_count DESC;
 -- 알리지 않는다. 전 행을 대상으로 순위를 매기고 상태를 함께 노출한다.
 --
 -- 정렬에 tiebreaker가 필요하다. observed_at 동률은 실제로 발생하며
--- (08번 검사가 바로 그 경우를 찾는다) 없으면 같은 입력에 다른 답이 나온다.
+-- (중복 적재 검사가 바로 그 경우를 찾는다) 없으면 같은 입력에 다른 답이 나온다.
 --
 -- 상태 비교에 IS DISTINCT FROM을 쓴다. <> 는 status가 NULL일 때 NULL을 반환하고
 -- 소비자는 그걸 false로 읽는다. 가장 불완전한 상태가 완전으로 보고된다.
@@ -436,9 +477,10 @@ ORDER BY observation_count DESC;
 -- 조회 범위를 반드시 좁힌다. 리소스 상태를 읽는 경로를 염두에 두고 만들었다.
 -- WHERE 없이 전체 이력을 정렬하면 데이터가 쌓일수록 응답이 선형으로 느려진다.
 --
--- 소비자가 없다. 조회 API는 91만 사용하고 이 질의는 검증 스크립트와 벤치마크에서만 돈다.
--- 리소스별 최신 상태를 적재 시점에 유지하는 상태 테이블로 옮기거나 조회 API에 연결하기
--- 전까지는 읽는 쪽이 없는 질의다. 측정 근거는 docs/load-and-design-limits.md 에 있다.
+-- GET /v1/catalog/resources/state 와 MCP get_resource_state 가 이 질의를 쓴다.
+-- 읽기 경로에 있으므로 범위를 좁히는 것이 특히 중요하다.
+-- 적재 시점에 상태를 유지하는 테이블로 옮기면 더 빨라진다 —
+-- 측정과 설계는 docs/load-and-design-limits.md 에 있다.
 WITH ranked AS (
     SELECT
         e.evidence_id,
@@ -464,9 +506,11 @@ WHERE rn = 1;
 
 `latest_is_incomplete`가 이 질의의 핵심입니다. **최신 행이 불완전하다는 사실을 감추지 않고 함께 반환합니다.**
 
-### 91. 리니지 역추적
+### 리니지 역추적
 
-→ [`sql/quality/91_lineage_trace.sql`](../sql/quality/91_lineage_trace.sql)
+`sql/lookups/lineage_trace.sql`
+
+→ [`sql/lookups/lineage_trace.sql`](../sql/lookups/lineage_trace.sql)
 
 ```sql
 -- 정규화 자산에서 원본 자산까지 경로를 거슬러 올라간다.
@@ -519,7 +563,7 @@ LEFT JOIN catalog_data_assets     AS a ON a.asset_id = u.ancestor
 ORDER BY u.origin, u.ancestor, u.depth, c.finished_at DESC NULLS LAST, u.run_id DESC;
 ```
 
-`ancestor_missing`을 함께 반환합니다. 06번 검사가 dangling 간선을 잡지만, **사람이 실제로 리니지를 볼 때 쓰는 것은 이 질의**입니다. 검사 결과를 따로 찾아보게 만들지 않습니다.
+`ancestor_missing`을 함께 반환합니다. 리니지 단절 검사가 dangling 간선을 잡지만, **사람이 실제로 리니지를 볼 때 쓰는 것은 이 질의**입니다. 검사 결과를 따로 찾아보게 만들지 않습니다.
 
 ---
 
@@ -531,7 +575,7 @@ ORDER BY u.origin, u.ancestor, u.depth, c.finished_at DESC NULLS LAST, u.run_id 
 
 | 질의 | 인덱스 없음 | 인덱스 있음 | 배 |
 |---|---:|---:|---:|
-| 01 소스 커버리지 | 1.2 ms | 0.9 ms | 1.3x |
+| 01 원천 커버리지 | 1.2 ms | 0.9 ms | 1.3x |
 | 02 필수 필드 누락 | 4.9 ms | 4.0 ms | 1.2x |
 | **03 스키마 드리프트** | **110.9 ms** | **2.5 ms** | **44.4x** |
 | 04 버전 미갱신 변경 | 0.6 ms | 0.6 ms | 1.0x |
@@ -539,15 +583,15 @@ ORDER BY u.origin, u.ancestor, u.depth, c.finished_at DESC NULLS LAST, u.run_id 
 | 06 리니지 단절 | 1.0 ms | 0.6 ms | 1.7x |
 | 07 실행 정합성 | 1.7 ms | 1.0 ms | 1.7x |
 | 08 중복 적재 후보 | 235.9 ms | 95.7 ms | 2.5x |
-| 90 리소스별 최신 상태 | 25.9 ms | 14.2 ms | 1.8x |
+| 90 리원천별 최신 상태 | 25.9 ms | 14.2 ms | 1.8x |
 | 91 리니지 역추적 | 0.9 ms | 0.8 ms | 1.1x |
 | **합계** | **424.5 ms** | **150.0 ms** | **2.8x** |
 
-03번이 44배인 이유는 `observed_fields` 60만 행을 `run_id`·`asset_id` 로 좁히는 질의라서입니다. 인덱스가 없으면 매번 전체를 읽습니다.
+스키마 드리프트이 44배인 이유는 `observed_fields` 60만 행을 `run_id`·`asset_id` 로 좁히는 질의라서입니다. 인덱스가 없으면 매번 전체를 읽습니다.
 
-08번은 인덱스로 2.5배가 되지만 여전히 가장 느립니다. 그룹 키가 세 컬럼이라 정렬을 완전히 피할 수 없습니다. 커버링 인덱스에 `INCLUDE (observed_at, ingested_at)` 을 넣어 힙 접근을 없앤 것이 이 폭의 대부분입니다.
+중복 적재 후보은 인덱스로 2.5배가 되지만 여전히 가장 느립니다. 그룹 키가 세 컬럼이라 정렬을 완전히 피할 수 없습니다. 커버링 인덱스에 `INCLUDE (observed_at, ingested_at)` 을 넣어 힙 접근을 없앤 것이 이 폭의 대부분입니다.
 
-**08번을 고치기 전에는 이 질의가 전체의 52% 를 쓰면서 아무것도 잡지 못했습니다.** 사유는 위 [08번 항목](#08-중복-적재-후보)에 있습니다.
+**중복 적재 후보을 고치기 전에는 이 질의가 전체의 52% 를 쓰면서 아무것도 잡지 못했습니다.** 사유는 위 [중복 적재 후보 항목](#중복-적재-후보)에 있습니다.
 
 → 벤치마크 코드: [`scripts/catalog_bench.py`](../scripts/catalog_bench.py)
 
@@ -567,20 +611,20 @@ make catalog-sql
 
 | 검사 | 양성 fixture | 음성 fixture |
 |---|---|---|
-| 01 | 7일 무실행 활성 소스, 비활성인데 도는 소스, 성공률 저하 | 정상 소스, **전부 `NO_DATA`인 소스**, **`TRUNCATED` 섞인 소스** |
+| 01 | 7일 무실행 활성 원천, 비활성인데 도는 원천, 성공률 저하 | 정상 원천, **전부 `NO_DATA`인 원천**, **`TRUNCATED` 섞인 원천** |
 | 02 | required 필드 누락 행 | 완전한 행, 구버전 계약만 어긋난 행 |
 | 03 | 타입 변경, 필드 추가, 필드 삭제, 타입 NULL | 일치하는 계약, **이번 실행에서 미관측인 자산** |
 | 04 | 같은 버전에 다른 해시 2건 | 버전과 함께 바뀐 해시, 동일 계약 반복 관측 |
 | 05 | SLA 초과 자산, 미관측 자산, **정규화 자산** | 신선한 자산, **처리일 이후 유입 행만 있는 자산** |
 | 06 | upstream 없는 정규화 자산, dangling 간선, 오래된 간선, **run_id 미상 간선** | 정상 리니지 |
-| 07 | 소스 실패인데 SUCCESS, 검사 0건 SUCCESS, 스냅샷 없는 SUCCESS | 일관된 실행, **기존 error가 남아 있는 정상 실행** |
+| 07 | 원천 실패인데 SUCCESS, 검사 0건 SUCCESS, 스냅샷 없는 SUCCESS | 일관된 실행, **기존 error가 남아 있는 정상 실행** |
 | 08 | 같은 창 안 중복, **원본이 5일 전인 중복** | 유일 키 |
 | 90 | PARTIAL 최신, **status NULL 최신**, observed_at 동률 | SUCCESS 최신 |
 | 91 | 순환, 다이아몬드, **같은 쌍에 간선 2개**, 없는 조상 | 단일 경로 |
 
 **굵게 표시한 것이 실제로 결함을 잡아낸 fixture 입니다.** 처음에는 없었고, 각 질의가 자기 주석이 주장하는 것을 실제로 검출하는지 확인하는 과정에서 추가했습니다.
 
-특히 음성 fixture가 중요합니다. **양성만 돌리면 "항상 참을 반환하는 질의"도 통과합니다.** 01번이 `NO_DATA` 소스를 실패로 세던 것, 05번이 backfill에서 미래 데이터를 보던 것, 90번이 NULL 상태를 완전으로 보고하던 것은 전부 음성 fixture에서 잡혔습니다.
+특히 음성 fixture가 중요합니다. **양성만 돌리면 "항상 참을 반환하는 질의"도 통과합니다.** 원천 커버리지이 `NO_DATA` 원천를 실패로 세던 것, 최신성 위반이 backfill에서 미래 데이터를 보던 것, 리원천별 최신 상태이 NULL 상태를 완전으로 보고하던 것은 전부 음성 fixture에서 잡혔습니다.
 
 ## 이 작업이 증명하는 것
 
@@ -591,11 +635,11 @@ make catalog-sql
 
 ## 남은 것
 
-- 인덱스는 이후 추가했습니다(`models.py` 에 9개). 위 측정표가 그 전후 비교입니다. 다만 **08번은 인덱스로 해결되지 않습니다** — 정확성을 위해 기간 조건을 `HAVING` 에 두어 매 실행마다 전량을 읽습니다. [측정과 한계](load-and-design-limits.md) 참고
-- `normalized_evidence`·`observed_rows`에 파티셔닝이 없습니다. 90번은 조회 범위를 좁혔지만 근본 해법은 시간 파티셔닝이다
-- 임계값(성공률 0.8, 절단 비율 0.5, 재귀 깊이 10, 간선 신선도 7일)이 질의에 상수로 박혀 있습니다. 자산별로 다르게 두려면 설정 테이블이 필요하다
-- 02·03번은 `:run_id` 범위 안에서만 봅니다. 여러 실행에 걸친 추세는 별도 집계가 필요하다
-- 04번 검사에는 해소 경로가 없습니다. append-only 테이블이라 6월의 미등록 변경 한 건이 오늘도 계속 발화합니다. 확인 처리 테이블이 필요하다
+- 인덱스는 이후 추가했습니다(`models.py` 에 9개). 위 측정표가 그 전후 비교입니다. 다만 **중복 적재 후보은 인덱스로 해결되지 않습니다** — 정확성을 위해 기간 조건을 `HAVING` 에 두어 매 실행마다 전량을 읽습니다. [측정과 한계](load-and-design-limits.md) 참고
+- `normalized_evidence`·`observed_rows`에 파티셔닝이 없습니다. 리원천별 최신 상태은 조회 범위를 좁혔지만 근본 해법은 시간 파티셔닝이다
+- 임계값(성공률 0.8, 잘림 비율 0.5, 재귀 깊이 10, 간선 신선도 7일)이 질의에 상수로 박혀 있습니다. 자산별로 다르게 두려면 설정 테이블이 필요하다
+- 02·스키마 드리프트은 `:run_id` 범위 안에서만 봅니다. 여러 실행에 걸친 추세는 별도 집계가 필요하다
+- 버전을 올리지 않은 변경 검사에는 해소 경로가 없습니다. append-only 테이블이라 6월의 미등록 변경 한 건이 오늘도 계속 발화합니다. 확인 처리 테이블이 필요하다
 
 ---
 

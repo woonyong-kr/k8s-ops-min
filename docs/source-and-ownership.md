@@ -21,7 +21,7 @@
 
 ## 직접 구현으로 확인한 범위
 
-### 네 소스의 증거 수집과 공통 한도
+### 네 원천의 증거 수집과 공통 한도
 
 | 현재 파일 | 원본 blame에서 직접 작성 | 확인할 내용 |
 |---|---:|---|
@@ -45,7 +45,7 @@
 - `tests/test_inventory_coverage.py`: 원본 blame 384 / 416줄
 - 대표 커밋 [`d29d3c429`](https://github.com/minmings111/Kyro-jungle-final/commit/d29d3c42963335756cf14212f05533e9ea54e57b): 9개 파일, +1,068/-64
 
-이 커밋은 소스별 수집 범위와 잘림 상태를 계산하고, 불완전한 스냅샷이 삭제 권위로 사용되지 않게 만듭니다. 실제 사용자 데이터가 삭제됐다는 운영 사고는 Git만으로 증명되지 않습니다. 그래서 “삭제 사고를 해결했다”가 아니라 “불완전한 수집 결과가 삭제 근거로 쓰일 수 있는 경로를 차단했다”고 적습니다.
+이 커밋은 원천별 수집 범위와 잘림 상태를 계산하고, 불완전한 스냅샷이 삭제 권위로 사용되지 않게 만듭니다. 실제 사용자 데이터가 삭제됐다는 운영 사고는 Git만으로 증명되지 않습니다. 그래서 “삭제 사고를 해결했다”가 아니라 “불완전한 수집 결과가 삭제 근거로 쓰일 수 있는 경로를 차단했다”고 적습니다.
 
 ### ConfigMap·Secret 참조 조회 API
 
@@ -92,7 +92,7 @@
 
 - `src/domains/datacatalog/`
 - `dags/catalog_reconciliation_daily.py`
-- `sql/quality/`
+- `sql/checks/`
 - `fixtures/catalog/`
 - `src/services/catalog_mcp/`
 - `tests/catalog/`
@@ -105,9 +105,9 @@
 |---|---|---|
 | 1 | 정상·부분 실패·드리프트 시나리오를 로컬에서 직접 재현 | 완료 — `make demo-fail-source` `make demo-drift` `make demo-duplicate` |
 | 2 | 배치가 원천을 중복 조회하는지 확인하고 수정과 테스트를 남김 | 완료 — 입력을 `CollectedSource`/`FixtureSource` 어댑터로 분리, 테스트 9종 |
-| 3 | 같은 논리 날짜 재실행·일부 소스 실패·downstream 실패의 결과를 SQL로 설명 | 완료 — `make catalog-verify` 15항목 |
-| 4 | 등록 스키마와 관측 스키마의 양방향 차이를 직접 설명 | 완료 — `03_schema_drift.sql` FULL OUTER JOIN |
-| 5 | 카탈로그 조회 router 를 앱에 연결하고 API 테스트 추가 | 완료 — `app.py` 에서 `dependency_overrides` 로 접속을 주입하고 실제 DB 로 API 테스트 10종 |
+| 3 | 같은 논리 날짜 재실행·일부 원천 실패·downstream 실패의 결과를 SQL로 설명 | 완료 — `make catalog-verify` 15항목 |
+| 4 | 등록 스키마와 관측 스키마의 양방향 차이를 직접 설명 | 완료 — `schema_drift.sql` FULL OUTER JOIN |
+| 5 | 카탈로그 조회 router 를 앱에 연결하고 API 테스트 추가 | 완료 — `app.py` 에서 `dependency_overrides` 로 접속을 주입하고 실제 DB 로 API 테스트 15종 |
 | 6 | 판단과 수정 과정이 변경 이력에 남음 | 완료 — [엔지니어링 로그](engineering-log.md)와 커밋 메시지 |
 
 여섯 조건을 모두 통과했습니다. 다만 통과가 곧 운영은 아닙니다 — 실제 사용자가 이 API 를 호출한 적이 없고, 인가는 MCP 가 올바른 토큰을 보내는 데까지만 검증되어 있습니다. API 가 그 토큰으로 권한을 판정하는 경로는 아직 없습니다.

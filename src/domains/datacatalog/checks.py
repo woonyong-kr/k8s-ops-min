@@ -1,6 +1,6 @@
 """정합성 검사 실행기.
 
-sql/quality/ 의 질의를 읽어 실행하고 결과를 catalog_quality_results 에 적재한다.
+sql/checks/ 와 sql/lookups/ 의 질의를 읽어 실행하고 결과를 catalog_quality_results 에 적재한다.
 검사 기준을 Python 이 아니라 SQL 에 둔 이유는 06번 문서에 있다.
 
 Python 은 질의를 실행하고 결과를 적재하는 역할만 한다.
@@ -18,21 +18,26 @@ from sqlalchemy.engine import Connection
 
 from packages.contracts.catalog.vocabulary import CHECK_SEVERITY, CHECK_TYPES
 
-SQL_ROOT = Path(__file__).resolve().parents[3] / "sql" / "quality"
+SQL_ROOT = Path(__file__).resolve().parents[3] / "sql"
+CHECK_DIR = SQL_ROOT / "checks"
+LOOKUP_DIR = SQL_ROOT / "lookups"
 
-# 검사 파일과 검사 종류의 대응. 90번대는 조회 도구라 여기 없다.
+# 검사 파일과 검사 종류의 대응.
+#
+# 파일 이름에 번호를 붙이지 않는다. 검사끼리 의존이 없어 순서가 바뀌어도 결과가
+# 같은데, 번호는 순서가 있다고 읽히게 만든다. 검사와 조회는 디렉터리로 나눈다.
 CHECK_FILES: dict[str, str] = {
-    "01_source_coverage": "SOURCE_COVERAGE",
-    "02_required_field": "REQUIRED_FIELD",
-    "03_schema_drift": "SCHEMA_DRIFT",
-    "04_unversioned_change": "SCHEMA_DRIFT",
-    "05_freshness": "FRESHNESS",
-    "06_lineage_break": "LINEAGE_BREAK",
-    "07_run_consistency": "RUN_CONSISTENCY",
-    "08_duplicate_candidates": "RUN_CONSISTENCY",
+    "source_coverage": "SOURCE_COVERAGE",
+    "required_field": "REQUIRED_FIELD",
+    "schema_drift": "SCHEMA_DRIFT",
+    "unversioned_change": "SCHEMA_DRIFT",
+    "freshness": "FRESHNESS",
+    "lineage_break": "LINEAGE_BREAK",
+    "run_consistency": "RUN_CONSISTENCY",
+    "duplicate_candidates": "RUN_CONSISTENCY",
 }
 
-LOOKUP_FILES = ("90_latest_state", "91_lineage_trace")
+LOOKUP_FILES = ("latest_state", "lineage_trace")
 
 # 검사 종류를 계약에 없는 값으로 적으면 심각도 조회에서 KeyError 가 나는데,
 # 그건 배치가 돌기 시작한 뒤다. 임포트 시점에 걸러 낸다.
@@ -42,7 +47,8 @@ assert set(CHECK_FILES.values()) <= set(CHECK_TYPES), (
 
 
 def load_sql(name: str) -> str:
-    return (SQL_ROOT / f"{name}.sql").read_text(encoding="utf-8")
+    directory = LOOKUP_DIR if name in LOOKUP_FILES else CHECK_DIR
+    return (directory / f"{name}.sql").read_text(encoding="utf-8")
 
 
 def _bind_params(sql: str, params: dict[str, Any]) -> dict[str, Any]:

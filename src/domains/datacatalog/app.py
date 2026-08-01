@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Connection, Engine
 
-from .router import get_connection, router
+from .router import get_connection, require_read_scope, router
 
 
 def build_engine(database_url: str | None = None) -> Engine:
@@ -29,7 +29,12 @@ def build_engine(database_url: str | None = None) -> Engine:
     return create_engine(url, pool_pre_ping=True, future=True)
 
 
-def create_app(*, engine: Engine | None = None, **kwargs: Any) -> FastAPI:
+def create_app(
+    *,
+    engine: Engine | None = None,
+    verify_token: Any = None,
+    **kwargs: Any,
+) -> FastAPI:
     app = FastAPI(
         title="Kyro 카탈로그 조회 API",
         version="0.1.0",
@@ -45,6 +50,11 @@ def create_app(*, engine: Engine | None = None, **kwargs: Any) -> FastAPI:
             yield conn
 
     app.dependency_overrides[get_connection] = connection
+
+    # 토큰 검증기를 주입한다. 없으면 라우터의 기본 검사(Bearer 존재 여부)만 돈다.
+    # 실제 서비스에서는 서명·aud·scope 를 확인하는 구현을 여기에 꽂는다.
+    if verify_token is not None:
+        app.dependency_overrides[require_read_scope] = verify_token
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:

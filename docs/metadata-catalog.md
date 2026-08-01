@@ -6,6 +6,20 @@
 
 수집 코드가 오류 없이 끝나도 데이터는 어긋납니다. **실행이 실패하지 않으므로 알림이 울리지 않습니다.**
 
+### 먼저 용어 몇 개
+
+| 말 | 뜻 |
+|---|---|
+| **자산(asset)** | 카탈로그가 관리하는 데이터 한 덩어리. 여기서는 `prometheus.metric_series` 처럼 원천별 데이터 묶음입니다 |
+| **계보(lineage)** | 데이터가 **어디서 와서 무엇을 거쳐 여기 왔는지**의 경로. `원천 → 정규화 → 검사 결과` 같은 화살표이고, 화살표 하나를 **간선(edge)** 이라 부릅니다 |
+| **드리프트(drift)** | 등록해 둔 스키마와 실제로 들어온 데이터가 어긋난 상태. 수집은 성공했는데 필드가 사라졌거나 타입이 바뀐 경우입니다 |
+| **정합성** | 등록해 둔 것과 실제 데이터가 맞아떨어지는 상태. 이 프로젝트가 검사하는 대상입니다 |
+| **멱등(idempotent)** | 같은 작업을 몇 번 반복해도 결과가 같은 성질. 배치를 두 번 돌려도 행이 두 배가 되지 않아야 합니다 |
+| **backfill** | 과거 날짜를 다시 처리하는 것. 어제 배치가 실패했으면 오늘 어제 날짜로 다시 돌립니다 |
+| **upstream · downstream** | 계보에서 앞쪽(데이터를 준 쪽)과 뒤쪽(받은 쪽). `원천 → 정규화` 에서 원천이 upstream 입니다 |
+
+계보를 남기는 이유는 세 가지 질문에 답하기 위해서입니다. **"이 숫자 어디서 나왔나"**(거슬러 올라가기), **"원천이 바뀌면 뭐가 깨지나"**(따라 내려가기), **"출처를 모르는 데이터가 있나"**(끊긴 화살표 찾기).
+
 ---
 
 ## 문제
@@ -53,18 +67,18 @@ Kyro는 **수집하는 순간**의 완전성을 다뤘습니다. [수집 완전�
 
 실시간 경로는 3-state였습니다. 배치에는 부족했습니다. 배치는 "정상 실행인데 데이터가 없음"과 "실패"를 반드시 나눠야 **재처리 대상이 정해집니다.**
 
-그런데 상태를 나누기 전에 **실행 단위**를 먼저 정해야 했습니다. 처음에는 DAG 실행 하나에 `collection_runs` 행 하나를 두고 거기에 `source_id`를 달았습니다. 그러면 소스가 넷인데 행이 하나라 **어느 소스가 실패했는지 기록할 자리가 없습니다.** 부분 실패 보존이 스키마에서 표현 불가능해집니다.
+그런데 상태를 나누기 전에 **실행 단위**를 먼저 정해야 했습니다. 처음에는 DAG 실행 하나에 `collection_runs` 행 하나를 두고 거기에 `source_id`를 달았습니다. 그러면 원천가 넷인데 행이 하나라 **어느 원천가 실패했는지 기록할 자리가 없습니다.** 부분 실패 보존이 스키마에서 표현 불가능해집니다.
 
 단위를 둘로 나눴습니다. 자세한 이유는 [Airflow 문서](airflow-pipeline.md#현재-dag의-구조)에 있습니다.
 
 | 테이블 | 단위 | 상태 |
 |---|---|---|
 | `dag_runs` | DAG 실행 하나 | `SUCCESS` · `PARTIAL` · `FAILED` · `INCOMPLETE` |
-| `collection_runs` | 소스별 수집 하나 | `SUCCESS` · `NO_DATA` · `TRUNCATED` · `FAILED` |
+| `collection_runs` | 원천별 수집 하나 | `SUCCESS` · `NO_DATA` · `TRUNCATED` · `FAILED` |
 
-**한 소스가 "부분 실패"할 수는 없습니다. 부분 실패는 여러 소스를 가진 실행의 성질입니다.**
+**한 원천가 "부분 실패"할 수는 없습니다. 부분 실패는 여러 원천를 가진 실행의 성질입니다.**
 
-`NO_DATA`와 `FAILED`를 합치면 재처리가 매일 전량을 다시 긁습니다. 나누면 실패한 소스만 다시 돌립니다.
+`NO_DATA`와 `FAILED`를 합치면 재처리가 매일 전량을 다시 긁습니다. 나누면 실패한 원천만 다시 돌립니다.
 
 실시간 계층의 3-state와 대응은 이렇습니다.
 
@@ -215,7 +229,7 @@ erDiagram
 
 | 테이블 | 유일 제약 | 없으면 |
 |---|---|---|
-| `collection_runs` | `(dag_run_id, source_id)` | 재시도마다 소스별 행이 복제된다 |
+| `collection_runs` | `(dag_run_id, source_id)` | 재시도마다 원천별 행이 복제된다 |
 | `asset_fields` | `(asset_id, schema_version, field_path)` | 계약 행이 실행마다 늘고, 필수 필드 위반 건수가 **DAG를 몇 번 돌렸는지의 함수**가 된다 |
 | `schema_observations` | `(asset_id, schema_version, schema_hash)` | 계약 이력이 중복돼 미등록 변경 판정이 무의미해진다 |
 | `raw_snapshots` | `(run_id, content_hash)` | 같은 원본이 실행마다 중복 저장된다 |
@@ -224,7 +238,7 @@ erDiagram
 | `observed_rows` | `(run_id, asset_id, row_key)` | 재시도 시 관측 행이 복제된다 |
 | `observed_fields` | `(row_id, field_path)` | 필드가 중복된다 |
 
-`quality_results.severity`와 `first_seen_dag_run_id`도 컬럼으로 둡니다. 심각도를 저장하지 않으면 [실행 정합성 검사](sql-quality-checks.md#07-실행-정합성)가 warning까지 위반으로 승격시켜 모든 실행이 붉어집니다. `first_seen_dag_run_id`가 없으면 한 번 발생한 영구 위반이 이후 모든 실행을 오염시킵니다.
+`quality_results.severity`와 `first_seen_dag_run_id`도 컬럼으로 둡니다. 심각도를 저장하지 않으면 [실행 정합성 검사](sql-quality-checks.md#실행-정합성)가 warning까지 위반으로 승격시켜 모든 실행이 붉어집니다. `first_seen_dag_run_id`가 없으면 한 번 발생한 영구 위반이 이후 모든 실행을 오염시킵니다.
 
 ### 검사 대상과 카탈로그
 
@@ -240,7 +254,7 @@ erDiagram
 
 검사 정의는 코드에 두었습니다. DB에 두면 검사 로직 변경과 정의 변경이 따로 배포돼 어긋납니다. 자산이 수백 개가 되고 팀이 나뉘면 그때 분리하는 게 맞습니다. 그 이관을 염두에 두고 `qualified_name`을 유일 키로 잡았습니다.
 
-인덱스는 이후 추가했습니다(`models.py` 에 9개). 그래도 08번 중복 검사는 정확성 때문에 전량을 읽습니다. [SQL 문서의 남은 것](sql-quality-checks.md#남은-것) 참고.
+인덱스는 이후 추가했습니다(`models.py` 에 9개). 그래도 중복 적재 후보 검사는 정확성 때문에 전량을 읽습니다. [SQL 문서의 남은 것](sql-quality-checks.md#남은-것) 참고.
 
 ## 정합성 검사
 
@@ -260,14 +274,14 @@ SQL 파일 8개를 6가지 `check_type` 으로 적재합니다. `SCHEMA_DRIFT` �
 
 | 검사 | 무엇을 잡나 | SQL | 심각도 |
 |---|---|---|---|
-| `SOURCE_COVERAGE` | 활성인데 침묵하는 소스, 비활성인데 도는 소스, 미등록 소스, 성공률 저하 | [`01`](sql-quality-checks.md#01-소스-커버리지) | error |
-| `REQUIRED_FIELD` | 필수 필드가 빠진 행 | [`02`](sql-quality-checks.md#02-필수-필드-누락) | error |
-| `SCHEMA_DRIFT` | 필드 누락·추가, 타입 변경, 버전 미갱신 변경 | [`03`](sql-quality-checks.md#03-스키마-드리프트) · [`04`](sql-quality-checks.md#04-버전을-올리지-않은-변경) | error |
-| `FRESHNESS` | 자산 단위 최신성 SLA 초과, 한 번도 관측 안 됨 | [`05`](sql-quality-checks.md#05-최신성-위반) | warning |
-| `LINEAGE_BREAK` | upstream 없는 정규화 자산, dangling 간선, 오래된 간선 | [`06`](sql-quality-checks.md#06-리니지-단절) | error |
-| `RUN_CONSISTENCY` | 실패 검사가 있는데 SUCCESS로 기록된 실행, 중복 적재 | [`07`](sql-quality-checks.md#07-실행-정합성) · [`08`](sql-quality-checks.md#08-중복-적재-후보) | error |
+| `SOURCE_COVERAGE` | 활성인데 침묵하는 원천, 비활성인데 도는 원천, 미등록 원천, 성공률 저하 | [소스 커버리지](sql-quality-checks.md#소스-커버리지) | error |
+| `REQUIRED_FIELD` | 필수 필드가 빠진 행 | [필수 필드 누락](sql-quality-checks.md#필수-필드-누락) | error |
+| `SCHEMA_DRIFT` | 필드 누락·추가, 타입 변경, 버전 미갱신 변경 | [스키마 드리프트](sql-quality-checks.md#스키마-드리프트) · [버전을 올리지 않은 변경](sql-quality-checks.md#버전을-올리지-않은-변경) | error |
+| `FRESHNESS` | 자산 단위 최신성 SLA 초과, 한 번도 관측 안 됨 | [최신성 위반](sql-quality-checks.md#최신성-위반) | warning |
+| `LINEAGE_BREAK` | upstream 없는 정규화 자산, dangling 간선, 오래된 간선 | [리니지 단절](sql-quality-checks.md#리니지-단절) | error |
+| `RUN_CONSISTENCY` | 실패 검사가 있는데 SUCCESS로 기록된 실행, 중복 적재 | [실행 정합성](sql-quality-checks.md#실행-정합성) · [중복 적재 후보](sql-quality-checks.md#중복-적재-후보) | error |
 
-검사 결과는 **통과·실패 모두 저장합니다.** 실패만 저장하면 "검사를 안 한 것"과 "검사했는데 통과한 것"을 구분할 수 없습니다. 01번 문서의 빈 목록 문제와 같은 구조입니다.
+검사 결과는 **통과·실패 모두 저장합니다.** 실패만 저장하면 "검사를 안 한 것"과 "검사했는데 통과한 것"을 구분할 수 없습니다. [수집 완전성 계약](collection-contract.md)의 빈 목록 문제와 같은 구조입니다.
 
 → SQL 파일을 읽어 실행하고 결과를 적재하는 코드: [`src/domains/datacatalog/checks.py`](../src/domains/datacatalog/checks.py)
 → 적재·정규화·상태 판정: [`src/domains/datacatalog/pipeline.py`](../src/domains/datacatalog/pipeline.py)

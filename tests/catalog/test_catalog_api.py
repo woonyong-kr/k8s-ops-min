@@ -60,6 +60,7 @@ def client(engine):
                 {"r": f"qr-{n}", "d": dag, "a": asset, "sk": subject, "t": NOW},
             )
     with TestClient(create_app(engine=engine)) as c:
+        c.headers["Authorization"] = "Bearer test-token"
         yield c
 
 
@@ -148,3 +149,40 @@ def test_자산_검색을_원천으로_거른다(client, engine):
     body = client.get("/v1/catalog/assets", params={"source": "tempo"}).json()
     assert [r["asset_id"] for r in body["data"]] == ["a2"]
     assert body["page"]["total_estimated"] == 1
+
+
+def test_리소스_상태는_클러스터를_반드시_받는다(client):
+    """범위를 안 좁히면 전체 이력을 정렬한다. 읽기 경로라 더 중요하다."""
+    assert client.get("/v1/catalog/resources/state").status_code == 422
+
+
+def test_리소스_상태가_응답한다(client):
+    body = client.get("/v1/catalog/resources/state", params={"cluster_id": "cluster-1"}).json()
+    assert "data" in body and "page" in body
+
+
+def test_토큰_없이는_거부한다(engine):
+    """MCP 가 권한을 좁힌 토큰을 보내도 받는 쪽이 안 보면 좁힌 의미가 없다."""
+    with TestClient(create_app(engine=engine)) as anon:
+        r = anon.get("/v1/catalog/sources")
+        assert r.status_code == 401
+        assert r.json()["detail"]["code"] == "missing_token"
+
+
+def test_bearer_형식이_아니면_거부한다(engine):
+    with TestClient(create_app(engine=engine)) as anon:
+        anon.headers["Authorization"] = "test-token"
+        assert anon.get("/v1/catalog/sources").status_code == 401
+
+
+def test_배선이_검증기를_갈아끼울_수_있다(engine):
+    """라우터가 인증 방식에 묶이면 방식이 바뀔 때마다 조회 코드를 고쳐야 한다."""
+    from fastapi import HTTPException
+
+    def only_alice(authorization: str | None = None) -> str:
+        raise HTTPException(status_code=403, detail={"code": "forbidden"})
+
+    app = create_app(engine=engine, verify_token=only_alice)
+    with TestClient(app) as c:
+        c.headers["Authorization"] = "Bearer bob-token"
+        assert c.get("/v1/catalog/sources").status_code == 403

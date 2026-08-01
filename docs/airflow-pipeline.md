@@ -8,7 +8,7 @@
 
 Airflow는 기존 실시간 장애 수집기를 대체하지 않습니다. 이미 수집된 snapshot을 논리 날짜별로 재처리하고, 등록 스키마와 실제 관측 스키마를 대조하고, 품질 결과를 발행하는 배치에 사용합니다.
 
-처음에는 mapped extract와 downstream이 source를 각각 읽었고, Airflow 2.10의 SQLAlchemy 1.4와 카탈로그의 SQLAlchemy 2.x가 충돌해 DAG import도 실패했습니다. extract가 보관한 snapshot을 downstream이 다시 읽도록 고쳤고, 카탈로그 task를 별도 Python 환경으로 격리해 `dags test`를 통과했습니다. 종료 후 검증은 원본 팀 프로젝트의 개인 구현 성과와 분리합니다.
+처음에는 두 가지가 깨져 있었습니다. **원천을 두 번 읽고 있었고**(수집 단계와 그 다음 단계가 각각 조회), **의존성이 충돌해 DAG 를 불러오지도 못했습니다**(Airflow 2.10 이 쓰는 SQLAlchemy 1.4 와 카탈로그의 2.x). 수집 단계가 보관해 둔 원본을 다음 단계가 다시 읽도록 고쳤고, 카탈로그 작업만 별도 Python 환경으로 떼어 내 `dags test` 를 통과했습니다. 종료 후 검증은 원본 팀 프로젝트의 개인 구현 성과와 분리합니다.
 
 ## 실시간 수집기를 바꾸지 않는 이유
 
@@ -81,7 +81,7 @@ publish_quality_report
 
 ## 실제 실행에서 발견하고 고친 결함
 
-### source를 두 번 읽고 있었습니다
+### 원천을 두 번 읽고 있었습니다
 
 mapped `extract` task가 각 source를 읽고 상태를 DB에 기록합니다. 그러나 downstream `archive_and_load`는 그 결과를 사용하지 않고 `pipeline.extract_source()`를 네 번 다시 호출합니다.
 
@@ -93,7 +93,7 @@ archive_and_load: 같은 source 다시 읽기 1회
 
 fixture에서는 같은 값이 돌아와 문제가 가려집니다. 실제 API라면 두 조회 사이에 값이 바뀌거나 호출 비용이 두 배가 될 수 있습니다. 부분 실패를 재현해도 첫 조회와 둘째 조회의 결과가 다르면 DAG 상태가 어느 실행을 뜻하는지 모호해집니다.
 
-현재 extract task가 원본을 archive하고 XCom에는 source·status만 반환합니다. downstream은 `dag_run_id`로 collection run과 raw snapshot을 조인해 정확히 그 snapshot을 읽습니다. 지원하지 않는 `s3://` URI를 조용히 파일처럼 다루지 않고 실패시키는 테스트도 추가했습니다.
+현재 extract task가 원본을 archive하고 XCom에는 원천·status만 반환합니다. downstream은 `dag_run_id`로 collection run과 raw snapshot을 조인해 정확히 그 snapshot을 읽습니다. 지원하지 않는 `s3://` URI를 조용히 파일처럼 다루지 않고 실패시키는 테스트도 추가했습니다.
 
 ### Airflow와 도메인 ORM의 SQLAlchemy가 충돌했습니다
 
@@ -129,14 +129,14 @@ source별 상태와 DAG 전체 상태를 분리합니다.
 
 | 단위 | 상태 | 의미 |
 |---|---|---|
-| source | `SUCCESS` | 데이터 수집 성공 |
-| source | `NO_DATA` | 정상 실행했지만 신규 데이터 없음 |
-| source | `TRUNCATED` | 상한 때문에 일부만 수집 |
-| source | `FAILED` | 수집 실패 |
-| source | `NO_SOURCE_DATA` | 과거 원본이 없어 재생 불가 |
+| 원천 | `SUCCESS` | 데이터 수집 성공 |
+| 원천 | `NO_DATA` | 정상 실행했지만 신규 데이터 없음 |
+| 원천 | `TRUNCATED` | 상한 때문에 일부만 수집 |
+| 원천 | `FAILED` | 수집 실패 |
+| 원천 | `NO_SOURCE_DATA` | 과거 원본이 없어 재생 불가 |
 | DAG | `SUCCESS` | source와 downstream 모두 완료 |
-| DAG | `PARTIAL` | 일부 source 실패·잘림 |
-| DAG | `FAILED` | 모든 source 실패 |
+| DAG | `PARTIAL` | 일부 원천 실패·잘림 |
+| DAG | `FAILED` | 모든 원천 실패 |
 | DAG | `INCOMPLETE` | 수집 후 downstream 미완료 |
 
 `NO_DATA`와 `FAILED`를 합치지 않는 이유는 재시도 대상이 다르기 때문입니다. `TRUNCATED`도 조용한 성공으로 합치면 상한이 상시 발동하는 source를 찾을 수 없습니다.
@@ -147,7 +147,7 @@ source별 상태와 DAG 전체 상태를 분리합니다.
 - 실패 task만 재시도할 때 이미 성공한 source가 중복 적재되지 않는가
 - schema observation처럼 이력을 남겨야 하는 테이블은 반대로 이력이 보존되는가
 - 과거 원본이 없을 때 현재 값을 과거 날짜로 저장하지 않는가
-- 한 source 실패를 전체 성공으로 기록하지 않는가
+- 한 원천 실패를 전체 성공으로 기록하지 않는가
 - downstream이 실패했는데 적재 0건인 실행이 성공으로 남지 않는가
 
 이 질문을 [`scripts/catalog_verify.py`](../scripts/catalog_verify.py)에 15개 검증 항목으로 작성했고 PostgreSQL에서 15/15 통과했습니다. Airflow에서는 import error 0건, 정상 실행 7개 task instance 전부 성공, 품질 위반 0건을 확인했습니다.
@@ -158,14 +158,14 @@ source별 상태와 DAG 전체 상태를 분리합니다.
 
 동일 논리 날짜 Airflow 재실행은 `catalog_loads 5행 → 5행`, 상태 `SUCCESS`로 확인했습니다. 남은 조건은 다음과 같습니다.
 
-1. 한 source 실패·전 source 실패·downstream 실패를 실제 Airflow DAG run으로 재현합니다.
+1. 한 원천 실패·전 원천 실패·downstream 실패를 실제 Airflow DAG run으로 재현합니다.
 2. task 재시도 후 `attempt`, run status, 적재 행 수를 SQL로 확인합니다.
 3. 로컬 파일 보관을 그대로 명시하거나 실제 MinIO client를 연결합니다.
 4. 개인 성과로 사용하려면 수정 이유와 실패 시나리오를 재현하고 변경 이력을 남깁니다.
 
 완료 후 사용할 수 있는 문장은 다음입니다.
 
-> 실시간 수집 경로는 유지하고, 보관된 운영 snapshot의 backfill·schema drift·freshness·lineage 검사를 Airflow DAG로 분리했습니다. source 부분 실패와 downstream 실패를 별도 상태로 기록하고, 같은 논리 날짜 재실행의 멱등성을 검증했습니다.
+> 실시간 수집 경로는 유지하고, 보관된 운영 snapshot의 backfill·schema drift·freshness·lineage 검사를 Airflow DAG로 분리했습니다. 원천 부분 실패와 downstream 실패를 별도 상태로 기록하고, 같은 논리 날짜 재실행의 멱등성을 검증했습니다.
 
 ---
 

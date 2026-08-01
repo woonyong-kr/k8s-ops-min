@@ -129,6 +129,22 @@ TOOLS: tuple[Tool, ...] = (
         query_map={"severity": "severity", "limit": "limit", "cursor": "cursor"},
     ),
     Tool(
+        name="get_resource_state",
+        description="리소스별 마지막 관측 상태. 이 리소스를 지금 믿어도 되는지 답한다.",
+        path="/resources/state",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "cluster_id": {"type": "string", "maxLength": 128},
+                "limit": _LIMIT,
+                "cursor": _CURSOR,
+            },
+            "required": ["cluster_id"],
+            "additionalProperties": False,
+        },
+        query_map={"cluster_id": "cluster_id", "limit": "limit", "cursor": "cursor"},
+    ),
+    Tool(
         name="get_run_status",
         description="실행 이력과 소스별 지표. 어제 배치가 잘 돌았는지 답한다.",
         path="/runs",

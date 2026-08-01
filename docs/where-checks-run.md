@@ -32,7 +32,7 @@
 | 02 필수 필드 누락 | 이번 수집 payload | **수집 시점** |
 | 03 스키마 드리프트 | 이번 payload 와 등록 계약 | **수집 시점** |
 | 07 실행 정합성 | 그 실행의 결과 | **실행 종료 직후** |
-| 01 소스 커버리지 | 마지막 성공 이후 경과 시간 | **주기 실행** |
+| 01 원천 커버리지 | 마지막 성공 이후 경과 시간 | **주기 실행** |
 | 05 최신성 위반 | SLA 초과 여부 | **주기 실행** |
 | 06 리니지 단절 | 간선이 오래됐는지 | **주기 실행** |
 | 04 버전 미갱신 변경 | `schema_observations` 전체 | **배치** |
@@ -125,7 +125,7 @@ tempo        5
 어댑터 단위 테스트 9종은 [`tests/catalog/test_sources.py`](../tests/catalog/test_sources.py) 에 있습니다. `kubernetes` 질의에 `evidence_windows` 가 섞이지 않는지, `uid` 가 없을 때 `namespace/name` 으로 떨어지는지, 하루치만 읽는지를 확인합니다.
 
 ```
-pytest tests/catalog -q   →   94 passed
+pytest tests/catalog -q   →   100 passed
 ```
 
 ### 아직 남은 것

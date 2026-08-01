@@ -18,27 +18,17 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-SQL_DIR = ROOT / "sql" / "quality"
+SQL_DIRS = (ROOT / "sql" / "checks", ROOT / "sql" / "lookups")
+SQL_FILES = sorted(f for d in SQL_DIRS for f in d.glob("*.sql"))
 DOCS = ROOT / "docs"
 README = ROOT / "README.md"
-
-
-def _datacatalog_tables(models: object) -> list[object]:
-    """공유 Base에 등록된 서비스 카탈로그 테이블은 제외한다."""
-    return [
-        value.__table__
-        for value in vars(models).values()
-        if isinstance(value, type)
-        and value.__module__ == models.__name__
-        and hasattr(value, "__table__")
-    ]
 
 
 def _sql_blocks(path: Path) -> list[str]:
     return [b.rstrip() for b in re.findall(r"```sql\n(.*?)\n```", path.read_text("utf-8"), re.S)]
 
 
-@pytest.mark.parametrize("sql_path", sorted(SQL_DIR.glob("*.sql")), ids=lambda p: p.stem)
+@pytest.mark.parametrize("sql_path", SQL_FILES, ids=lambda p: p.stem)
 def test_문서에_실린_질의는_실제_파일과_같다(sql_path: Path):
     """문서 블록이 옛 버전이면 붙여넣어도 돌지 않고, 설계 근거도 다른 질의의 것이 된다."""
     blocks = _sql_blocks(DOCS / "sql-quality-checks.md")
@@ -53,16 +43,17 @@ def test_검사와_조회_질의_개수가_문서와_맞는다():
     text = README.read_text("utf-8")
     assert f"검사 {len(CHECK_FILES)}종" in text
     assert f"조회 질의 {len(LOOKUP_FILES)}종" in text
-    assert len(list(SQL_DIR.glob("*.sql"))) == len(CHECK_FILES) + len(LOOKUP_FILES)
+    assert len(SQL_FILES) == len(CHECK_FILES) + len(LOOKUP_FILES)
 
 
 def test_테이블과_유일제약_개수가_문서와_맞는다():
     from domains.datacatalog import models
 
-    tables = _datacatalog_tables(models)
+    tables = [n for n in models.Base.metadata.tables if n.startswith("catalog_")]
     uniques = [
         c
-        for t in tables
+        for t in models.Base.metadata.tables.values()
+        if t.name.startswith("catalog_")
         for c in t.constraints
         if type(c).__name__ == "UniqueConstraint"
     ]
@@ -78,7 +69,7 @@ def test_er_다이어그램이_모든_테이블을_담는다():
     diagram = re.search(r"```mermaid\nerDiagram(.*?)```", doc, re.S)
     assert diagram, "metadata-catalog.md 에 erDiagram 이 없다"
     drawn = set(re.findall(r"\b([a-z][a-z_]+)\b", diagram.group(1)))
-    actual = {t.name[len("catalog_") :] for t in _datacatalog_tables(models)}
+    actual = {n[len("catalog_"):] for n in models.Base.metadata.tables if n.startswith("catalog_")}
     assert not actual - drawn, f"다이어그램에 빠진 테이블: {sorted(actual - drawn)}"
 
 

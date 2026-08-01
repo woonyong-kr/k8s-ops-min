@@ -44,13 +44,13 @@ def test_initialize_핸드셰이크():
     assert "tools" in out[0]["result"]["capabilities"]
 
 
-def test_tools_list_는_여섯_종을_돌려준다():
+def test_tools_list_가_선언된_도구를_모두_돌려준다():
     out = run([{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}])
     tools = out[0]["result"]["tools"]
-    assert len(tools) == 6
     assert {t["name"] for t in tools} == {
         "list_data_sources", "search_assets", "get_asset_schema",
         "get_asset_lineage", "list_quality_issues", "get_run_status",
+        "get_resource_state",
     }
     for t in tools:
         assert t["inputSchema"]["additionalProperties"] is False
