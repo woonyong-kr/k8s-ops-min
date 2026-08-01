@@ -51,3 +51,6 @@ _to_delete/
 # 세션 전송용 임시 파일
 *.tar.gz
 _to_delete/
+
+# 지원서·이력서 등 비공개 작업 문서
+private/
