@@ -1,0 +1,5 @@
+logical_nodegroup,period_start_utc,period_end_utc,network_out_gib,network_in_gib,node_hours,cpu_weighted_avg_percent,packets_out,packets_in,avg_bytes_per_packet_out,avg_bytes_per_packet_in,interpretation,source_snapshot
+cluster-1-ng,2026-07-04T17:49:00Z,2026-07-07T19:03:00Z,11.4509,56.0113,146.133,7.3805,41595071,68927621,295.6,872.5,pre-spot target reference; workload identity not preserved,2026-08-02
+cluster-2-ng,2026-07-04T18:03:00Z,2026-07-07T19:29:00Z,10.4569,34.7516,146.383,7.7296,35957613,50949564,312.3,732.4,pre-spot target reference; workload identity not preserved,2026-08-02
+cluster-1-spot,2026-07-07T18:52:00Z,2026-07-18T13:49:00Z,142.2993,223.8287,516.567,11.1036,195709499,252386525,780.7,952.2,lower-activity reference; not proven idle,2026-08-02
+cluster-2-spot,2026-07-07T19:21:00Z,2026-07-18T13:49:00Z,1376.3681,1428.6205,439.633,18.4816,958433217,988309036,1542.0,1552.1,project-recorded game/load cluster; pod identity unavailable,2026-08-02

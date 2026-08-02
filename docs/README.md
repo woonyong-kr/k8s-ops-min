@@ -34,6 +34,9 @@
 - [수집 한도 설계 — 무엇부터 버리고 어떻게 남기나](collection-limits.md)
   응답 크기에 상한을 두되, 잘랐다는 사실과 원본 개수를 함께 돌려줍니다.
 
+- [운영 데이터 payload와 AWS 트래픽 포렌식](evidence-payload-traffic-forensics.md)
+  코드가 증명하는 Agent→Management payload와 CloudWatch 노드 트래픽을 분리하고, 어디까지 원인을 말할 수 있는지 경계를 정리했습니다.
+
 - [배치 파이프라인 — 부분 실패를 어떻게 보존하나](airflow-pipeline.md)
   네 원천 중 하나만 실패했을 때 나머지를 살리면서, 실패를 성공으로 덮지 않는 구조.
 
@@ -60,6 +63,8 @@
 
 - [AWS 청구서 다시 확인 — 7월 청구 내역과 문서 수치 대조](evidence/aws-bill-2026-07/README.md)
 - [네트워크 비용 — 29.68TB 가 어디서 나왔나](evidence/network-cost/README.md)
+- [payload 경로와 target cluster 비교 — 압축·축약·트래픽 귀속의 경계](evidence-payload-traffic-forensics.md)
+
 
 ## 기여 경계
 

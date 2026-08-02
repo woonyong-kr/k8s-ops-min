@@ -62,6 +62,33 @@ aws cloudwatch get-metric-statistics \
 
 `NetworkIn`도 같은 방식으로 조회하고 `Sum / 1,073,741,824`로 GiB로 바꿨습니다. CloudWatch retention과 inactive metric 검색 제약 때문에 2026-07-31 에 추출한 원본을 보존했습니다.
 
+삭제된 target Auto Scaling Group 이름은 CloudTrail의 생성 기록에서 복원했습니다. 랜덤 suffix는 공개 CSV에서 제거합니다.
+
+```bash
+aws cloudtrail lookup-events \
+  --region ap-northeast-2 \
+  --start-time 2026-07-07T00:00:00Z \
+  --end-time 2026-07-09T00:00:00Z \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=CreateAutoScalingGroup \
+  --query 'Events[].CloudTrailEvent'
+```
+
+복원한 full ASG 이름으로 급증 구간을 1시간 bucket으로 다시 조회했습니다.
+
+```bash
+aws cloudwatch get-metric-statistics \
+  --region ap-northeast-2 \
+  --namespace AWS/EC2 \
+  --metric-name NetworkOut \
+  --dimensions Name=AutoScalingGroupName,Value="$FULL_TARGET_ASG_NAME" \
+  --start-time 2026-07-14T00:00:00Z \
+  --end-time 2026-07-18T00:00:00Z \
+  --period 3600 \
+  --statistics Sum
+```
+
+같은 bucket의 `NetworkIn`과 `AWS/AutoScaling` `GroupInServiceInstances Average`를 timestamp로 합친 결과가 [`cloudwatch-target-hourly-2026-07-14--18.csv`](raw/cloudwatch-target-hourly-2026-07-14--18.csv)입니다. 원본 시각은 AWS CLI가 반환한 `+09:00` offset을 그대로 보존했습니다.
+
 같은 구간에서 `NetworkPacketsOut`·`NetworkPacketsIn`은 `Sum`으로 조회했습니다. CPU는 CloudWatch 통계의 `Sum / SampleCount`로 가중 평균을 계산했습니다. `AWS/AutoScaling`의 `GroupInServiceInstances`는 `Sum / 60`으로 node-hour를 계산했습니다.
 
 ```text
@@ -93,6 +120,8 @@ aws cloudtrail lookup-events \
 3. `app.py` 직계 디렉터리명이 `*-worker`인 entrypoint 수
 
 대표 revision과 결과는 [`git-topology-timeline.csv`](raw/git-topology-timeline.csv)에 있습니다. `replicas:` 합계는 정적 manifest의 희망 값이며 실제 Pod metric이 아닙니다.
+
+원본 팀 저장소의 commit·GitHub Deployment status와 CloudTrail·CloudWatch event를 KST로 정렬한 결과는 [`git-aws-target-timeline.csv`](raw/git-aws-target-timeline.csv)에 있습니다. GitHub Actions의 management rollout 성공은 외부 target Agent rollout 성공으로 해석하지 않습니다.
 
 ## 이미지 재생성
 

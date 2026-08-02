@@ -1,0 +1,15 @@
+timestamp_kst,source,event,proven_fact,not_proven
+2026-07-05T02:47:54+09:00,git:b03cbd750,aws-up script committed,"same target node type/count and same register function configured for cluster-1 and cluster-2",script completed through agent installation
+2026-07-05T02:49:07+09:00,cloudtrail:CreateNodegroup,cluster-1-ng created,"desired=2 and instanceType=t3.large",pod identity and registration state
+2026-07-05T03:02:56+09:00,cloudtrail:CreateNodegroup,cluster-2-ng created,"desired=2 and instanceType=t3.large",pod identity and registration state
+2026-07-08T03:52:27+09:00,cloudtrail:CreateNodegroup,cluster-1-spot created,"desired=1 and instance types t3.large/t3a.large/m5.large",workload equivalence with cluster-2
+2026-07-08T04:21:39+09:00,cloudtrail:CreateNodegroup,cluster-2-spot created,"desired=1 and instance types t3.large/t3a.large/m5.large",workload equivalence with cluster-1
+2026-07-15T02:39:51+09:00,git:a47826ed,kubelet collector committed,"stats/summary polling is 1 second below 200 pods and changed pod deltas are sent by websocket",execution on external target agents
+2026-07-15T02:45:20+09:00,github-deployment:5445255894,deployment waiting,"deployment for a47826ed started",successful rollout
+2026-07-15T02:51:44+09:00,github-deployment:5445255894,deployment success,"service image and management namespace rollout succeeded",external cluster-2 agent digest changed
+2026-07-15T03:56:14+09:00,cloudtrail:UpdateNodegroupConfig,cluster-2-spot scaling request,"min=1 max=3 desired=3",scaling caused subsequent traffic
+2026-07-15T04:00:00+09:00,cloudwatch:GroupInServiceInstances,cluster-2-spot in service,"hour bucket average=3",pod identity
+2026-07-15T05:00:00+09:00,cloudwatch:NetworkIn+Out,cluster-2-spot traffic rising,"12.160397 GiB per hour",traffic ownership by process
+2026-07-15T05:36:00+09:00,git:287092977,game load measurement recorded,"project record names cluster-2 with 3 servers game pods 20-100 bots and HPA results",independent AWS pod-level confirmation
+2026-07-15T11:00:00+09:00,cloudwatch:NetworkIn+Out,cluster-2-spot peak hour,"145.815912 GiB per hour with 3 in-service nodes",agent payload share
+2026-07-17T03:00:00+09:00,cloudwatch:NetworkIn+Out,traffic collapse without scale-in,"1.002235 GiB per hour with 3 in-service nodes",which process or deployment caused the collapse

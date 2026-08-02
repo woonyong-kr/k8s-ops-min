@@ -9,6 +9,7 @@
 - Cross-AZ 송·수신 양쪽 과금 모델을 가정한 편도 상당량은 **14,841.86 billed GB(약 14.84TB-equivalent)**입니다. 실제 byte·패킷 측정값이 아니라 비용 청구서의 GB 값을 2로 나눈 등가값입니다.
 - 7월 20~26일 7일에 22,295.89GB, 전체의 **75.1%**가 집중됐습니다. 최고일은 7월 22일 4,578.58GB / $45.79였습니다.
 - CloudWatch EC2 인터페이스 합계에서 `battlegrounds-game`은 Out **4,895.28GiB**, `battlegrounds-infra`는 In **5,227.56GiB**로 방향이 맞물렸고, `management-server`는 Out **5,173.35GiB** / In **5,334.27GiB**로 양방향 통신이 컸습니다.
+- 교체 전 target끼리 비교하면 `cluster-1-spot`은 양방향 **366.13GiB / 516.57 node-hour**, `cluster-2-spot`은 **2,804.99GiB / 439.63 node-hour**였습니다. 그러나 `cluster-2`에는 게임 부하가 있었고 Pod·flow metric은 없으므로 이 차이를 Agent payload로 귀속하지 않습니다.
 - 그래서 “32개 워커가 14,841.86 billed GB를 만들었다”는 결론은 증명되지 않습니다. 관리면 내부 이벤트 왕복과 게임→인프라 데이터면 전송이 함께 컸다는 것이 현재 증거가 허용하는 결론입니다.
 
 Cost Explorer의 서비스 분해 결과, 총 29,683.72GB 중 **EC2 - Other가 29,573.84GB(99.63%)**, **Elastic Load Balancing이 109.87GB(0.37%)**였습니다. 29,573.84GB와 전체 사용량의 차이는 재조회 보정분이 아닙니다. 같은 기간의 ELB 사용량입니다. 조회 당시 전체 기간은 `Estimated=true`였습니다.
@@ -20,6 +21,9 @@ Cost Explorer의 서비스 분해 결과, 총 29,683.72GB 중 **EC2 - Other가 2
 - [`cloudwatch-nodegroup-network.csv`](raw/cloudwatch-nodegroup-network.csv): EC2 Auto Scaling Group별 NetworkIn/Out 합계
 - [`cloudwatch-nodegroup-runtime.csv`](raw/cloudwatch-nodegroup-runtime.csv): CPU·packet·가동 인스턴스의 동일 구간 집계
 - [`cloudwatch-derived-network-density.csv`](raw/cloudwatch-derived-network-density.csv): 평균 bytes/packet과 GiB/node-hour 파생값
+- [`cloudwatch-target-reference.csv`](raw/cloudwatch-target-reference.csv): 교체 전 target 2개의 생존 구간 보정 비교
+- [`cloudwatch-target-hourly-2026-07-14--18.csv`](raw/cloudwatch-target-hourly-2026-07-14--18.csv): 급증 전후 시간별 target In/Out·in-service node 수
+- [`git-aws-target-timeline.csv`](raw/git-aws-target-timeline.csv): Git commit·GitHub Deployment·CloudTrail·CloudWatch 통합 시계열
 - [`git-topology-timeline.csv`](raw/git-topology-timeline.csv): 날짜별 Git 배포 토폴로지 개수
 - [`eks-lifecycle.csv`](raw/eks-lifecycle.csv): CloudTrail에서 복원한 클러스터 수명
 - [`event-bus-benchmark.json`](raw/event-bus-benchmark.json): 동일 이벤트 계약의 로컬 전달 비교
@@ -73,6 +77,12 @@ Dimension   AutoScalingGroupName
 - [노드그룹 CPU Average](aws-console/cloudwatch-nodegroup-cpu-average-2026-07-04--28-utc.png)
 - [노드그룹 packet Sum](aws-console/cloudwatch-nodegroup-packets-sum-2026-07-04--28-utc.png)
 - [가동 인스턴스 Average](aws-console/cloudwatch-nodegroup-inservice-average-2026-07-04--28-utc.png)
+- [target 시간별 NetworkIn/Out — CloudWatch API 원본 그래프](aws-console/cloudwatch-target-hourly-network-2026-07-14--18-kst.png)
+- [target 시간별 in-service node — CloudWatch API 원본 그래프](aws-console/cloudwatch-target-hourly-nodes-2026-07-14--18-kst.png)
+- [Container Insights metric 부재 확인](aws-console/cloudwatch-containerinsights-not-configured-2026-08-02.png)
+- [CloudWatch log group 부재 확인](aws-console/cloudwatch-log-groups-empty-2026-08-02.png)
+
+target 두 그래프는 2026-08-02에 AWS CloudWatch `GetMetricWidgetImage`가 렌더링한 원본 service output입니다. full Auto Scaling Group suffix는 custom label로 숨겼습니다. 두 부재 화면은 “트래픽이 없었다”는 증거가 아닙니다. 과거 트래픽을 Pod·namespace·API 경로로 다시 나눌 원장이 남아 있지 않다는 측정 한계의 증거입니다. payload 코드 경로와 target 비교는 [운영 데이터 payload와 AWS 트래픽 포렌식](../../evidence-payload-traffic-forensics.md)에 분리했습니다.
 
 로컬 벤치마크 조건:
 
