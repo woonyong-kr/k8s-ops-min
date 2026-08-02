@@ -169,7 +169,7 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 
 **측정할 것**
 
-- [40개 logical source·Outbox·멱등·DLQ 지속 부하 및 payload 크기 실험 계획](docs/event-pipeline-load-test-plan.md)
+- [40개 logical source·Outbox·멱등·DLQ 지속 부하와 자원 민감도 실험 계획](docs/event-pipeline-load-test-plan.md)
 
 **안 만든 것**
 

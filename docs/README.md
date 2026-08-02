@@ -38,7 +38,7 @@
   코드가 증명하는 Agent→Management payload와 CloudWatch 노드 트래픽을 분리하고, 어디까지 원인을 말할 수 있는지 경계를 정리했습니다.
 
 - [이벤트 파이프라인 지속 부하·장애 복구 실험 계획](event-pipeline-load-test-plan.md)
-  40개 logical source, Outbox·멱등·DLQ 장애 주입, 1시간 통합 실험과 조건부 2시간 연장의 합격 기준을 먼저 고정합니다.
+  40개 logical source, Outbox·멱등·DLQ 장애 주입, 환경 통제와 1시간 통합·재현·자원 민감도 실험의 판정 기준을 먼저 고정합니다.
 
 - [배치 파이프라인 — 부분 실패를 어떻게 보존하나](airflow-pipeline.md)
   네 원천 중 하나만 실패했을 때 나머지를 살리면서, 실패를 성공으로 덮지 않는 구조.
