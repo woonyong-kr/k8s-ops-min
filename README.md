@@ -167,6 +167,10 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 - [관측 470만 행 부하 측정과 병목 질의 개선안 검증](docs/load-and-design-limits.md)
 - [7월 AWS 청구 내역과 문서 수치 대조](docs/evidence/aws-bill-2026-07/README.md)
 
+**측정할 것**
+
+- [40개 logical source·Outbox·멱등·DLQ 지속 부하 및 payload 크기 실험 계획](docs/event-pipeline-load-test-plan.md)
+
 **안 만든 것**
 
 - [OpenMetadata·DataHub 미도입 근거와 자체 카탈로그와의 구분](docs/tech-research.md)
