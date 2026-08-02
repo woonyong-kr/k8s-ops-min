@@ -4,6 +4,8 @@
 
 > 상태: **실행 전 계획**. 이 문서의 이벤트 수·시간·합격 기준은 목표값이며 측정 결과가 아니다.
 
+> 이 문서는 Outbox·NATS 신뢰성의 **후속 실험**이다. Kubernetes·Prometheus·Loki·Tempo의 payload 변환을 검증하는 주 실험은 [운영 데이터 payload 변환·보존·전송 실험 계획](evidence-payload-experiment-plan.md)에서 다룬다.
+
 ## 무엇을 증명할 것인가
 
 다음 세 문장을 실제 로그와 DB 대조 결과로 검증한다.

@@ -37,6 +37,9 @@
 - [운영 데이터 payload와 AWS 트래픽 포렌식](evidence-payload-traffic-forensics.md)
   코드가 증명하는 Agent→Management payload와 CloudWatch 노드 트래픽을 분리하고, 어디까지 원인을 말할 수 있는지 경계를 정리했습니다.
 
+- [운영 데이터 payload 변환·보존·전송 실험 계획](evidence-payload-experiment-plan.md)
+  네 provider의 원천 응답부터 Agent 정규화·1MiB HTTP 경계·DB·NATS·RCA 입력까지 byte와 장애 신호 보존을 검증합니다.
+
 - [이벤트 파이프라인 지속 부하·장애 복구 실험 계획](event-pipeline-load-test-plan.md)
   40개 logical source, Outbox·멱등·DLQ 장애 주입, 환경 통제와 1시간 통합·재현·자원 민감도 실험의 판정 기준을 먼저 고정합니다.
 
