@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Kyro payload evidence
+    orgId: 1
+    folder: Kyro Evidence
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 5
+    options:
+      path: /var/lib/grafana/dashboards

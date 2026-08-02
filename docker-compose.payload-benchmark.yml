@@ -1,0 +1,117 @@
+name: kyro-payload-benchmark
+
+services:
+  postgres:
+    image: postgres:16.10-alpine
+    environment:
+      POSTGRES_USER: payload
+      POSTGRES_PASSWORD: payload
+      POSTGRES_DB: payload
+    ports: ["55432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payload -d payload"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    volumes:
+      - payload-postgres:/var/lib/postgresql/data
+
+  nats:
+    image: nats:2.11-alpine
+    command: ["-js", "-m", "8222", "--store_dir", "/data"]
+    ports: ["54222:4222", "58222:8222"]
+    volumes:
+      - payload-nats:/data
+
+  metrics-source:
+    build:
+      context: .
+      dockerfile: benchmarks/payload_lab/Dockerfile
+    image: kyro-payload-benchmark:local
+    command: ["python", "-m", "benchmarks.payload_lab.metrics_source"]
+    environment:
+      PAYLOAD_METRIC_SERIES: "250"
+
+  pushgateway:
+    image: prom/pushgateway:v1.10.0
+    ports: ["59091:9091"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=6h
+      - --web.enable-lifecycle
+    ports: ["59090:9090"]
+    volumes:
+      - ./benchmarks/payload_lab/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - payload-prometheus:/prometheus
+    depends_on: [metrics-source, pushgateway]
+
+  loki:
+    image: grafana/loki:3.2.1
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports: ["53100:3100"]
+    volumes:
+      - ./benchmarks/payload_lab/loki.yml:/etc/loki/local-config.yaml:ro
+      - payload-loki:/loki
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    user: "0"
+    ports: ["53200:3200", "54318:4318"]
+    volumes:
+      - ./benchmarks/payload_lab/tempo.yml:/etc/tempo/tempo.yml:ro
+      - payload-tempo:/var/tempo
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_DEFAULT_THEME: dark
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/payload-overview.json
+    ports: ["53000:3000"]
+    volumes:
+      - ./benchmarks/payload_lab/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./benchmarks/payload_lab/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - payload-grafana:/var/lib/grafana
+    depends_on: [prometheus]
+
+  benchmark:
+    image: kyro-payload-benchmark:local
+    profiles: ["run"]
+    environment:
+      RUN_ID: ${RUN_ID:-manual}
+      RESULTS_ROOT: /results
+      KUBERNETES_FIXTURE: /fixtures/kubernetes-actual.json
+      PROMETHEUS_URL: http://prometheus:9090
+      LOKI_URL: http://loki:3100
+      TEMPO_URL: http://tempo:3200
+      TEMPO_OTLP_URL: http://tempo:4318/v1/traces
+      PUSHGATEWAY_URL: http://pushgateway:9091
+      POSTGRES_DSN: postgresql://payload:payload@postgres:5432/payload
+      NATS_URL: nats://nats:4222
+      GIT_SHA: ${GIT_SHA:-unknown}
+    volumes:
+      - ./.ecc/benchmarks/payload-experiment:/results
+      - ./.ecc/benchmarks/payload-experiment/fixtures:/fixtures:ro
+    depends_on:
+      postgres: {condition: service_healthy}
+      nats: {condition: service_started}
+      prometheus: {condition: service_started}
+      loki: {condition: service_started}
+      tempo: {condition: service_started}
+      pushgateway: {condition: service_started}
+
+volumes:
+  payload-postgres:
+  payload-nats:
+  payload-prometheus:
+  payload-loki:
+  payload-tempo:
+  payload-grafana:
