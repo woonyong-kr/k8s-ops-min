@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "executed_base_git_sha": "43f95db0960e0545add7df01ae05119e0b417f45",
+  "benchmark_image_id": "sha256:39cc345481de75bc3364db75137275610580a73f368c44451a9e371941525311",
+  "note": "The image was built from this base commit plus executed_files. A source Event expired during Run B, so the final portfolio code applies the separately hashed post_run_patch without rewriting the observed run.",
+  "executed_files": {
+    "benchmarks/payload_lab/runner.py": "6448c219ee2ce2296e02db367b8565a4a5383113c7315ddbcf92f53289567bdc",
+    "benchmarks/payload_lab/soak.py": "b5c064219501c7ca039b66eeb355fdff99dc2a9712fd2754f3b013bc24c9c482",
+    "docker-compose.payload-benchmark.yml": "d8d7fa014a91c4361d876cc53d95032e93258c613b3d8396e7ba502e8a5c3aac",
+    "benchmarks/payload_lab/Dockerfile": "763da19e51fafae930ba1620356969e3231ce2df2e4cb0ae21e4bed7dd6619a3",
+    "benchmarks/payload_lab/grafana/dashboards/payload-overview.json": "26ca32f0625d4ff090cceedb08a99de9c9b856f6ec8a1fbb4c905cb341bb596e"
+  },
+  "post_run_patch": {
+    "reason": "Separate source_truth_missing from transformation_truth_loss and expose both on the trust dashboard.",
+    "verification_image_id": "sha256:0b56fbaebfc434de10b3752aafc749c2b823931763c98e1afb699463482e6e71",
+    "verification_run_id": "postfix-truth-classification-v2",
+    "files": {
+      "benchmarks/payload_lab/runner.py": "7b952c41e80c4b899b4ca1270d8800ebae2ce59efb9d6708e28c62c191b804d2",
+      "benchmarks/payload_lab/soak.py": "c34a92d3e5d58412d2e3060e9bcb988eef34ee833e222cb2a77d3de9cba28159",
+      "benchmarks/payload_lab/grafana/dashboards/payload-overview.json": "0ebe438548a04422e82d2d00d0303ac8f936e4b56443fc977495854faac15958"
+    }
+  }
+}

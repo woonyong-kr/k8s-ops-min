@@ -1,0 +1,60 @@
+{
+  "run_id": "baseline-live-final-20260802T113200Z",
+  "case": "baseline",
+  "started_at": "2026-08-02T11:31:54+00:00",
+  "finished_at": "2026-08-02T12:01:54+00:00",
+  "elapsed_seconds": 1800.0,
+  "cycles": 60,
+  "providers": {
+    "kubernetes": {
+      "cycles": 60,
+      "transform_ms_p50": 1.5653334849048406,
+      "transform_ms_p95": 2.1129889428266315,
+      "transform_ms_max": 2.9504580015782267,
+      "agent_body_bytes_p50": 19746.0,
+      "agent_body_bytes_p95": 19746.0,
+      "agent_body_bytes_max": 19746.0,
+      "transform_peak_bytes_max": 61017.0,
+      "contract_failures": 0,
+      "truth_signal_failures": 0
+    },
+    "prometheus": {
+      "cycles": 60,
+      "transform_ms_p50": 4.319812505855225,
+      "transform_ms_p95": 4.970221154508181,
+      "transform_ms_max": 5.652416992234066,
+      "agent_body_bytes_p50": 56085.0,
+      "agent_body_bytes_p95": 56085.0,
+      "agent_body_bytes_max": 56085.0,
+      "transform_peak_bytes_max": 176145.0,
+      "contract_failures": 0,
+      "truth_signal_failures": 0
+    },
+    "loki": {
+      "cycles": 60,
+      "transform_ms_p50": 2.9313125123735517,
+      "transform_ms_p95": 4.431518768251406,
+      "transform_ms_max": 5.858583986992016,
+      "agent_body_bytes_p50": 14279.0,
+      "agent_body_bytes_p95": 14279.0,
+      "agent_body_bytes_max": 14279.0,
+      "transform_peak_bytes_max": 18489.0,
+      "contract_failures": 0,
+      "truth_signal_failures": 0
+    },
+    "tempo": {
+      "cycles": 60,
+      "transform_ms_p50": 0.30666650854982436,
+      "transform_ms_p95": 0.48228748200926913,
+      "transform_ms_max": 0.8925420115701854,
+      "agent_body_bytes_p50": 1736.0,
+      "agent_body_bytes_p95": 1736.0,
+      "agent_body_bytes_max": 1736.0,
+      "transform_peak_bytes_max": 5986.0,
+      "contract_failures": 0,
+      "truth_signal_failures": 0
+    }
+  },
+  "total_contract_failures": 0,
+  "total_truth_signal_failures": 0
+}

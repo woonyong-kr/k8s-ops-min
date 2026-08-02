@@ -1,0 +1,65 @@
+{
+  "run_id": "postfix-truth-classification-v2",
+  "case": "stress",
+  "started_at": "2026-08-02T12:37:21+00:00",
+  "finished_at": "2026-08-02T12:37:51+00:00",
+  "elapsed_seconds": 30.0,
+  "cycles": 1,
+  "providers": {
+    "kubernetes": {
+      "cycles": 1,
+      "transform_ms_p50": 18.954250001115724,
+      "transform_ms_p95": 18.954250001115724,
+      "transform_ms_max": 18.954250001115724,
+      "agent_body_bytes_p50": 241540.0,
+      "agent_body_bytes_p95": 241540.0,
+      "agent_body_bytes_max": 241540.0,
+      "transform_peak_bytes_max": 728971.0,
+      "contract_failures": 0,
+      "source_truth_missing": 0,
+      "truth_signal_failures": 0
+    },
+    "prometheus": {
+      "cycles": 1,
+      "transform_ms_p50": 10.68941698758863,
+      "transform_ms_p95": 10.68941698758863,
+      "transform_ms_max": 10.68941698758863,
+      "agent_body_bytes_p50": 61458.0,
+      "agent_body_bytes_p95": 61458.0,
+      "agent_body_bytes_max": 61458.0,
+      "transform_peak_bytes_max": 1026639.0,
+      "contract_failures": 0,
+      "source_truth_missing": 0,
+      "truth_signal_failures": 0
+    },
+    "loki": {
+      "cycles": 1,
+      "transform_ms_p50": 28.77816601539962,
+      "transform_ms_p95": 28.77816601539962,
+      "transform_ms_max": 28.77816601539962,
+      "agent_body_bytes_p50": 27903.0,
+      "agent_body_bytes_p95": 27903.0,
+      "agent_body_bytes_max": 27903.0,
+      "transform_peak_bytes_max": 46929.0,
+      "contract_failures": 0,
+      "source_truth_missing": 0,
+      "truth_signal_failures": 0
+    },
+    "tempo": {
+      "cycles": 1,
+      "transform_ms_p50": 91.71774997957982,
+      "transform_ms_p95": 91.71774997957982,
+      "transform_ms_max": 91.71774997957982,
+      "agent_body_bytes_p50": 330881.0,
+      "agent_body_bytes_p95": 330881.0,
+      "agent_body_bytes_max": 330881.0,
+      "transform_peak_bytes_max": 2013792.0,
+      "contract_failures": 0,
+      "source_truth_missing": 0,
+      "truth_signal_failures": 0
+    }
+  },
+  "total_contract_failures": 0,
+  "total_source_truth_missing": 0,
+  "total_truth_signal_failures": 0
+}

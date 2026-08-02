@@ -33,7 +33,7 @@
       "gridPos": {"h": 4, "w": 5, "x": 9, "y": 0},
       "id": 3,
       "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}},
-      "targets": [{"expr": "max(kyro_payload_stage_bytes{run_id=\"$run_id\",stage=\"http_body\"})", "instant": true, "refId": "A"}],
+      "targets": [{"expr": "max(kyro_payload_stage_bytes{run_id=\"$run_id\",stage=\"agent_body_bytes\"})", "instant": true, "refId": "A"}],
       "title": "Largest Agent→Management body",
       "type": "stat"
     },
@@ -64,7 +64,7 @@
       "id": 6,
       "options": {"displayMode": "gradient", "minVizHeight": 10, "minVizWidth": 0, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
       "targets": [
-        {"expr": "max by (provider, stage) (kyro_payload_stage_bytes{run_id=\"$run_id\",case=\"actual\"})", "instant": true, "legendFormat": "{{provider}} / {{stage}}", "refId": "A"}
+        {"expr": "max by (provider, stage) (kyro_payload_stage_bytes{run_id=\"$run_id\"})", "instant": true, "legendFormat": "{{provider}} / {{stage}}", "refId": "A"}
       ],
       "title": "Actual-tool payload bytes by stage",
       "type": "bargauge"
@@ -81,7 +81,7 @@
     },
     {
       "datasource": {"type": "prometheus", "uid": "payload-prometheus"},
-      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "decimals": 1, "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "orange", "value": 0.99}, {"color": "green", "value": 1}]}, "unit": "percentunit"}, "overrides": []},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "decimals": 1, "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "green"}]}, "unit": "percentunit"}, "overrides": []},
       "gridPos": {"h": 9, "w": 12, "x": 0, "y": 13},
       "id": 8,
       "options": {"displayMode": "lcd", "minVizHeight": 10, "minVizWidth": 0, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
@@ -96,7 +96,7 @@
       "id": 9,
       "options": {"displayMode": "gradient", "minVizHeight": 10, "minVizWidth": 0, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
       "targets": [
-        {"expr": "max by (provider, case, scope) (kyro_payload_items{run_id=\"$run_id\"})", "instant": true, "legendFormat": "{{provider}} / {{case}} / {{scope}}", "refId": "A"}
+        {"expr": "max by (provider, case, stage) (kyro_payload_items{run_id=\"$run_id\"})", "instant": true, "legendFormat": "{{provider}} / {{case}} / {{stage}}", "refId": "A"}
       ],
       "title": "Original vs returned items",
       "type": "bargauge"
@@ -107,7 +107,7 @@
       "gridPos": {"h": 9, "w": 12, "x": 0, "y": 22},
       "id": 10,
       "options": {"displayMode": "gradient", "minVizHeight": 10, "minVizWidth": 0, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
-      "targets": [{"expr": "max by (kind) (kyro_payload_nats_bytes{run_id=\"$run_id\"})", "instant": true, "legendFormat": "NATS {{kind}}", "refId": "A"}],
+      "targets": [{"expr": "max by (stage) (kyro_payload_nats_bytes{run_id=\"$run_id\"})", "instant": true, "legendFormat": "NATS {{stage}}", "refId": "A"}],
       "title": "NATS claim-check: inline vs compact",
       "type": "bargauge"
     },
@@ -117,7 +117,7 @@
       "gridPos": {"h": 9, "w": 12, "x": 12, "y": 22},
       "id": 11,
       "options": {"displayMode": "gradient", "minVizHeight": 10, "minVizWidth": 0, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
-      "targets": [{"expr": "max by (kind) (kyro_payload_db_bytes{run_id=\"$run_id\"})", "instant": true, "legendFormat": "DB {{kind}}", "refId": "A"}],
+      "targets": [{"expr": "max by (stage) (kyro_payload_db_bytes{run_id=\"$run_id\"})", "instant": true, "legendFormat": "DB {{stage}}", "refId": "A"}],
       "title": "PostgreSQL logical vs physical JSONB",
       "type": "bargauge"
     },
@@ -138,11 +138,54 @@
       "id": 13,
       "options": {"displayMode": "gradient", "minVizHeight": 10, "minVizWidth": 0, "namePlacement": "auto", "orientation": "horizontal", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "showUnfilled": true, "sizing": "auto", "valueMode": "color"},
       "targets": [
-        {"expr": "max(kyro_payload_prompt_bytes{run_id=\"$run_id\"})", "instant": true, "legendFormat": "prompt bytes", "refId": "A"},
-        {"expr": "max(kyro_payload_prompt_tokens_estimate{run_id=\"$run_id\"})", "instant": true, "legendFormat": "token estimate", "refId": "B"}
+        {"expr": "max(kyro_payload_prompt_bytes{run_id=\"$run_id\"})", "instant": true, "legendFormat": "prompt bytes", "refId": "A"}
       ],
       "title": "Safe AI input boundary",
       "type": "bargauge"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "payload-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 12, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 4, "showPoints": "auto", "spanNulls": false}, "unit": "ms"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 38},
+      "id": 14,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "kyro_payload_transform_seconds{run_id=\"$run_id\"} * 1000", "legendFormat": "{{provider}} / {{case}}", "refId": "A"}],
+      "title": "30-minute transform latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "payload-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 12, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 4, "showPoints": "auto", "spanNulls": false}, "unit": "bytes"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 38},
+      "id": 15,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "kyro_payload_stage_bytes{run_id=\"$run_id\",stage=\"agent_body_bytes\"}", "legendFormat": "{{provider}} / {{case}}", "refId": "A"}],
+      "title": "30-minute Agent→Management body",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "payload-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 16, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 4, "showPoints": "auto", "spanNulls": false}, "unit": "bytes"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 47},
+      "id": 16,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"expr": "sum by (stage) (kyro_payload_stage_bytes{run_id=\"$run_id\",stage=~\"wire_bytes|decoded_bytes|normalized_bytes|agent_body_bytes\"})", "legendFormat": "{{stage}}", "refId": "A"}],
+      "title": "30-minute payload transformation stages",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "payload-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 12, "lineInterpolation": "stepAfter", "lineWidth": 2, "pointSize": 4, "showPoints": "auto", "spanNulls": false}, "max": 100, "min": 0, "unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 47},
+      "id": 17,
+      "options": {"legend": {"calcs": ["min", "lastNotNull"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "asc"}},
+      "targets": [
+        {"expr": "kyro_payload_truth_retention_ratio{run_id=\"$run_id\"} * 100", "legendFormat": "truth / {{provider}} / {{case}}", "refId": "A"},
+        {"expr": "kyro_payload_http_contract_valid{run_id=\"$run_id\"} * 100", "legendFormat": "contract / {{provider}} / {{case}}", "refId": "B"},
+        {"expr": "kyro_payload_source_truth_ratio{run_id=\"$run_id\"} * 100", "legendFormat": "source / {{provider}} / {{case}}", "refId": "C"}
+      ],
+      "title": "30-minute trust boundary (source → transform → contract)",
+      "type": "timeseries"
     }
   ],
   "refresh": "5s",

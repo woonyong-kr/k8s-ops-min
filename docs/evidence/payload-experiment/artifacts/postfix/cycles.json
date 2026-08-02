@@ -1,0 +1,24 @@
+[
+  {
+    "cycle": 1,
+    "observed_at": "2026-08-02T12:37:21+00:00",
+    "elapsed_seconds": 8.203771,
+    "aggregate": {
+      "raw_provider_sum_bytes": 1516579,
+      "agent_body_bytes": 661782,
+      "full_evidence_bytes": 662086,
+      "safe_ai_input_bytes": 675,
+      "nats": {
+        "inline_full_bytes": 662086,
+        "claim_check_bytes": 1090
+      },
+      "database": {
+        "full_logical_bytes": 709970,
+        "full_physical_bytes": 30529,
+        "compact_logical_bytes": 1174,
+        "compact_physical_bytes": 1272
+      },
+      "reconciliation_failures": []
+    }
+  }
+]

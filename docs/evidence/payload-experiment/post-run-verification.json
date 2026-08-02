@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "purpose": "Verify the post-run split between missing source truth and transformation loss without rewriting the accepted 30-minute observations.",
+  "regression_tests": {
+    "test_file": "tests/test_payload_lab_truth_classification.py",
+    "verification_method": "Mounted the test file into the post-fix benchmark image and invoked every test_* function; the image intentionally does not include the pytest runner.",
+    "passed": 5,
+    "failed": 0
+  },
+  "integration_check": {
+    "run_id": "postfix-truth-classification-v2",
+    "elapsed_seconds": 30.0,
+    "cycles": 1,
+    "providers": 4,
+    "source_truth_missing": 0,
+    "transformation_truth_loss": 0,
+    "contract_failures": 0,
+    "scope": "classification regression only; not a performance or endurance result"
+  },
+  "diagnostic_predecessor": {
+    "run_id": "postfix-truth-classification",
+    "accepted": false,
+    "finding": "The source classifier compared Loki raw phrase 'dependency timeout' with normalized reason code 'dependency_timeout'.",
+    "resolution": "Normalize the semantic mapping and rerun against all four live local sources."
+  }
+}

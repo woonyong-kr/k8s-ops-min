@@ -89,6 +89,7 @@ services:
       RUN_ID: ${RUN_ID:-manual}
       RESULTS_ROOT: /results
       KUBERNETES_FIXTURE: /fixtures/kubernetes-actual.json
+      KUBERNETES_LIVE_CONFIG: /fixtures/target-kubeconfig
       PROMETHEUS_URL: http://prometheus:9090
       LOKI_URL: http://loki:3100
       TEMPO_URL: http://tempo:3200

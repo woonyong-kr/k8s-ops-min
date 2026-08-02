@@ -1,0 +1,170 @@
+[
+  {
+    "provider": "kubernetes",
+    "case": "stress",
+    "wire_bytes": 593630,
+    "decoded_bytes": 593630,
+    "content_encoding": "controlled-amplification",
+    "http_seconds": 0.0,
+    "status_code": 200,
+    "raw_json_bytes": 593630,
+    "normalized_bytes": 241410,
+    "agent_body_bytes": 241540,
+    "original_items": 180,
+    "returned_items": 201,
+    "source_truth_expected": 2,
+    "source_truth_observed": 2,
+    "source_truth_ratio": 1.0,
+    "source_truth_checks": {
+      "failed_scheduling": true,
+      "oom_signal": true
+    },
+    "truth_expected": 2,
+    "truth_retained": 2,
+    "truth_retention_ratio": 1.0,
+    "truth_checks": {
+      "failed_scheduling": true,
+      "oom_signal": true
+    },
+    "transform_truth_failure": false,
+    "contract_valid": true,
+    "contract_reason": "accepted",
+    "transform_seconds_median": 0.018954250001115724,
+    "transform_seconds_samples": [
+      0.01900466700317338,
+      0.019173042004695162,
+      0.018954250001115724,
+      0.018674374994589016,
+      0.018752749980194494
+    ],
+    "transform_peak_bytes": 728971,
+    "cycle": 1,
+    "observed_at": "2026-08-02T12:37:21+00:00"
+  },
+  {
+    "provider": "prometheus",
+    "case": "stress",
+    "wire_bytes": 583722,
+    "decoded_bytes": 583722,
+    "content_encoding": "controlled-amplification",
+    "http_seconds": 0.0,
+    "status_code": 200,
+    "raw_json_bytes": 583722,
+    "normalized_bytes": 61328,
+    "agent_body_bytes": 61458,
+    "original_items": 2500,
+    "returned_items": 250,
+    "source_truth_expected": 1,
+    "source_truth_observed": 1,
+    "source_truth_ratio": 1.0,
+    "source_truth_checks": {
+      "metric_99": true
+    },
+    "truth_expected": 1,
+    "truth_retained": 1,
+    "truth_retention_ratio": 1.0,
+    "truth_checks": {
+      "metric_99": true
+    },
+    "transform_truth_failure": false,
+    "contract_valid": true,
+    "contract_reason": "accepted",
+    "transform_seconds_median": 0.010689416987588629,
+    "transform_seconds_samples": [
+      0.01051108300453052,
+      0.01063649999559857,
+      0.010689416987588629,
+      0.03380958398338407,
+      0.05096525000408292
+    ],
+    "transform_peak_bytes": 1026639,
+    "cycle": 1,
+    "observed_at": "2026-08-02T12:37:21+00:00"
+  },
+  {
+    "provider": "loki",
+    "case": "stress",
+    "wire_bytes": 19646,
+    "decoded_bytes": 19646,
+    "content_encoding": "controlled-amplification",
+    "http_seconds": 0.0,
+    "status_code": 200,
+    "raw_json_bytes": 19646,
+    "normalized_bytes": 27785,
+    "agent_body_bytes": 27903,
+    "original_items": 80,
+    "returned_items": 80,
+    "source_truth_expected": 4,
+    "source_truth_observed": 4,
+    "source_truth_ratio": 1.0,
+    "source_truth_checks": {
+      "error": true,
+      "dependency_timeout": true,
+      "trace_id": true,
+      "secret_present_for_redaction": true
+    },
+    "truth_expected": 4,
+    "truth_retained": 4,
+    "truth_retention_ratio": 1.0,
+    "truth_checks": {
+      "error": true,
+      "dependency_timeout": true,
+      "trace_id": true,
+      "secret_redacted": true
+    },
+    "transform_truth_failure": false,
+    "contract_valid": true,
+    "contract_reason": "accepted",
+    "transform_seconds_median": 0.02877816601539962,
+    "transform_seconds_samples": [
+      0.05835391697473824,
+      0.029344958980800584,
+      0.018008209008257836,
+      0.02877816601539962,
+      0.013069666019873694
+    ],
+    "transform_peak_bytes": 46929,
+    "cycle": 1,
+    "observed_at": "2026-08-02T12:37:21+00:00"
+  },
+  {
+    "provider": "tempo",
+    "case": "stress",
+    "wire_bytes": 319581,
+    "decoded_bytes": 319581,
+    "content_encoding": "controlled-amplification",
+    "http_seconds": 0.0,
+    "status_code": 200,
+    "raw_json_bytes": 319581,
+    "normalized_bytes": 330761,
+    "agent_body_bytes": 330881,
+    "original_items": 500,
+    "returned_items": 500,
+    "source_truth_expected": 1,
+    "source_truth_observed": 1,
+    "source_truth_ratio": 1.0,
+    "source_truth_checks": {
+      "error_trace": true
+    },
+    "truth_expected": 1,
+    "truth_retained": 1,
+    "truth_retention_ratio": 1.0,
+    "truth_checks": {
+      "error_trace": true
+    },
+    "transform_truth_failure": false,
+    "contract_valid": true,
+    "contract_reason": "accepted",
+    "transform_seconds_median": 0.09171774997957982,
+    "transform_seconds_samples": [
+      0.49780983399250545,
+      0.18428241700166836,
+      0.08583629201166332,
+      0.09171774997957982,
+      0.08208058401942253
+    ],
+    "transform_peak_bytes": 2013792,
+    "cycle": 1,
+    "observed_at": "2026-08-02T12:37:21+00:00"
+  }
+]

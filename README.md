@@ -166,10 +166,10 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 - [정합성 검사 질의 10본의 설계 근거와 폐기·수정 기록](docs/sql-quality-checks.md)
 - [관측 470만 행 부하 측정과 병목 질의 개선안 검증](docs/load-and-design-limits.md)
 - [7월 AWS 청구 내역과 문서 수치 대조](docs/evidence/aws-bill-2026-07/README.md)
+- [네 운영 source의 payload 변환·신호 보존·claim-check 30분 실험](docs/evidence/payload-experiment/README.md)
 
 **측정할 것**
 
-- [Kubernetes·Prometheus·Loki·Tempo payload 변환·신호 보존·claim-check 실험 계획](docs/evidence-payload-experiment-plan.md)
 - [40개 logical source·Outbox·멱등·DLQ 지속 부하와 자원 민감도 실험 계획](docs/event-pipeline-load-test-plan.md)
 
 **안 만든 것**

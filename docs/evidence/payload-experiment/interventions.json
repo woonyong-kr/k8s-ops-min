@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "run_id": "stress-live-final-20260802T120158Z",
+  "interventions": [
+    {
+      "type": "source_truth_expiry_and_reseed",
+      "failed_cycles": [16, 17, 18, 19],
+      "first_missing_observed_at": "2026-08-02T12:09:35Z",
+      "read_only_check": {
+        "kubernetes_events_count": 0,
+        "pod_oom_state_count": 0
+      },
+      "reseeded_at": "2026-08-02T12:11:15Z",
+      "reseeded_reasons": ["FailedScheduling", "OOMKilling"],
+      "first_recovered_cycle": 20,
+      "first_recovered_observed_at": "2026-08-02T12:11:35Z",
+      "classification": "source_truth_missing",
+      "not_classified_as": "transformation_truth_loss",
+      "note": "The running image used one truth_retention_ratio, so its raw rows report these four cycles as truth_signal_loss. Direct source inspection and immediate recovery after reseeding support the corrected classification."
+    }
+  ]
+}

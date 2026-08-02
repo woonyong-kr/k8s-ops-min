@@ -1,0 +1,868 @@
+{
+  "schema_version": 1,
+  "baseline_run": "baseline-live-final-20260802T113200Z",
+  "stress_run": "stress-live-final-20260802T120158Z",
+  "measurement_notes": {
+    "baseline_wire_bytes": "actual HTTP bytes downloaded from each local source API",
+    "stress_wire_bytes": "controlled amplified JSON size after the same live query; not observed network traffic",
+    "docker_network_delta": "container cumulative NetIO last sample minus first sample; includes protocol overhead and Loki/Tempo fixture seeding; the harness does not POST the serialized body to Management"
+  },
+  "providers": {
+    "kubernetes": {
+      "baseline": {
+        "cycles": 60,
+        "transform_ms_p50": 1.5653334849048406,
+        "transform_ms_p95": 2.1129889428266315,
+        "transform_ms_max": 2.9504580015782267,
+        "agent_body_bytes_p50": 19746.0,
+        "agent_body_bytes_p95": 19746.0,
+        "agent_body_bytes_max": 19746.0,
+        "transform_peak_bytes_max": 61017.0,
+        "contract_failures": 0,
+        "truth_signal_failures": 0
+      },
+      "stress": {
+        "cycles": 60,
+        "transform_ms_p50": 19.919749989639968,
+        "transform_ms_p95": 21.949410749948584,
+        "transform_ms_max": 24.676083005033433,
+        "agent_body_bytes_p50": 241540.0,
+        "agent_body_bytes_p95": 253300.0,
+        "agent_body_bytes_max": 253300.0,
+        "transform_peak_bytes_max": 764603.0,
+        "contract_failures": 0,
+        "truth_signal_failures": 4
+      },
+      "transform_p95_ratio": 10.387849318598876,
+      "agent_body_p95_ratio": 12.827914514332017,
+      "peak_memory_ratio": 12.530983168625138
+    },
+    "prometheus": {
+      "baseline": {
+        "cycles": 60,
+        "transform_ms_p50": 4.319812505855225,
+        "transform_ms_p95": 4.970221154508181,
+        "transform_ms_max": 5.652416992234066,
+        "agent_body_bytes_p50": 56085.0,
+        "agent_body_bytes_p95": 56085.0,
+        "agent_body_bytes_max": 56085.0,
+        "transform_peak_bytes_max": 176145.0,
+        "contract_failures": 0,
+        "truth_signal_failures": 0
+      },
+      "stress": {
+        "cycles": 60,
+        "transform_ms_p50": 11.724208015948534,
+        "transform_ms_p95": 12.647739902604368,
+        "transform_ms_max": 17.525665985886008,
+        "agent_body_bytes_p50": 61458.0,
+        "agent_body_bytes_p95": 61458.0,
+        "agent_body_bytes_max": 61458.0,
+        "transform_peak_bytes_max": 1026639.0,
+        "contract_failures": 0,
+        "truth_signal_failures": 0
+      },
+      "transform_p95_ratio": 2.5447036478713594,
+      "agent_body_p95_ratio": 1.0958010163145226,
+      "peak_memory_ratio": 5.828374350676999
+    },
+    "loki": {
+      "baseline": {
+        "cycles": 60,
+        "transform_ms_p50": 2.9313125123735517,
+        "transform_ms_p95": 4.431518768251406,
+        "transform_ms_max": 5.858583986992016,
+        "agent_body_bytes_p50": 14279.0,
+        "agent_body_bytes_p95": 14279.0,
+        "agent_body_bytes_max": 14279.0,
+        "transform_peak_bytes_max": 18489.0,
+        "contract_failures": 0,
+        "truth_signal_failures": 0
+      },
+      "stress": {
+        "cycles": 60,
+        "transform_ms_p50": 10.782999495859258,
+        "transform_ms_p95": 12.606359805795364,
+        "transform_ms_max": 13.25395901221782,
+        "agent_body_bytes_p50": 27907.0,
+        "agent_body_bytes_p95": 27907.0,
+        "agent_body_bytes_max": 27907.0,
+        "transform_peak_bytes_max": 49693.0,
+        "contract_failures": 0,
+        "truth_signal_failures": 0
+      },
+      "transform_p95_ratio": 2.8447041443467915,
+      "agent_body_p95_ratio": 1.9544085720288535,
+      "peak_memory_ratio": 2.6877062036886796
+    },
+    "tempo": {
+      "baseline": {
+        "cycles": 60,
+        "transform_ms_p50": 0.30666650854982436,
+        "transform_ms_p95": 0.48228748200926913,
+        "transform_ms_max": 0.8925420115701854,
+        "agent_body_bytes_p50": 1736.0,
+        "agent_body_bytes_p95": 1736.0,
+        "agent_body_bytes_max": 1736.0,
+        "transform_peak_bytes_max": 5986.0,
+        "contract_failures": 0,
+        "truth_signal_failures": 0
+      },
+      "stress": {
+        "cycles": 60,
+        "transform_ms_p50": 75.6449375039665,
+        "transform_ms_p95": 84.90307173778999,
+        "transform_ms_max": 114.91570898215286,
+        "agent_body_bytes_p50": 330881.0,
+        "agent_body_bytes_p95": 330881.0,
+        "agent_body_bytes_max": 330881.0,
+        "transform_peak_bytes_max": 2013792.0,
+        "contract_failures": 0,
+        "truth_signal_failures": 0
+      },
+      "transform_p95_ratio": 176.04245373334865,
+      "agent_body_p95_ratio": 190.59965437788017,
+      "peak_memory_ratio": 336.41697293685263
+    }
+  },
+  "provider_stages": {
+    "baseline": {
+      "kubernetes": {
+        "wire_bytes": {
+          "p50": 42976.0,
+          "p95": 42976.0,
+          "max": 42976.0
+        },
+        "decoded_bytes": {
+          "p50": 42976.0,
+          "p95": 42976.0,
+          "max": 42976.0
+        },
+        "raw_json_bytes": {
+          "p50": 43271.0,
+          "p95": 43271.0,
+          "max": 43271.0
+        },
+        "normalized_bytes": {
+          "p50": 19616.0,
+          "p95": 19616.0,
+          "max": 19616.0
+        },
+        "agent_body_bytes": {
+          "p50": 19746.0,
+          "p95": 19746.0,
+          "max": 19746.0
+        },
+        "original_items": {
+          "p50": 20.0,
+          "p95": 20.0,
+          "max": 20.0
+        },
+        "returned_items": {
+          "p50": 22.0,
+          "p95": 22.0,
+          "max": 22.0
+        },
+        "transform_peak_bytes": {
+          "p50": 57889.0,
+          "p95": 58003.8,
+          "max": 61017.0
+        },
+        "source_http_ms": {
+          "p50": 35.15256298123859,
+          "p95": 56.21658365416804,
+          "max": 177.9008749872446
+        }
+      },
+      "loki": {
+        "wire_bytes": {
+          "p50": 976.0,
+          "p95": 978.0,
+          "max": 979.0
+        },
+        "decoded_bytes": {
+          "p50": 7044.0,
+          "p95": 7044.0,
+          "max": 7045.0
+        },
+        "raw_json_bytes": {
+          "p50": 7043.0,
+          "p95": 7043.0,
+          "max": 7044.0
+        },
+        "normalized_bytes": {
+          "p50": 14161.0,
+          "p95": 14161.0,
+          "max": 14161.0
+        },
+        "agent_body_bytes": {
+          "p50": 14279.0,
+          "p95": 14279.0,
+          "max": 14279.0
+        },
+        "original_items": {
+          "p50": 20.0,
+          "p95": 20.0,
+          "max": 20.0
+        },
+        "returned_items": {
+          "p50": 20.0,
+          "p95": 20.0,
+          "max": 20.0
+        },
+        "transform_peak_bytes": {
+          "p50": 15951.0,
+          "p95": 17371.749999999996,
+          "max": 18489.0
+        },
+        "source_http_ms": {
+          "p50": 13.646000006701797,
+          "p95": 19.990181227331046,
+          "max": 24.260458012577146
+        }
+      },
+      "prometheus": {
+        "wire_bytes": {
+          "p50": 1502.0,
+          "p95": 1502.0,
+          "max": 1503.0
+        },
+        "decoded_bytes": {
+          "p50": 53178.0,
+          "p95": 53178.0,
+          "max": 53178.0
+        },
+        "raw_json_bytes": {
+          "p50": 53178.0,
+          "p95": 53178.0,
+          "max": 53178.0
+        },
+        "normalized_bytes": {
+          "p50": 55955.0,
+          "p95": 55955.0,
+          "max": 55955.0
+        },
+        "agent_body_bytes": {
+          "p50": 56085.0,
+          "p95": 56085.0,
+          "max": 56085.0
+        },
+        "original_items": {
+          "p50": 250.0,
+          "p95": 250.0,
+          "max": 250.0
+        },
+        "returned_items": {
+          "p50": 250.0,
+          "p95": 250.0,
+          "max": 250.0
+        },
+        "transform_peak_bytes": {
+          "p50": 175505.0,
+          "p95": 175672.19999999998,
+          "max": 176145.0
+        },
+        "source_http_ms": {
+          "p50": 10.536687477724627,
+          "p95": 15.933571149071206,
+          "max": 23.475499998312443
+        }
+      },
+      "tempo": {
+        "wire_bytes": {
+          "p50": 721.0,
+          "p95": 721.0,
+          "max": 721.0
+        },
+        "decoded_bytes": {
+          "p50": 721.0,
+          "p95": 721.0,
+          "max": 721.0
+        },
+        "raw_json_bytes": {
+          "p50": 721.0,
+          "p95": 721.0,
+          "max": 721.0
+        },
+        "normalized_bytes": {
+          "p50": 1616.0,
+          "p95": 1616.0,
+          "max": 1616.0
+        },
+        "agent_body_bytes": {
+          "p50": 1736.0,
+          "p95": 1736.0,
+          "max": 1736.0
+        },
+        "original_items": {
+          "p50": 1.0,
+          "p95": 1.0,
+          "max": 1.0
+        },
+        "returned_items": {
+          "p50": 1.0,
+          "p95": 1.0,
+          "max": 1.0
+        },
+        "transform_peak_bytes": {
+          "p50": 5538.0,
+          "p95": 5671.599999999999,
+          "max": 5986.0
+        },
+        "source_http_ms": {
+          "p50": 14.654375001555309,
+          "p95": 35.319283007993334,
+          "max": 119.47858400526457
+        }
+      }
+    },
+    "stress": {
+      "kubernetes": {
+        "wire_bytes": {
+          "p50": 593630.0,
+          "p95": 835690.0,
+          "max": 835690.0
+        },
+        "decoded_bytes": {
+          "p50": 593630.0,
+          "p95": 835690.0,
+          "max": 835690.0
+        },
+        "raw_json_bytes": {
+          "p50": 593630.0,
+          "p95": 835690.0,
+          "max": 835690.0
+        },
+        "normalized_bytes": {
+          "p50": 241410.0,
+          "p95": 253170.0,
+          "max": 253170.0
+        },
+        "agent_body_bytes": {
+          "p50": 241540.0,
+          "p95": 253300.0,
+          "max": 253300.0
+        },
+        "original_items": {
+          "p50": 180.0,
+          "p95": 400.0,
+          "max": 400.0
+        },
+        "returned_items": {
+          "p50": 201.0,
+          "p95": 221.0,
+          "max": 221.0
+        },
+        "transform_peak_bytes": {
+          "p50": 728747.0,
+          "p95": 764445.4,
+          "max": 764603.0
+        },
+        "source_http_ms": {
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        }
+      },
+      "loki": {
+        "wire_bytes": {
+          "p50": 19650.0,
+          "p95": 19650.0,
+          "max": 19650.0
+        },
+        "decoded_bytes": {
+          "p50": 19650.0,
+          "p95": 19650.0,
+          "max": 19650.0
+        },
+        "raw_json_bytes": {
+          "p50": 19650.0,
+          "p95": 19650.0,
+          "max": 19650.0
+        },
+        "normalized_bytes": {
+          "p50": 27789.0,
+          "p95": 27789.0,
+          "max": 27789.0
+        },
+        "agent_body_bytes": {
+          "p50": 27907.0,
+          "p95": 27907.0,
+          "max": 27907.0
+        },
+        "original_items": {
+          "p50": 80.0,
+          "p95": 80.0,
+          "max": 80.0
+        },
+        "returned_items": {
+          "p50": 80.0,
+          "p95": 80.0,
+          "max": 80.0
+        },
+        "transform_peak_bytes": {
+          "p50": 46544.0,
+          "p95": 46930.9,
+          "max": 49693.0
+        },
+        "source_http_ms": {
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        }
+      },
+      "prometheus": {
+        "wire_bytes": {
+          "p50": 583722.0,
+          "p95": 583722.0,
+          "max": 583722.0
+        },
+        "decoded_bytes": {
+          "p50": 583722.0,
+          "p95": 583722.0,
+          "max": 583722.0
+        },
+        "raw_json_bytes": {
+          "p50": 583722.0,
+          "p95": 583722.0,
+          "max": 583722.0
+        },
+        "normalized_bytes": {
+          "p50": 61328.0,
+          "p95": 61328.0,
+          "max": 61328.0
+        },
+        "agent_body_bytes": {
+          "p50": 61458.0,
+          "p95": 61458.0,
+          "max": 61458.0
+        },
+        "original_items": {
+          "p50": 2500.0,
+          "p95": 2500.0,
+          "max": 2500.0
+        },
+        "returned_items": {
+          "p50": 250.0,
+          "p95": 250.0,
+          "max": 250.0
+        },
+        "transform_peak_bytes": {
+          "p50": 1025999.0,
+          "p95": 1026272.6,
+          "max": 1026639.0
+        },
+        "source_http_ms": {
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        }
+      },
+      "tempo": {
+        "wire_bytes": {
+          "p50": 319582.0,
+          "p95": 319582.0,
+          "max": 319582.0
+        },
+        "decoded_bytes": {
+          "p50": 319582.0,
+          "p95": 319582.0,
+          "max": 319582.0
+        },
+        "raw_json_bytes": {
+          "p50": 319582.0,
+          "p95": 319582.0,
+          "max": 319582.0
+        },
+        "normalized_bytes": {
+          "p50": 330761.0,
+          "p95": 330761.0,
+          "max": 330761.0
+        },
+        "agent_body_bytes": {
+          "p50": 330881.0,
+          "p95": 330881.0,
+          "max": 330881.0
+        },
+        "original_items": {
+          "p50": 500.0,
+          "p95": 500.0,
+          "max": 500.0
+        },
+        "returned_items": {
+          "p50": 500.0,
+          "p95": 500.0,
+          "max": 500.0
+        },
+        "transform_peak_bytes": {
+          "p50": 2012576.0,
+          "p95": 2013792.0,
+          "max": 2013792.0
+        },
+        "source_http_ms": {
+          "p50": 0.0,
+          "p95": 0.0,
+          "max": 0.0
+        }
+      }
+    },
+    "p95_ratio": {
+      "kubernetes": {
+        "wire_bytes": 19.44550446760983,
+        "decoded_bytes": 19.44550446760983,
+        "raw_json_bytes": 19.312934760000925,
+        "normalized_bytes": 12.906300978792823,
+        "agent_body_bytes": 12.827914514332017,
+        "original_items": 20.0,
+        "returned_items": 10.045454545454545,
+        "transform_peak_bytes": 13.179229636678976,
+        "source_http_ms": 0.0
+      },
+      "loki": {
+        "wire_bytes": 20.0920245398773,
+        "decoded_bytes": 2.7896081771720613,
+        "raw_json_bytes": 2.7900042595484877,
+        "normalized_bytes": 1.962361415154297,
+        "agent_body_bytes": 1.9544085720288535,
+        "original_items": 4.0,
+        "returned_items": 4.0,
+        "transform_peak_bytes": 2.7015643213838567,
+        "source_http_ms": 0.0
+      },
+      "prometheus": {
+        "wire_bytes": 388.62982689747,
+        "decoded_bytes": 10.976757305652713,
+        "raw_json_bytes": 10.976757305652713,
+        "normalized_bytes": 1.096023590385131,
+        "agent_body_bytes": 1.0958010163145226,
+        "original_items": 10.0,
+        "returned_items": 1.0,
+        "transform_peak_bytes": 5.84197499661301,
+        "source_http_ms": 0.0
+      },
+      "tempo": {
+        "wire_bytes": 443.24826629680996,
+        "decoded_bytes": 443.24826629680996,
+        "raw_json_bytes": 443.24826629680996,
+        "normalized_bytes": 204.67883663366337,
+        "agent_body_bytes": 190.59965437788017,
+        "original_items": 500.0,
+        "returned_items": 500.0,
+        "transform_peak_bytes": 355.065942591156,
+        "source_http_ms": 0.0
+      }
+    }
+  },
+  "aggregate": {
+    "baseline": {
+      "raw_provider_sum_bytes": {
+        "p50": 103919.0,
+        "p95": 103919.0,
+        "max": 103920.0
+      },
+      "agent_body_bytes": {
+        "p50": 91846.0,
+        "p95": 91846.0,
+        "max": 91846.0
+      },
+      "full_evidence_bytes": {
+        "p50": 92172.0,
+        "p95": 92172.0,
+        "max": 92172.0
+      },
+      "safe_ai_input_bytes": {
+        "p50": 675.0,
+        "p95": 675.0,
+        "max": 675.0
+      },
+      "nats.inline_full_bytes": {
+        "p50": 92172.0,
+        "p95": 92172.0,
+        "max": 92172.0
+      },
+      "nats.claim_check_bytes": {
+        "p50": 1103.0,
+        "p95": 1103.0,
+        "max": 1103.0
+      },
+      "database.full_logical_bytes": {
+        "p50": 98551.0,
+        "p95": 98551.0,
+        "max": 98551.0
+      },
+      "database.full_physical_bytes": {
+        "p50": 12467.0,
+        "p95": 12472.0,
+        "max": 12473.0
+      },
+      "database.compact_logical_bytes": {
+        "p50": 1187.0,
+        "p95": 1187.0,
+        "max": 1187.0
+      },
+      "database.compact_physical_bytes": {
+        "p50": 1288.0,
+        "p95": 1288.0,
+        "max": 1288.0
+      }
+    },
+    "stress": {
+      "raw_provider_sum_bytes": {
+        "p50": 1516584.0,
+        "p95": 1758643.05,
+        "max": 1758644.0
+      },
+      "agent_body_bytes": {
+        "p50": 661786.0,
+        "p95": 673546.0,
+        "max": 673546.0
+      },
+      "full_evidence_bytes": {
+        "p50": 662102.0,
+        "p95": 673862.0,
+        "max": 673862.0
+      },
+      "safe_ai_input_bytes": {
+        "p50": 675.0,
+        "p95": 675.0,
+        "max": 675.0
+      },
+      "nats.inline_full_bytes": {
+        "p50": 662102.0,
+        "p95": 673862.0,
+        "max": 673862.0
+      },
+      "nats.claim_check_bytes": {
+        "p50": 1098.0,
+        "p95": 1098.0,
+        "max": 1098.0
+      },
+      "database.full_logical_bytes": {
+        "p50": 709986.0,
+        "p95": 722426.0,
+        "max": 722426.0
+      },
+      "database.full_physical_bytes": {
+        "p50": 30544.5,
+        "p95": 31119.15,
+        "max": 31129.0
+      },
+      "database.compact_logical_bytes": {
+        "p50": 1182.0,
+        "p95": 1182.0,
+        "max": 1182.0
+      },
+      "database.compact_physical_bytes": {
+        "p50": 1280.0,
+        "p95": 1280.0,
+        "max": 1280.0
+      }
+    },
+    "p95_ratio": {
+      "raw_provider_sum_bytes": 16.923209903867434,
+      "agent_body_bytes": 7.333427694183742,
+      "full_evidence_bytes": 7.310918717180923,
+      "safe_ai_input_bytes": 1.0,
+      "nats.inline_full_bytes": 7.310918717180923,
+      "nats.claim_check_bytes": 0.9954669084315503,
+      "database.full_logical_bytes": 7.330478635427342,
+      "database.full_physical_bytes": 2.495121071199487,
+      "database.compact_logical_bytes": 0.995787700084246,
+      "database.compact_physical_bytes": 0.9937888198757764
+    }
+  },
+  "docker": {
+    "baseline": {
+      "benchmark": {
+        "samples": 106,
+        "cpu_percent_p50": 0.0,
+        "cpu_percent_p95": 1.54,
+        "cpu_percent_max": 12.02,
+        "memory_bytes_p50": 76095160.32,
+        "memory_bytes_max": 76734791.68,
+        "network_rx_bytes_delta": 3937010.0,
+        "network_tx_bytes_delta": 10151700.0
+      },
+      "metrics-source": {
+        "samples": 106,
+        "cpu_percent_p50": 0.12,
+        "cpu_percent_p95": 0.34,
+        "cpu_percent_max": 1.18,
+        "memory_bytes_p50": 13505658.88,
+        "memory_bytes_max": 14029946.88,
+        "network_rx_bytes_delta": 746800.0,
+        "network_tx_bytes_delta": 22695000.0
+      },
+      "prometheus": {
+        "samples": 106,
+        "cpu_percent_p50": 0.665,
+        "cpu_percent_p95": 4.19,
+        "cpu_percent_max": 83.62,
+        "memory_bytes_p50": 53943992.32,
+        "memory_bytes_max": 59359887.36,
+        "network_rx_bytes_delta": 39300000.0,
+        "network_tx_bytes_delta": 6750000.0
+      },
+      "loki": {
+        "samples": 106,
+        "cpu_percent_p50": 0.625,
+        "cpu_percent_p95": 1.11,
+        "cpu_percent_max": 2.24,
+        "memory_bytes_p50": 99536076.80000001,
+        "memory_bytes_max": 118174515.2,
+        "network_rx_bytes_delta": 2780000.0,
+        "network_tx_bytes_delta": 135500.0
+      },
+      "tempo": {
+        "samples": 106,
+        "cpu_percent_p50": 0.06,
+        "cpu_percent_p95": 5.9,
+        "cpu_percent_max": 36.69,
+        "memory_bytes_p50": 465358028.8,
+        "memory_bytes_max": 723517440.0,
+        "network_rx_bytes_delta": 138200.0,
+        "network_tx_bytes_delta": 120500.0
+      },
+      "grafana": {
+        "samples": 106,
+        "cpu_percent_p50": 0.28,
+        "cpu_percent_p95": 17.43,
+        "cpu_percent_max": 124.69,
+        "memory_bytes_p50": 114923929.6,
+        "memory_bytes_max": 116916224.0,
+        "network_rx_bytes_delta": 36600000.0,
+        "network_tx_bytes_delta": 44500000.0
+      },
+      "postgres": {
+        "samples": 106,
+        "cpu_percent_p50": 1.005,
+        "cpu_percent_p95": 1.95,
+        "cpu_percent_max": 2.95,
+        "memory_bytes_p50": 31929139.2,
+        "memory_bytes_max": 33135001.6,
+        "network_rx_bytes_delta": 6120000.0,
+        "network_tx_bytes_delta": 125500.0
+      },
+      "nats": {
+        "samples": 106,
+        "cpu_percent_p50": 0.06,
+        "cpu_percent_p95": 0.15,
+        "cpu_percent_max": 0.73,
+        "memory_bytes_p50": 28479324.16,
+        "memory_bytes_max": 28814868.48,
+        "network_rx_bytes_delta": 118400.0,
+        "network_tx_bytes_delta": 59200.0
+      },
+      "pushgateway": {
+        "samples": 106,
+        "cpu_percent_p50": 0.19,
+        "cpu_percent_p95": 1.2,
+        "cpu_percent_max": 3.32,
+        "memory_bytes_p50": 33900462.08,
+        "memory_bytes_max": 36815503.36,
+        "network_rx_bytes_delta": 831000.0,
+        "network_tx_bytes_delta": 6090000.0
+      }
+    },
+    "stress": {
+      "metrics-source": {
+        "samples": 106,
+        "cpu_percent_p50": 0.04,
+        "cpu_percent_p95": 0.58,
+        "cpu_percent_max": 3.44,
+        "memory_bytes_p50": 13505658.88,
+        "memory_bytes_max": 13757317.12,
+        "network_rx_bytes_delta": 742000.0,
+        "network_tx_bytes_delta": 22600000.0
+      },
+      "prometheus": {
+        "samples": 106,
+        "cpu_percent_p50": 0.98,
+        "cpu_percent_p95": 6.13,
+        "cpu_percent_max": 26.65,
+        "memory_bytes_p50": 59202600.95999999,
+        "memory_bytes_max": 65431142.4,
+        "network_rx_bytes_delta": 41000000.0,
+        "network_tx_bytes_delta": 7470000.0
+      },
+      "loki": {
+        "samples": 106,
+        "cpu_percent_p50": 0.65,
+        "cpu_percent_p95": 1.85,
+        "cpu_percent_max": 8.41,
+        "memory_bytes_p50": 119747379.2,
+        "memory_bytes_max": 141977190.4,
+        "network_rx_bytes_delta": 2780000.0000000005,
+        "network_tx_bytes_delta": 135000.0
+      },
+      "tempo": {
+        "samples": 106,
+        "cpu_percent_p50": 0.07,
+        "cpu_percent_p95": 3.49,
+        "cpu_percent_max": 34.36,
+        "memory_bytes_p50": 440664064.0,
+        "memory_bytes_max": 613521817.6,
+        "network_rx_bytes_delta": 141000.0,
+        "network_tx_bytes_delta": 123000.0
+      },
+      "grafana": {
+        "samples": 106,
+        "cpu_percent_p50": 5.57,
+        "cpu_percent_p95": 25.12,
+        "cpu_percent_max": 38.95,
+        "memory_bytes_p50": 115238502.4,
+        "memory_bytes_max": 116077363.2,
+        "network_rx_bytes_delta": 40300000.0,
+        "network_tx_bytes_delta": 50800000.0
+      },
+      "postgres": {
+        "samples": 106,
+        "cpu_percent_p50": 0.675,
+        "cpu_percent_p95": 2.53,
+        "cpu_percent_max": 3.5,
+        "memory_bytes_p50": 32516341.76,
+        "memory_bytes_max": 33596375.04,
+        "network_rx_bytes_delta": 42980000.0,
+        "network_tx_bytes_delta": 173000.0
+      },
+      "nats": {
+        "samples": 106,
+        "cpu_percent_p50": 0.06,
+        "cpu_percent_p95": 0.17,
+        "cpu_percent_max": 0.9,
+        "memory_bytes_p50": 28500295.68,
+        "memory_bytes_max": 28762439.68,
+        "network_rx_bytes_delta": 119000.0,
+        "network_tx_bytes_delta": 60800.0
+      },
+      "pushgateway": {
+        "samples": 106,
+        "cpu_percent_p50": 0.3,
+        "cpu_percent_p95": 1.35,
+        "cpu_percent_max": 3.46,
+        "memory_bytes_p50": 35064381.44,
+        "memory_bytes_max": 37339791.36,
+        "network_rx_bytes_delta": 830000.0,
+        "network_tx_bytes_delta": 6450000.000000002
+      },
+      "benchmark": {
+        "samples": 105,
+        "cpu_percent_p50": 0.0,
+        "cpu_percent_p95": 17.7,
+        "cpu_percent_max": 85.54,
+        "memory_bytes_p50": 83435192.32,
+        "memory_bytes_max": 84976599.04,
+        "network_rx_bytes_delta": 3362000.0,
+        "network_tx_bytes_delta": 46205000.0
+      }
+    }
+  },
+  "validity": {
+    "baseline_cycles": 60,
+    "stress_cycles": 60,
+    "baseline_contract_failures": 0,
+    "stress_contract_failures": 0,
+    "baseline_truth_failures": 0,
+    "stress_truth_failures": 4
+  }
+}

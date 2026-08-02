@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "accepted_runs": [
+    {
+      "run_id": "baseline-live-final-20260802T113200Z",
+      "status": "accepted",
+      "case": "baseline",
+      "cycles": 60,
+      "reason": "Four live local source APIs queried for 1800 seconds with the project Loki limit and per-cycle isolation."
+    },
+    {
+      "run_id": "stress-live-final-20260802T120158Z",
+      "status": "accepted-with-source-intervention",
+      "case": "stress",
+      "cycles": 60,
+      "reason": "Controlled amplification completed for 1800 seconds. Kubernetes source Events expired in cycles 16-19 and were reseeded before cycle 20; raw rows remain unchanged and the interval is classified separately in interventions.json."
+    }
+  ],
+  "validation_runs": [
+    {
+      "run_id": "smoke-live-k8s",
+      "status": "smoke-only",
+      "reason": "Confirmed all 14 Kubernetes API requests from the benchmark container before the formal run."
+    },
+    {
+      "run_id": "postfix-truth-classification-v2",
+      "status": "classification-regression-only",
+      "cycles": 1,
+      "reason": "A 30-second live integration check of the post-run classifier. All four providers reported zero source-truth missing, transformation loss, and contract failures. This does not replace either 30-minute performance run."
+    }
+  ],
+  "discarded_runs": [
+    {
+      "run_id": "20260802T111200Z",
+      "reason": "Kubernetes used a captured fixture and Loki returned 160 lines instead of the project limit of 20."
+    },
+    {
+      "run_id": "20260802T111500Z",
+      "reason": "Loki data from earlier cycles accumulated; 320 returned lines did not represent one collection cycle."
+    },
+    {
+      "run_id": "20260802T111600Z",
+      "reason": "Pre-correction amplification bypassed the real Loki query limit; its 6400-line contract failure is not used as a product claim."
+    },
+    {
+      "run_id": "baseline-20260802T112100Z",
+      "reason": "Stopped after four cycles because Kubernetes still replayed a static fixture."
+    },
+    {
+      "run_id": "baseline-final-20260802T112200Z",
+      "reason": "Stopped after 20 cycles before live Kubernetes API collection was added."
+    },
+    {
+      "run_id": "postfix-truth-classification",
+      "reason": "Diagnostic post-run check exposed a classifier bug: Loki raw text used 'dependency timeout' while the normalized reason code used 'dependency_timeout'. Superseded by postfix-truth-classification-v2."
+    }
+  ]
+}

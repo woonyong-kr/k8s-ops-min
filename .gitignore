@@ -34,6 +34,7 @@ htmlcov/
 # Local AI assistant artifacts
 .claude/
 .codex/
+.ecc/
 .playwright-cli/
 CODE_REVIEW_REPORT.md
 DEV_BRANCH_STATUS.md

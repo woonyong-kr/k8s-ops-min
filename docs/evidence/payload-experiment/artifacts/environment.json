@@ -1,0 +1,147 @@
+{
+  "captured_at": "2026-08-02T11:23:48.743626+00:00",
+  "git_sha": "43f95db0960e0545add7df01ae05119e0b417f45",
+  "host": {
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "machine": "arm64",
+    "physical_cpu": 10,
+    "logical_cpu": 10,
+    "memory_bytes": 25769803776,
+    "disk_total_bytes": 494384795648,
+    "disk_free_bytes": 76734775296
+  },
+  "docker": {
+    "version": {
+      "Client": {
+        "Version": "29.4.0",
+        "ApiVersion": "1.54",
+        "DefaultAPIVersion": "1.54",
+        "GitCommit": "9d7ad9f",
+        "GoVersion": "go1.26.1",
+        "Os": "darwin",
+        "Arch": "arm64",
+        "BuildTime": "Tue Apr  7 08:34:32 2026",
+        "Context": "desktop-linux"
+      },
+      "Server": {
+        "Platform": {
+          "Name": "Docker Desktop 4.70.0 (224270)"
+        },
+        "Version": "29.4.0",
+        "ApiVersion": "1.54",
+        "MinAPIVersion": "1.40",
+        "Os": "linux",
+        "Arch": "arm64",
+        "Components": [
+          {
+            "Name": "Engine",
+            "Version": "29.4.0",
+            "Details": {
+              "ApiVersion": "1.54",
+              "Arch": "arm64",
+              "BuildTime": "Tue Apr  7 08:36:25 2026",
+              "Experimental": "false",
+              "GitCommit": "daa0cb7",
+              "GoVersion": "go1.26.1",
+              "KernelVersion": "6.12.76-linuxkit",
+              "MinAPIVersion": "1.40",
+              "Module": "github.com/moby/moby/v2",
+              "ModuleVersion": "v2.0.0+unknown",
+              "Os": "linux"
+            }
+          },
+          {
+            "Name": "containerd",
+            "Version": "v2.2.1",
+            "Details": {
+              "GitCommit": "dea7da592f5d1d2b7755e3a161be07f43fad8f75"
+            }
+          },
+          {
+            "Name": "runc",
+            "Version": "1.3.4",
+            "Details": {
+              "GitCommit": "v1.3.4-0-gd6d73eb8"
+            }
+          },
+          {
+            "Name": "docker-init",
+            "Version": "0.19.0",
+            "Details": {
+              "GitCommit": "de40ad0"
+            }
+          }
+        ],
+        "GitCommit": "daa0cb7",
+        "GoVersion": "go1.26.1",
+        "KernelVersion": "6.12.76-linuxkit",
+        "BuildTime": "2026-04-07T08:36:25.000000000+00:00"
+      }
+    },
+    "compose_version": "5.1.2",
+    "n_cpu": 10,
+    "memory_bytes": 8321712128,
+    "architecture": "aarch64",
+    "driver": "overlayfs",
+    "kernel_version": "6.12.76-linuxkit",
+    "operating_system": "Docker Desktop"
+  },
+  "images": {
+    "kyro-payload-benchmark:local": {
+      "id": "sha256:39cc345481de75bc3364db75137275610580a73f368c44451a9e371941525311",
+      "repo_digests": [
+        "kyro-payload-benchmark@sha256:39cc345481de75bc3364db75137275610580a73f368c44451a9e371941525311"
+      ],
+      "created": "2026-08-02T11:20:59.800167305Z",
+      "architecture": "arm64"
+    },
+    "postgres:16.10-alpine": {
+      "id": "sha256:029660641a0cfc575b14f336ba448fb8a75fd595d42e1fa316b9fb4378742297",
+      "repo_digests": [
+        "postgres@sha256:029660641a0cfc575b14f336ba448fb8a75fd595d42e1fa316b9fb4378742297"
+      ],
+      "created": "2025-10-15T18:23:03Z",
+      "architecture": "arm64"
+    },
+    "nats:2.11-alpine": {
+      "id": "sha256:e4bf19f15fd3218814a4e3c9e0064e1334bd8aa20d5984b9f1a0afd084f8cc00",
+      "repo_digests": [
+        "nats@sha256:e4bf19f15fd3218814a4e3c9e0064e1334bd8aa20d5984b9f1a0afd084f8cc00"
+      ],
+      "created": "2026-04-28T00:11:18.062729808Z",
+      "architecture": "arm64"
+    },
+    "prom/prometheus:v2.55.1": {
+      "id": "sha256:2659f4c2ebb718e7695cb9b25ffa7d6be64db013daba13e05c875451cf51b0d3",
+      "repo_digests": [
+        "prom/prometheus@sha256:2659f4c2ebb718e7695cb9b25ffa7d6be64db013daba13e05c875451cf51b0d3"
+      ],
+      "created": "2024-11-06T10:35:35.813472744Z",
+      "architecture": "arm64"
+    },
+    "grafana/loki:3.2.1": {
+      "id": "sha256:09a53b4a4ff81ffcd8f13886df19d33fac7a8d3aaf952e3c7e66cbade5b2fc31",
+      "repo_digests": [
+        "grafana/loki@sha256:09a53b4a4ff81ffcd8f13886df19d33fac7a8d3aaf952e3c7e66cbade5b2fc31"
+      ],
+      "created": "2024-10-17T20:27:56.271656939Z",
+      "architecture": "arm64"
+    },
+    "grafana/tempo:2.6.1": {
+      "id": "sha256:ef4384fce6e8ad22b95b243d8fc165628cda655376fd50e7850536ad89d71d50",
+      "repo_digests": [
+        "grafana/tempo@sha256:ef4384fce6e8ad22b95b243d8fc165628cda655376fd50e7850536ad89d71d50"
+      ],
+      "created": "2024-10-15T15:14:02.938965353Z",
+      "architecture": "arm64"
+    },
+    "grafana/grafana:11.3.1": {
+      "id": "sha256:fa801ab6e1ae035135309580891e09f7eb94d1abdbd2106bdc288030b028158c",
+      "repo_digests": [
+        "grafana/grafana@sha256:fa801ab6e1ae035135309580891e09f7eb94d1abdbd2106bdc288030b028158c"
+      ],
+      "created": "2024-11-19T20:56:35.060847602Z",
+      "architecture": "arm64"
+    }
+  }
+}
