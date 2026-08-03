@@ -171,6 +171,8 @@ make demo-duplicate    # 같은 날짜 두 번 적재  → 중복 적재 후보 
 **측정할 것**
 
 - [40개 logical source·Outbox·멱등·DLQ 지속 부하와 자원 민감도 실험 계획](docs/event-pipeline-load-test-plan.md)
+- [네 provider payload 계측의 질문·변수·증거 기준](docs/evidence-payload-experiment-plan.md)
+- [AWS·Git 기록으로 과거 payload 경로를 추론할 수 있는 범위](docs/evidence-payload-traffic-forensics.md)
 
 **안 만든 것**
 

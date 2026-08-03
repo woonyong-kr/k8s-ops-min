@@ -57,7 +57,7 @@ P1은 별도의 네트워크 payload가 아니다. 같은 P0b body를 JSON 객�
 |---|---|---|---|
 | 원천 응답 크기 | 높음 | 입력 규모의 기준점 | wire download와 decoded `response.content` 분리 |
 | Agent가 받은 데이터 | 중간 | P0와 같은 body지만 parse 비용을 확인 | parse time·peak RSS |
-| 파싱·정규화·제한 | 매우 높음 | 이민정의 직접 구현과 가장 가까움 | 전후 byte·개수·신호 보존 |
+| 파싱·정규화·제한 | 매우 높음 | 직접 구현한 범위와 가장 가까움 | 전후 byte·개수·신호 보존 |
 | Evidence payload | 매우 높음 | 1MiB 계약과 잘림 정보 검증 | 최종 직렬화 body byte |
 | Agent→Management | 높음 | 실제 애플리케이션 전송량 | HTTP body와 container tx를 분리 |
 | source 응답 압축 | 높음 | 서버 선택과 `httpx` 자동 해제를 구분 | wire·decoded byte와 encoding 기록 |

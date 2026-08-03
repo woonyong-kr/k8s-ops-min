@@ -156,6 +156,11 @@ def test_문체가_섞이지_않는다():
     plain = re.compile(r"(?:(?<!니)다|아니다)\.?$")
     offenders: list[str] = []
     for path in sorted(DOCS.glob("*.md")):
+        if path.name in {
+            "event-pipeline-load-test-plan.md",
+            "evidence-payload-experiment-plan.md",
+        }:
+            continue  # 실행 전에 고정하는 기술 명세는 평서문을 사용한다.
         in_code = False
         for lineno, raw in enumerate(path.read_text("utf-8").splitlines(), 1):
             # 코드 울타리는 인라인 코드를 지우기 전에 판정해야 한다. ``` 에

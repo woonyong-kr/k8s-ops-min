@@ -94,7 +94,7 @@ CloudTrail에는 07-14 18:56 UTC에 `cluster-2-spot`을 `min=1, max=3, desired=3
 
 비율은 약 9.0배지만 원인 비율은 아닙니다. `cluster-2`의 총량 중 07-15 UTC 약 1,618.94GiB, 07-16 UTC 약 1,067.16GiB가 집중됐습니다. 시간당 양방향 전송은 07-15 05:00 KST 12.16GiB에서 증가해 10:00 132.50GiB, 11:00 145.82GiB였습니다. 50~70GiB 범위에 든 36개 1시간 bucket의 평균은 60.04GiB/h입니다. 07-17 03:00 KST에는 1.00GiB/h로 떨어졌지만 노드는 전후 모두 3대였으므로 급감은 node scale-in으로 설명되지 않습니다.
 
-원본 프로젝트 문서는 07-15 05:36 KST에 `cluster-2`의 서버 3대와 게임 Pod, 20~100 bot 부하, HPA 확장을 실측했다고 기록합니다. [해당 commit](https://github.com/Jungle-303-04/final/commit/287092977608e83eb27c0f7462fd7192dec00e48)은 당시 팀이 남긴 측정 기록입니다. CloudWatch는 같은 구간의 3대 운전과 네트워크 증가를 독립적으로 확인하지만 Pod identity는 남기지 않았습니다. 따라서 문서에서는 `cluster-2`를 **project-recorded game/load cluster**로 부르고, “AWS가 게임 Pod를 직접 확인했다”고 확장하지 않습니다.
+원본 프로젝트 문서는 07-15 05:36 KST에 `cluster-2`의 서버 3대와 게임 Pod, 20~100 bot 부하, HPA 확장을 실측했다고 기록합니다. [해당 commit](https://github.com/Jungle-303-04/final/commit/2870929)은 당시 팀이 남긴 측정 기록입니다. CloudWatch는 같은 구간의 3대 운전과 네트워크 증가를 독립적으로 확인하지만 Pod identity는 남기지 않았습니다. 따라서 문서에서는 `cluster-2`를 **project-recorded game/load cluster**로 부르고, “AWS가 게임 Pod를 직접 확인했다”고 확장하지 않습니다.
 
 ### Git·배포·AWS 통합 타임라인
 

@@ -23,6 +23,7 @@ concurrency:
 jobs:
   reconcile:
     name: Reconcile k8s.woonyong.org to the canonical console
+    if: ${{ github.event_name == 'workflow_dispatch' || vars.CLOUDFLARE_ROUTE_RECONCILE_ENABLED == '1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: development
