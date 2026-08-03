@@ -50,7 +50,7 @@ jobs:
     steps:
       - name: Check out dev SHA for scope classification
         if: github.event_name == 'push'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
           fetch-depth: 1
@@ -114,7 +114,7 @@ jobs:
       DEPLOY_LEASE_TTL_SECONDS: ${{ vars.AWS_DEV_DEPLOY_LEASE_TTL_SECONDS || '600' }}
     steps:
       - name: Check out dev SHA
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.source_sha || github.sha }}
           persist-credentials: false
