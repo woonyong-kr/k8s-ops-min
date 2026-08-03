@@ -5,7 +5,7 @@ import os
 import platform
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -40,7 +40,7 @@ def main() -> None:
         except subprocess.CalledProcessError:
             images[image] = {"missing": True}
     payload = {
-        "captured_at": datetime.now(timezone.utc).isoformat(),
+        "captured_at": datetime.now(UTC).isoformat(),
         "git_sha": command("git", "rev-parse", "HEAD"),
         "host": {
             "platform": platform.platform(),

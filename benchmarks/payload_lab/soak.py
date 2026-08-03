@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from benchmarks.payload_lab import runner as lab
-from domains.rca.events import ClusterEvidenceReceivedBody, compact_cluster_evidence_payload, evidence_payload_size
+from domains.rca.events import (
+    ClusterEvidenceReceivedBody,
+    compact_cluster_evidence_payload,
+    evidence_payload_size,
+)
 
 
 def percentile(values: list[float], percentile_value: float) -> float:

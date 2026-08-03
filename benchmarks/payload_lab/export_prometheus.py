@@ -7,7 +7,6 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
-
 QUERIES = {
     "transform_seconds": 'kyro_payload_transform_seconds{run_id="%s"}',
     "agent_body_bytes": 'kyro_payload_stage_bytes{run_id="%s",stage="agent_body_bytes"}',

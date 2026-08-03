@@ -3,10 +3,9 @@ from __future__ import annotations
 import json
 import os
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
 
 NAMESPACE = "payload-bench"
 
@@ -55,7 +54,7 @@ def seed_namespace() -> None:
         "metadata": {"name": "payload-api", "namespace": NAMESPACE},
         "spec": {"selector": {"app": "payload-api"}, "ports": [{"port": 8080, "targetPort": 8080}]},
     })
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     for name, reason, message in (
         ("payload-failed-scheduling", "FailedScheduling", "0/1 nodes are available: Insufficient memory"),
         ("payload-oom-killing", "OOMKilling", "Memory cgroup out of memory: OOMKilled payload-api"),
@@ -83,7 +82,7 @@ def main() -> None:
         "status": "success",
         "cluster_id": "payload-lab",
         "namespace": NAMESPACE,
-        "collected_at": datetime.now(timezone.utc).isoformat(),
+        "collected_at": datetime.now(UTC).isoformat(),
         "pods": list_json(f"/api/v1/namespaces/{NAMESPACE}/pods"),
         "events": list_json(f"/api/v1/namespaces/{NAMESPACE}/events"),
         "nodes": list_json("/api/v1/nodes"),

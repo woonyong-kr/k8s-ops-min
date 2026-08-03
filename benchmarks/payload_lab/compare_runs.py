@@ -7,7 +7,6 @@ import statistics
 from pathlib import Path
 from typing import Any
 
-
 UNITS = {"B": 1, "kB": 1000, "MB": 1000**2, "GB": 1000**3, "KiB": 1024, "MiB": 1024**2, "GiB": 1024**3}
 
 

@@ -10,37 +10,26 @@ import os
 import ssl
 import statistics
 import sys
-import time
 import tempfile
+import time
 import tracemalloc
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import httpx
 import nats
 import psycopg
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[2]
 AGENT_DIR = ROOT / "src/services/target/cluster-agent"
 sys.path.insert(0, str(AGENT_DIR))
 sys.path.insert(0, str(ROOT / "src"))
 
-from domains.rca.events import (  # noqa: E402
-    ClusterEvidenceReceivedBody,
-    compact_cluster_evidence_payload,
-    evidence_payload_size,
-)
-from config import LOKI_QUERY_LIMIT  # noqa: E402
-from packages.contracts.gateway.requests import (  # noqa: E402
-    EvidenceJobResultRequest,
-    MAX_EVIDENCE_PAYLOAD_BYTES,
-)
-from providers.collection_limits import payload_size_bytes  # noqa: E402
 from providers.kubernetes_providers import (  # noqa: E402
     KubernetesSnapshotProvider,
 )
@@ -54,6 +43,16 @@ from queries import (  # noqa: E402
     PrometheusInstantQuery,
 )
 
+from config import LOKI_QUERY_LIMIT  # noqa: E402
+from domains.rca.events import (  # noqa: E402
+    ClusterEvidenceReceivedBody,
+    compact_cluster_evidence_payload,
+    evidence_payload_size,
+)
+from packages.contracts.gateway.requests import (  # noqa: E402
+    MAX_EVIDENCE_PAYLOAD_BYTES,
+    EvidenceJobResultRequest,
+)
 
 PROVIDERS = ("kubernetes", "prometheus", "loki", "tempo")
 WINDOW_SECONDS = 300
@@ -411,7 +410,11 @@ async def nats_measure(full: dict[str, Any], compact: dict[str, Any]) -> dict[st
 
 def prometheus_lines(rows: list[dict[str, Any]], aggregate: dict[str, Any]) -> str:
     run_id = os.environ["RUN_ID"]
-    labels = lambda **values: ",".join(f'{key}="{str(value)}"' for key, value in {"run_id": run_id, **values}.items())
+
+    def labels(**values: object) -> str:
+        merged = {"run_id": run_id, **values}
+        return ",".join(f'{key}="{value}"' for key, value in merged.items())
+
     lines = ["# TYPE kyro_payload_stage_bytes gauge"]
     for row in rows:
         provider = row["provider"]
